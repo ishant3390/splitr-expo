@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { useSignUp } from "@clerk/clerk-expo";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Mail, Phone } from "lucide-react-native";
+import { ArrowLeft } from "lucide-react-native";
 
 export default function SignUpFormScreen() {
   const router = useRouter();
@@ -22,10 +22,21 @@ export default function SignUpFormScreen() {
     const newErrors: Record<string, string> = {};
     if (!firstName.trim()) newErrors.firstName = "First name is required";
     if (!lastName.trim()) newErrors.lastName = "Last name is required";
-    if (!email.trim()) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = "Enter a valid email";
-    if (!phone.trim()) newErrors.phone = "Phone number is required";
-    else if (phone.replace(/\D/g, "").length < 10) newErrors.phone = "Enter a valid phone number";
+
+    const hasEmail = email.trim().length > 0;
+    const hasPhone = phone.trim().length > 0;
+
+    if (!hasEmail && !hasPhone) {
+      newErrors.contact = "Please provide at least an email address or phone number";
+    } else {
+      if (hasEmail && !/\S+@\S+\.\S+/.test(email)) {
+        newErrors.email = "Enter a valid email address";
+      }
+      if (hasPhone && phone.replace(/\D/g, "").length < 10) {
+        newErrors.phone = "Enter a valid phone number";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -35,24 +46,29 @@ export default function SignUpFormScreen() {
 
     setLoading(true);
     try {
-      await signUp?.create({
+      const payload: any = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        emailAddress: email.trim(),
-        phoneNumber: phone.trim(),
-      });
+      };
+      if (email.trim()) payload.emailAddress = email.trim();
+      if (phone.trim()) payload.phoneNumber = phone.trim();
 
-      // Request email verification by default
-      await signUp?.prepareEmailAddressVerification({ strategy: "email_code" });
+      await signUp?.create(payload);
 
-      router.push({
-        pathname: "/(auth)/otp-verify",
-        params: {
-          contact: email.trim(),
-          phone: phone.trim(),
-          mode: "signup",
-        },
-      });
+      // Prefer email verification, fall back to phone
+      if (email.trim()) {
+        await signUp?.prepareEmailAddressVerification({ strategy: "email_code" });
+        router.push({
+          pathname: "/(auth)/otp-verify",
+          params: { contact: email.trim(), phone: phone.trim(), mode: "signup", method: "email" },
+        });
+      } else {
+        await signUp?.preparePhoneNumberVerification({ strategy: "phone_code" });
+        router.push({
+          pathname: "/(auth)/otp-verify",
+          params: { contact: phone.trim(), phone: phone.trim(), mode: "signup", method: "phone" },
+        });
+      }
     } catch (err: any) {
       Alert.alert(
         "Sign Up Error",
@@ -124,10 +140,14 @@ export default function SignUpFormScreen() {
             </View>
 
             <Input
-              label="Email Address *"
+              label="Email Address"
               placeholder="john@example.com"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(v) => {
+                setEmail(v);
+                if (errors.contact || errors.email)
+                  setErrors((e) => ({ ...e, contact: "", email: "" }));
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
@@ -135,21 +155,35 @@ export default function SignUpFormScreen() {
             />
 
             <Input
-              label="Phone Number *"
+              label="Phone Number"
               placeholder="+1 (555) 123-4567"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(v) => {
+                setPhone(v);
+                if (errors.contact || errors.phone)
+                  setErrors((e) => ({ ...e, contact: "", phone: "" }));
+              }}
               keyboardType="phone-pad"
               autoComplete="tel"
               error={errors.phone}
             />
+
+            {errors.contact ? (
+              <Text className="text-xs text-destructive font-sans -mt-2">
+                {errors.contact}
+              </Text>
+            ) : (
+              <Text className="text-xs text-muted-foreground font-sans -mt-2">
+                Provide at least one: email or phone number
+              </Text>
+            )}
 
             <View className="bg-primary/5 rounded-xl p-4 mt-2">
               <Text className="text-sm text-foreground font-sans-medium mb-1">
                 What happens next?
               </Text>
               <Text className="text-xs text-muted-foreground font-sans leading-5">
-                {"We'll send a 6-digit verification code to your email to confirm your account. You can also verify via phone."}
+                {"We'll send a 6-digit verification code to confirm your account."}
               </Text>
             </View>
           </View>

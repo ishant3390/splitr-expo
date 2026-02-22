@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Alert } from "react-native";
+import { View, Text, Alert, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSignUp, useSignIn } from "@clerk/clerk-expo";
@@ -9,14 +9,24 @@ import { ArrowLeft, Mail, Phone as PhoneIcon, CheckCircle2 } from "lucide-react-
 
 export default function OTPVerifyScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ contact: string; phone?: string; mode: string }>();
+  const params = useLocalSearchParams<{ contact: string; phone?: string; mode: string; method?: string }>();
   const { signUp, setActive: setActiveSignUp } = useSignUp();
   const { signIn, setActive: setActiveSignIn } = useSignIn();
+
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === "web") {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
-  const [verifyMethod, setVerifyMethod] = useState<"email" | "phone">("email");
+  const [verifyMethod, setVerifyMethod] = useState<"email" | "phone">(
+    params.method === "phone" ? "phone" : "email"
+  );
   const [countdown, setCountdown] = useState(30);
 
   const isSignUp = params.mode === "signup";
@@ -30,8 +40,9 @@ export default function OTPVerifyScreen() {
   }, [countdown]);
 
   const handleVerify = async () => {
-    if (otp.length < 6) {
-      Alert.alert("Invalid Code", "Please enter the complete 6-digit code");
+    const code = otp.trim();
+    if (code.length < 6) {
+      showAlert("Invalid Code", "Please enter the complete 6-digit code");
       return;
     }
 
@@ -39,7 +50,7 @@ export default function OTPVerifyScreen() {
     try {
       if (isSignUp) {
         if (verifyMethod === "email") {
-          const result = await signUp?.attemptEmailAddressVerification({ code: otp });
+          const result = await signUp?.attemptEmailAddressVerification({ code });
           if (result?.status === "complete" && result.createdSessionId) {
             setVerified(true);
             setTimeout(async () => {
@@ -47,7 +58,7 @@ export default function OTPVerifyScreen() {
             }, 1500);
           }
         } else {
-          const result = await signUp?.attemptPhoneNumberVerification({ code: otp });
+          const result = await signUp?.attemptPhoneNumberVerification({ code });
           if (result?.status === "complete" && result.createdSessionId) {
             setVerified(true);
             setTimeout(async () => {
@@ -59,7 +70,7 @@ export default function OTPVerifyScreen() {
         // Sign in verification
         const result = await signIn?.attemptFirstFactor({
           strategy: verifyMethod === "email" ? "email_code" : "phone_code",
-          code: otp,
+          code,
         });
         if (result?.status === "complete" && result.createdSessionId) {
           setVerified(true);
@@ -69,10 +80,9 @@ export default function OTPVerifyScreen() {
         }
       }
     } catch (err: any) {
-      Alert.alert(
-        "Verification Failed",
-        err?.errors?.[0]?.longMessage || "Invalid code. Please try again."
-      );
+      console.error("OTP verification error:", JSON.stringify(err, null, 2));
+      const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || "Invalid code. Please try again.";
+      showAlert("Verification Failed", message);
     } finally {
       setLoading(false);
     }
@@ -101,9 +111,9 @@ export default function OTPVerifyScreen() {
         }
       }
       setCountdown(30);
-      Alert.alert("Code Sent", `A new code has been sent to your ${verifyMethod}.`);
+      showAlert("Code Sent", `A new code has been sent to your ${verifyMethod}.`);
     } catch (err: any) {
-      Alert.alert("Error", err?.message || "Could not resend code");
+      showAlert("Error", err?.message || "Could not resend code");
     }
   };
 
@@ -210,7 +220,7 @@ export default function OTPVerifyScreen() {
           )}
 
           {/* Toggle verification method */}
-          {isSignUp && params.phone && (
+          {isSignUp && !!params.phone && (
             <Button variant="ghost" onPress={toggleMethod}>
               <View className="flex-row items-center gap-2">
                 {verifyMethod === "email" ? (
