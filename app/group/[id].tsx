@@ -1,7 +1,8 @@
-import React from "react";
-import { View, Text, ScrollView, FlatList, Pressable } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useAuth } from "@clerk/clerk-expo";
 import {
   ArrowLeft,
   Plus,
@@ -15,7 +16,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { groups, currentUser } from "@/lib/mock-data";
+import { groupsApi } from "@/lib/api";
 import { formatCurrency, formatDate, getInitials, categoryLabels, cn } from "@/lib/utils";
 import type { ExpenseCategory } from "@/lib/types";
 
@@ -31,17 +32,51 @@ const iconMap: Record<ExpenseCategory, typeof Utensils> = {
 export default function GroupDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const group = groups.find((g) => g.id === id);
+  const { getToken } = useAuth();
+
+  const [group, setGroup] = useState<any>(null);
+  const [members, setMembers] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const token = await getToken();
+        const [groupData, membersData, expensesData] = await Promise.all([
+          groupsApi.get(id, token!),
+          groupsApi.listMembers(id, token!),
+          groupsApi.listExpenses(id, token!),
+        ]);
+        setGroup(groupData);
+        setMembers(Array.isArray(membersData) ? membersData : []);
+        setExpenses(Array.isArray(expensesData) ? expensesData : []);
+      } catch {
+        setGroup(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-background items-center justify-center" edges={["top"]}>
+        <ActivityIndicator color="#0d9488" />
+      </SafeAreaView>
+    );
+  }
 
   if (!group) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
+      <SafeAreaView className="flex-1 bg-background items-center justify-center" edges={["top"]}>
         <Text className="text-lg text-muted-foreground font-sans">Group not found</Text>
       </SafeAreaView>
     );
   }
 
-  const totalSpent = group.expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalSpent = expenses.reduce((sum: number, e: any) => sum + (e.amount ?? 0), 0);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -66,40 +101,41 @@ export default function GroupDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Members */}
-        <View className="py-4">
-          <Text className="text-sm font-sans-semibold text-muted-foreground mb-3">
-            MEMBERS ({group.members.length})
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-3">
-            <View className="flex-row gap-3">
-              {group.members.map((member) => {
-                const memberExpenses = group.expenses
-                  .filter((e) => e.paidBy === member.id)
-                  .reduce((sum, e) => sum + e.amount, 0);
-                const isYou = member.id === currentUser.id;
+        {members.length > 0 && (
+          <View className="py-4">
+            <Text className="text-sm font-sans-semibold text-muted-foreground mb-3">
+              MEMBERS ({members.length})
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-3">
+                {members.map((member: any) => {
+                  const memberTotal = expenses
+                    .filter((e: any) => e.paidBy?.id === member.id || e.paidById === member.id)
+                    .reduce((sum: number, e: any) => sum + (e.amount ?? 0), 0);
 
-                return (
-                  <Card key={member.id} className="p-3 items-center w-24">
-                    <Avatar
-                      src={member.avatar}
-                      fallback={getInitials(member.name)}
-                      size="md"
-                    />
-                    <Text
-                      className="text-xs font-sans-medium text-card-foreground mt-2 text-center"
-                      numberOfLines={1}
-                    >
-                      {isYou ? "You" : member.name.split(" ")[0]}
-                    </Text>
-                    <Text className="text-xs font-sans-semibold text-success mt-0.5">
-                      {formatCurrency(memberExpenses)}
-                    </Text>
-                  </Card>
-                );
-              })}
-            </View>
-          </ScrollView>
-        </View>
+                  return (
+                    <Card key={member.id} className="p-3 items-center w-24">
+                      <Avatar
+                        src={member.imageUrl ?? member.avatar}
+                        fallback={getInitials(member.name)}
+                        size="md"
+                      />
+                      <Text
+                        className="text-xs font-sans-medium text-card-foreground mt-2 text-center"
+                        numberOfLines={1}
+                      >
+                        {member.name?.split(" ")[0] ?? "Member"}
+                      </Text>
+                      <Text className="text-xs font-sans-semibold text-success mt-0.5">
+                        {formatCurrency(memberTotal)}
+                      </Text>
+                    </Card>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         {/* Summary card */}
         <Card className="p-4 bg-primary/5 border-primary/20 mb-4">
@@ -113,7 +149,7 @@ export default function GroupDetailScreen() {
             <View className="items-end">
               <Text className="text-xs text-muted-foreground font-sans">Per Person (avg)</Text>
               <Text className="text-xl font-sans-bold text-primary">
-                {formatCurrency(totalSpent / group.members.length)}
+                {formatCurrency(members.length > 0 ? totalSpent / members.length : 0)}
               </Text>
             </View>
           </View>
@@ -121,43 +157,61 @@ export default function GroupDetailScreen() {
 
         {/* Expenses list */}
         <Text className="text-sm font-sans-semibold text-muted-foreground mb-3">
-          EXPENSES ({group.expenses.length})
+          EXPENSES ({expenses.length})
         </Text>
-        <View className="gap-2">
-          {group.expenses
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .map((expense) => {
-              const Icon = iconMap[expense.category];
-              const payer = group.members.find((m) => m.id === expense.paidBy);
-              const isYou = expense.paidBy === currentUser.id;
 
-              return (
-                <Card key={expense.id} className="p-4">
-                  <View className="flex-row items-center gap-3">
-                    <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-                      <Icon size={20} color="#0d9488" />
+        {expenses.length === 0 ? (
+          <Card className="p-6 items-center">
+            <Text className="text-sm text-muted-foreground font-sans">
+              No expenses yet. Add one!
+            </Text>
+          </Card>
+        ) : (
+          <View className="gap-2">
+            {[...expenses]
+              .sort((a, b) => {
+                const dateA = a.date || a.createdAt || "";
+                const dateB = b.date || b.createdAt || "";
+                return new Date(dateB).getTime() - new Date(dateA).getTime();
+              })
+              .map((expense: any) => {
+                const category: ExpenseCategory = expense.category ?? "other";
+                const Icon = iconMap[category] ?? MoreHorizontal;
+                const payerName =
+                  expense.paidBy?.name ?? expense.paidByName ?? "Someone";
+                const splitCount =
+                  expense.splitAmong?.length ?? expense.splitCount ?? 1;
+                const expenseDate = expense.date || expense.createdAt;
+
+                return (
+                  <Card key={expense.id} className="p-4">
+                    <View className="flex-row items-center gap-3">
+                      <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
+                        <Icon size={20} color="#0d9488" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-sm font-sans-semibold text-card-foreground">
+                          {expense.description}
+                        </Text>
+                        <Text className="text-xs text-muted-foreground font-sans">
+                          {payerName} paid
+                          {expenseDate ? ` · ${formatDate(expenseDate)}` : ""}
+                        </Text>
+                      </View>
+                      <View className="items-end">
+                        <Text className="text-sm font-sans-bold text-foreground">
+                          {formatCurrency(expense.amount ?? 0)}
+                        </Text>
+                        <Text className="text-xs text-muted-foreground font-sans">
+                          {splitCount} {splitCount === 1 ? "person" : "people"}
+                        </Text>
+                      </View>
                     </View>
-                    <View className="flex-1">
-                      <Text className="text-sm font-sans-semibold text-card-foreground">
-                        {expense.description}
-                      </Text>
-                      <Text className="text-xs text-muted-foreground font-sans">
-                        {isYou ? "You" : payer?.name} paid {"\u00b7"} {formatDate(expense.date)}
-                      </Text>
-                    </View>
-                    <View className="items-end">
-                      <Text className="text-sm font-sans-bold text-foreground">
-                        {formatCurrency(expense.amount)}
-                      </Text>
-                      <Text className="text-xs text-muted-foreground font-sans">
-                        {expense.splitAmong.length} people
-                      </Text>
-                    </View>
-                  </View>
-                </Card>
-              );
-            })}
-        </View>
+                  </Card>
+                );
+              })}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

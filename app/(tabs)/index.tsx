@@ -1,7 +1,8 @@
-import React from "react";
-import { View, Text, ScrollView, Pressable } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
   ScanLine,
   MessageCircle,
@@ -13,26 +14,30 @@ import {
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { groups, currentUser } from "@/lib/mock-data";
+import { usersApi } from "@/lib/api";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { getToken } = useAuth();
+  const { user } = useUser();
+  const [activity, setActivity] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const totalOwed = 145.5;
-  const totalOwe = 67.25;
-  const netBalance = totalOwed - totalOwe;
-
-  const recentExpenses = groups
-    .flatMap((g) =>
-      g.expenses.map((e) => ({
-        ...e,
-        groupName: g.name,
-        groupId: g.id,
-      }))
-    )
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const token = await getToken();
+        const data = await usersApi.activity(token!);
+        setActivity(Array.isArray(data) ? data.slice(0, 5) : []);
+      } catch {
+        setActivity([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -46,7 +51,7 @@ export default function HomeScreen() {
           <View>
             <Text className="text-2xl font-sans-bold text-foreground">Splitr</Text>
             <Text className="text-sm text-muted-foreground font-sans">
-              Welcome back, {currentUser.name.split(" ")[0]}
+              Welcome back, {user?.firstName || "there"}
             </Text>
           </View>
           <Pressable className="w-10 h-10 rounded-full bg-muted items-center justify-center">
@@ -98,7 +103,7 @@ export default function HomeScreen() {
               Net Balance
             </Text>
             <Text className="text-3xl font-sans-bold text-primary-foreground mb-4">
-              {formatCurrency(netBalance)}
+              {formatCurrency(0)}
             </Text>
             <View className="flex-row gap-6">
               <View className="flex-row items-center gap-2">
@@ -108,7 +113,7 @@ export default function HomeScreen() {
                 <View>
                   <Text className="text-xs text-primary-foreground/60 font-sans">You are owed</Text>
                   <Text className="text-sm font-sans-semibold text-primary-foreground">
-                    {formatCurrency(totalOwed)}
+                    {formatCurrency(0)}
                   </Text>
                 </View>
               </View>
@@ -119,7 +124,7 @@ export default function HomeScreen() {
                 <View>
                   <Text className="text-xs text-primary-foreground/60 font-sans">You owe</Text>
                   <Text className="text-sm font-sans-semibold text-primary-foreground">
-                    {formatCurrency(totalOwe)}
+                    {formatCurrency(0)}
                   </Text>
                 </View>
               </View>
@@ -131,48 +136,44 @@ export default function HomeScreen() {
             <Text className="text-lg font-sans-semibold text-foreground mb-3">
               Recent Activity
             </Text>
-            <View className="gap-2">
-              {recentExpenses.map((expense) => {
-                const payer = groups
-                  .flatMap((g) => g.members)
-                  .find((m) => m.id === expense.paidBy);
-                const isYou = expense.paidBy === currentUser.id;
-
-                return (
-                  <Card key={expense.id} className="p-4">
+            {loading ? (
+              <ActivityIndicator color="#0d9488" />
+            ) : activity.length === 0 ? (
+              <Card className="p-6 items-center">
+                <Text className="text-sm text-muted-foreground font-sans">No recent activity</Text>
+              </Card>
+            ) : (
+              <View className="gap-2">
+                {activity.map((item: any) => (
+                  <Card key={item.id} className="p-4">
                     <View className="flex-row items-center gap-3">
                       <Avatar
-                        src={payer?.avatar}
-                        fallback={getInitials(payer?.name || "?")}
+                        fallback={getInitials(item.paidBy?.name || item.performedBy?.name || "?")}
                         size="md"
                       />
                       <View className="flex-1">
                         <Text className="text-sm font-sans-semibold text-card-foreground">
-                          {expense.description}
+                          {item.description}
                         </Text>
                         <Text className="text-xs text-muted-foreground font-sans">
-                          {isYou ? "You" : payer?.name} paid {formatCurrency(expense.amount)}{" "}
-                          {"\u00b7"} {expense.groupName}
+                          {item.groupName || item.group?.name || ""}
                         </Text>
                       </View>
                       <View className="items-end">
-                        <Text
-                          className={`text-sm font-sans-semibold ${
-                            isYou ? "text-success" : "text-destructive"
-                          }`}
-                        >
-                          {isYou ? "+" : "-"}
-                          {formatCurrency(expense.amount / expense.splitAmong.length)}
-                        </Text>
+                        {item.amount != null && (
+                          <Text className="text-sm font-sans-semibold text-foreground">
+                            {formatCurrency(item.amount)}
+                          </Text>
+                        )}
                         <Text className="text-xs text-muted-foreground font-sans">
-                          {formatDate(expense.date)}
+                          {item.date || item.createdAt ? formatDate(item.date || item.createdAt) : ""}
                         </Text>
                       </View>
                     </View>
                   </Card>
-                );
-              })}
-            </View>
+                ))}
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>

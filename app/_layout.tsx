@@ -4,6 +4,7 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
+import { usersApi } from "@/lib/api";
 import * as SecureStore from "expo-secure-store";
 import {
   useFonts,
@@ -36,7 +37,7 @@ const tokenCache = {
 };
 
 function AuthGate() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -51,6 +52,19 @@ function AuthGate() {
       router.replace("/(tabs)");
     }
   }, [isSignedIn, isLoaded, segments]);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const sync = async () => {
+      try {
+        const token = await getToken();
+        if (token) await usersApi.sync(token);
+      } catch {
+        // sync failures are non-fatal
+      }
+    };
+    sync();
+  }, [isSignedIn]);
 
   return <Slot />;
 }
