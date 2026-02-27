@@ -51,17 +51,20 @@ export default function TabsLayout() {
         name="add"
         options={{
           title: "",
-          tabBarIcon: () => (
-            <View className="flex-row items-center gap-1.5 -mt-4">
+          tabBarButton: () => (
+            <View className="flex-1 flex-row items-center justify-center gap-1.5 -mt-4">
               <Pressable
                 onPress={() => router.push("/receipt-scanner")}
                 className="w-10 h-10 rounded-full bg-accent items-center justify-center shadow-md"
               >
                 <ScanLine size={20} color="#ffffff" />
               </Pressable>
-              <View className="w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg">
+              <Pressable
+                onPress={() => router.push("/(tabs)/add")}
+                className="w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
+              >
                 <Plus size={26} color="#ffffff" />
-              </View>
+              </Pressable>
             </View>
           ),
         }}

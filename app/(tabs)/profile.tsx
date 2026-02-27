@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, Alert, Platform } from "react-native";
+import { View, Text, ScrollView, Pressable, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
+import { useColorScheme } from "nativewind";
 import {
   User,
   CreditCard,
@@ -15,8 +17,11 @@ import {
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemedSwitch } from "@/components/ui/themed-switch";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { usersApi } from "@/lib/api";
-import { getInitials, formatCurrency } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
+import { getInitials, formatDate } from "@/lib/utils";
+import { UserDto } from "@/lib/types";
 
 const menuItems = [
   { icon: User, label: "Edit Profile", id: "profile" },
@@ -29,40 +34,51 @@ const menuItems = [
 export default function ProfileScreen() {
   const { signOut, getToken } = useAuth();
   const { user } = useUser();
-  const [darkMode, setDarkMode] = React.useState(false);
-  const [stats, setStats] = useState({ groupCount: 0, expenseCount: 0, totalPaid: 0 });
+  const router = useRouter();
+  const { colorScheme, toggleColorScheme } = useColorScheme();
+  const [apiUser, setApiUser] = useState<UserDto | null>(null);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     const load = async () => {
       try {
         const token = await getToken();
         const me = await usersApi.me(token!);
-        setStats({
-          groupCount: me.groupCount ?? me.groups?.length ?? 0,
-          expenseCount: me.expenseCount ?? me.expenses?.length ?? 0,
-          totalPaid: me.totalPaid ?? me.totalSpent ?? 0,
-        });
+        setApiUser(me);
       } catch {
-        // keep default zeros
+        // keep null
       }
     };
     load();
   }, []);
 
   const handleSignOut = () => {
-    if (Platform.OS === "web") {
-      if (window.confirm("Are you sure you want to sign out?")) {
-        signOut();
-      }
-    } else {
-      Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Sign Out", style: "destructive", onPress: () => signOut() },
-      ]);
+    setShowSignOutModal(true);
+  };
+
+  const handleMenuPress = (id: string) => {
+    switch (id) {
+      case "profile":
+        router.push("/edit-profile");
+        break;
+      case "payment":
+        toast.info("Payment methods will be available in a future update.");
+        break;
+      case "notifications":
+        toast.info("Notification settings will be available in a future update.");
+        break;
+      case "privacy":
+        toast.info("Privacy & security settings coming soon.");
+        break;
+      case "help":
+        toast.info("Help & support coming soon.");
+        break;
     }
   };
 
   return (
+    <>
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
       <ScrollView
         className="flex-1"
@@ -96,23 +112,23 @@ export default function ProfileScreen() {
             <View className="flex-row gap-4 pt-4 border-t border-border">
               <View className="flex-1 items-center">
                 <Text className="text-xl font-sans-bold text-foreground">
-                  {stats.groupCount}
+                  {apiUser?.defaultCurrency ?? "USD"}
                 </Text>
-                <Text className="text-xs text-muted-foreground font-sans">Groups</Text>
+                <Text className="text-xs text-muted-foreground font-sans">Currency</Text>
               </View>
               <View className="w-px bg-border" />
               <View className="flex-1 items-center">
                 <Text className="text-xl font-sans-bold text-foreground">
-                  {stats.expenseCount}
+                  {apiUser?.isPremium ? "Yes" : "No"}
                 </Text>
-                <Text className="text-xs text-muted-foreground font-sans">Expenses</Text>
+                <Text className="text-xs text-muted-foreground font-sans">Premium</Text>
               </View>
               <View className="w-px bg-border" />
               <View className="flex-1 items-center">
                 <Text className="text-xl font-sans-bold text-primary">
-                  {formatCurrency(stats.totalPaid)}
+                  {apiUser?.createdAt ? formatDate(apiUser.createdAt) : "—"}
                 </Text>
-                <Text className="text-xs text-muted-foreground font-sans">Total Paid</Text>
+                <Text className="text-xs text-muted-foreground font-sans">Member since</Text>
               </View>
             </View>
           </Card>
@@ -127,7 +143,7 @@ export default function ProfileScreen() {
                 </View>
                 <Text className="text-sm font-sans-medium text-card-foreground">Dark Mode</Text>
               </View>
-              <ThemedSwitch checked={darkMode} onCheckedChange={setDarkMode} />
+              <ThemedSwitch checked={colorScheme === "dark"} onCheckedChange={() => toggleColorScheme()} />
             </View>
 
             {menuItems.map((item, index) => {
@@ -135,6 +151,7 @@ export default function ProfileScreen() {
               return (
                 <Pressable
                   key={item.id}
+                  onPress={() => handleMenuPress(item.id)}
                   className={`flex-row items-center justify-between p-4 ${
                     index < menuItems.length - 1 ? "border-b border-border" : ""
                   }`}
@@ -164,5 +181,16 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+
+    <ConfirmModal
+      visible={showSignOutModal}
+      title="Sign Out"
+      message="Are you sure you want to sign out?"
+      confirmLabel="Sign Out"
+      destructive
+      onConfirm={() => { setShowSignOutModal(false); signOut(); }}
+      onCancel={() => setShowSignOutModal(false)}
+    />
+    </>
   );
 }

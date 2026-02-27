@@ -4,14 +4,13 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
   ScanLine,
   ChevronDown,
@@ -30,8 +29,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { groupsApi } from "@/lib/api";
-import { categoryLabels, getInitials, cn } from "@/lib/utils";
-import type { ExpenseCategory } from "@/lib/types";
+import { useToast } from "@/components/ui/toast";
+import { categoryLabels, getInitials, cn, amountToCents } from "@/lib/utils";
+import type { ExpenseCategory, GroupDto, GroupMemberDto, CreateExpenseRequest } from "@/lib/types";
 
 const categories: { id: ExpenseCategory; icon: typeof Utensils; label: string }[] = [
   { id: "food", icon: Utensils, label: "Food" },
@@ -44,12 +44,15 @@ const categories: { id: ExpenseCategory; icon: typeof Utensils; label: string }[
 
 export default function AddExpenseScreen() {
   const router = useRouter();
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)"));
   const { getToken } = useAuth();
+  const { user: clerkUser } = useUser();
+  const toast = useToast();
 
-  const [groups, setGroups] = useState<any[]>([]);
+  const [groups, setGroups] = useState<GroupDto[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
-  const [selectedGroup, setSelectedGroup] = useState<any>(null);
-  const [members, setMembers] = useState<any[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<GroupDto | null>(null);
+  const [members, setMembers] = useState<GroupMemberDto[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
 
   const [description, setDescription] = useState("");
@@ -85,9 +88,9 @@ export default function AddExpenseScreen() {
       try {
         const token = await getToken();
         const data = await groupsApi.listMembers(selectedGroup.id, token!);
-        const list = Array.isArray(data) ? data : [];
+        const list: GroupMemberDto[] = Array.isArray(data) ? data : [];
         setMembers(list);
-        setSplitWith(list.map((m: any) => m.id));
+        setSplitWith(list.map((m) => m.id));
       } catch {
         setMembers([]);
         setSplitWith([]);
@@ -108,36 +111,49 @@ export default function AddExpenseScreen() {
 
   const handleSubmit = async () => {
     if (!amount || !description) {
-      Alert.alert("Missing Info", "Please enter an amount and description.");
+      toast.error("Please enter an amount and description.");
       return;
     }
     if (!selectedGroup) {
-      Alert.alert("No Group", "Please select a group.");
+      toast.error("Please select a group.");
       return;
     }
     if (splitWith.length === 0) {
-      Alert.alert("No Members", "Please select at least one member to split with.");
+      toast.error("Please select at least one member to split with.");
       return;
     }
 
     setSubmitting(true);
     try {
       const token = await getToken();
-      await groupsApi.createExpense(
-        selectedGroup.id,
-        {
-          description: description.trim(),
-          amount: parseFloat(amount),
-          category: selectedCategory,
-          splitAmong: splitWith,
-        },
-        token!
-      );
-      Alert.alert("Expense Added", `"${description}" added to ${selectedGroup.name}`, [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      const parsedAmount = parseFloat(amount);
+      const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+      const currentMember = members.find((m) => m.user?.email === currentEmail);
+      const payerUserId = currentMember?.user?.id;
+
+      const expenseRequest: CreateExpenseRequest = {
+        description: description.trim(),
+        totalAmount: amountToCents(parsedAmount),
+        currency: selectedGroup.defaultCurrency || "USD",
+        categoryId: selectedCategory,
+        expenseDate: new Date().toISOString().split("T")[0],
+        splitType: "equal",
+        payers: [{ userId: payerUserId, amountPaid: amountToCents(parsedAmount) }],
+        splits: splitWith.map((memberId) => {
+          const member = members.find((m) => m.id === memberId);
+          return {
+            userId: member?.user?.id,
+            guestUserId: member?.guestUser?.id,
+            splitAmount: amountToCents(parsedAmount / splitWith.length),
+          };
+        }),
+      };
+
+      await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
+      toast.success(`"${description}" added to ${selectedGroup.name}`);
+      goBack();
     } catch (err: any) {
-      Alert.alert("Error", err?.message || "Could not add expense");
+      toast.error("Something went wrong. Try again later.");
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +180,7 @@ export default function AddExpenseScreen() {
       >
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 py-3 border-b border-border">
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={goBack}>
             <Text className="text-base font-sans-medium text-muted-foreground">Cancel</Text>
           </Pressable>
           <Text className="text-lg font-sans-semibold text-foreground">Add Expense</Text>
@@ -329,8 +345,9 @@ export default function AddExpenseScreen() {
                 <ActivityIndicator color="#0d9488" />
               ) : (
                 <View className="gap-2">
-                  {members.map((member: any) => {
+                  {members.map((member) => {
                     const isChecked = splitWith.includes(member.id);
+                    const memberName = member.user?.name ?? member.guestUser?.name ?? member.displayName ?? "Member";
                     return (
                       <Pressable
                         key={member.id}
@@ -347,12 +364,12 @@ export default function AddExpenseScreen() {
                             onCheckedChange={() => handleToggleMember(member.id)}
                           />
                           <Avatar
-                            src={member.imageUrl ?? member.avatar}
-                            fallback={getInitials(member.name)}
+                            src={member.user?.avatarUrl}
+                            fallback={getInitials(memberName)}
                             size="sm"
                           />
                           <Text className="flex-1 text-sm font-sans-medium text-card-foreground">
-                            {member.name}
+                            {memberName}
                           </Text>
                           {isChecked && amount && (
                             <Text className="text-sm font-sans-semibold text-primary">

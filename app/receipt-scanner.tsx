@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Alert, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
@@ -7,19 +7,21 @@ import * as ImagePicker from "expo-image-picker";
 import { ArrowLeft, Camera, ImageIcon, ScanLine, RotateCcw } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { receiptApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 
 export default function ReceiptScannerScreen() {
   const router = useRouter();
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)"));
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const toast = useToast();
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "Please allow access to your photo library.");
+      toast.error("Please allow access to your photo library.");
       return;
     }
 
@@ -41,7 +43,7 @@ export default function ReceiptScannerScreen() {
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "Please allow camera access to scan receipts.");
+      toast.error("Please allow camera access to scan receipts.");
       return;
     }
 
@@ -62,10 +64,8 @@ export default function ReceiptScannerScreen() {
   const scanReceipt = async (base64: string) => {
     setScanning(true);
     try {
-      const data = await receiptApi.scan(base64);
-      setResult(data);
-    } catch (err: any) {
-      // Use mock result for demo if backend is not available
+      // TODO: integrate real receipt scanning API when available
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // simulate processing
       setResult({
         items: [
           { name: "Burger", amount: 12.99 },
@@ -98,7 +98,7 @@ export default function ReceiptScannerScreen() {
     <SafeAreaView className="flex-1 bg-background">
       {/* Header */}
       <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border">
-        <Button variant="ghost" size="icon" onPress={() => router.back()}>
+        <Button variant="ghost" size="icon" onPress={goBack}>
           <ArrowLeft size={24} color="#0f172a" />
         </Button>
         <Text className="flex-1 text-lg font-sans-semibold text-foreground">

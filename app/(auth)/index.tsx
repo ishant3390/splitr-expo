@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, ScrollView, Pressable, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useOAuth, useSignIn } from "@clerk/clerk-expo";
@@ -8,6 +8,7 @@ import * as Linking from "expo-linking";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/toast";
 import {
   GoogleIcon,
   AppleIcon,
@@ -26,6 +27,7 @@ const authTabs = [
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState("signup");
   const router = useRouter();
+  const toast = useToast();
 
   // Clerk OAuth hooks
   const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: "oauth_google" });
@@ -49,7 +51,7 @@ export default function AuthScreen() {
           await setActiveSession({ session: createdSessionId });
         }
       } catch (err: any) {
-        Alert.alert("Auth Error", err?.message || "Something went wrong");
+        toast.error("Something went wrong. Try again later.");
       }
     },
     []
@@ -57,7 +59,7 @@ export default function AuthScreen() {
 
   const handleSignInWithOtp = async () => {
     if (!signInEmail.trim()) {
-      Alert.alert("Required", "Please enter your email or phone number");
+      toast.error("Please enter your email or phone number.");
       return;
     }
     try {
@@ -85,7 +87,7 @@ export default function AuthScreen() {
         params: { contact: signInEmail, mode: "signin" },
       });
     } catch (err: any) {
-      Alert.alert("Sign In Error", err?.message || "Could not start sign in");
+      toast.error("Something went wrong. Try again later.");
     }
   };
 

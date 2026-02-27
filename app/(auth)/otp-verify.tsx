@@ -1,25 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Alert, Platform } from "react-native";
+import { View, Text, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSignUp, useSignIn } from "@clerk/clerk-expo";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { OTPInput } from "@/components/ui/otp-input";
 import { ArrowLeft, Mail, Phone as PhoneIcon, CheckCircle2 } from "lucide-react-native";
 
 export default function OTPVerifyScreen() {
   const router = useRouter();
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(auth)"));
   const params = useLocalSearchParams<{ contact: string; phone?: string; mode: string; method?: string }>();
   const { signUp, setActive: setActiveSignUp } = useSignUp();
   const { signIn, setActive: setActiveSignIn } = useSignIn();
-
-  const showAlert = (title: string, message: string) => {
-    if (Platform.OS === "web") {
-      window.alert(`${title}\n\n${message}`);
-    } else {
-      Alert.alert(title, message);
-    }
-  };
+  const toast = useToast();
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,7 +37,7 @@ export default function OTPVerifyScreen() {
   const handleVerify = async () => {
     const code = otp.trim();
     if (code.length < 6) {
-      showAlert("Invalid Code", "Please enter the complete 6-digit code");
+      toast.error("Please enter the complete 6-digit code.");
       return;
     }
 
@@ -82,7 +77,7 @@ export default function OTPVerifyScreen() {
     } catch (err: any) {
       console.error("OTP verification error:", JSON.stringify(err, null, 2));
       const message = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || "Invalid code. Please try again.";
-      showAlert("Verification Failed", message);
+      toast.error("Verification failed. Try again later.");
     } finally {
       setLoading(false);
     }
@@ -111,9 +106,9 @@ export default function OTPVerifyScreen() {
         }
       }
       setCountdown(30);
-      showAlert("Code Sent", `A new code has been sent to your ${verifyMethod}.`);
+      toast.success(`A new code has been sent to your ${verifyMethod}.`);
     } catch (err: any) {
-      showAlert("Error", err?.message || "Could not resend code");
+      toast.error("Something went wrong. Try again later.");
     }
   };
 
@@ -155,7 +150,7 @@ export default function OTPVerifyScreen() {
     <SafeAreaView className="flex-1 bg-background">
       {/* Header */}
       <View className="flex-row items-center px-4 py-3">
-        <Button variant="ghost" size="icon" onPress={() => router.back()}>
+        <Button variant="ghost" size="icon" onPress={goBack}>
           <ArrowLeft size={24} color="#0f172a" />
         </Button>
         <Text className="flex-1 text-lg font-sans-semibold text-foreground text-center mr-10">

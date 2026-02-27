@@ -6,12 +6,27 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number): string {
+/** Convert cents (API) to dollar amount. */
+export function centsToAmount(cents: number): number {
+  return cents / 100;
+}
+
+/** Convert dollar amount to cents (API). */
+export function amountToCents(amount: number): number {
+  return Math.round(amount * 100);
+}
+
+export function formatCurrency(amount: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     minimumFractionDigits: 2,
   }).format(amount);
+}
+
+/** Format cents value as currency string. */
+export function formatCents(cents: number, currency = "USD"): string {
+  return formatCurrency(centsToAmount(cents), currency);
 }
 
 export function formatDate(dateString: string): string {

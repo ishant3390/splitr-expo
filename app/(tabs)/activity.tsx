@@ -12,8 +12,8 @@ import {
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { usersApi } from "@/lib/api";
-import { formatCurrency, formatDate, categoryLabels } from "@/lib/utils";
-import type { ExpenseCategory } from "@/lib/types";
+import { formatCents, formatDate, categoryLabels } from "@/lib/utils";
+import type { ActivityLogDto, ExpenseCategory } from "@/lib/types";
 
 const iconMap: Record<ExpenseCategory, typeof Utensils> = {
   food: Utensils,
@@ -26,7 +26,7 @@ const iconMap: Record<ExpenseCategory, typeof Utensils> = {
 
 export default function ActivityScreen() {
   const { getToken } = useAuth();
-  const [sections, setSections] = useState<any[]>([]);
+  const [sections, setSections] = useState<{ title: string; data: ActivityLogDto[] }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,12 +34,12 @@ export default function ActivityScreen() {
       try {
         const token = await getToken();
         const data = await usersApi.activity(token!);
-        const list = Array.isArray(data) ? data : [];
+        const list: ActivityLogDto[] = Array.isArray(data) ? data : [];
 
         // Group by date label
-        const grouped = list.reduce<Record<string, any[]>>((acc, item) => {
-          const label = item.date || item.createdAt
-            ? formatDate(item.date || item.createdAt)
+        const grouped = list.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
+          const label = item.createdAt
+            ? formatDate(item.createdAt)
             : "Recent";
           if (!acc[label]) acc[label] = [];
           acc[label].push(item);
@@ -96,13 +96,13 @@ export default function ActivityScreen() {
             </Text>
           )}
           renderItem={({ item }) => {
-            const category: ExpenseCategory = item.category ?? "other";
-            const Icon = iconMap[category] ?? MoreHorizontal;
-            const payerName =
-              item.paidBy?.name ??
-              item.performedBy?.name ??
-              item.createdBy?.name ??
-              "Someone";
+            const categoryKey = ((item.details?.categoryIcon as string) ?? "other") as ExpenseCategory;
+            const Icon = iconMap[categoryKey] ?? MoreHorizontal;
+            const actorName = item.actorUserName ?? item.actorGuestName ?? "Someone";
+            const description = item.activityType
+              .replace(/_/g, " ")
+              .replace(/^\w/, (c) => c.toUpperCase());
+            const groupName = (item.details?.groupName as string) ?? "";
 
             return (
               <Card className="p-4 mb-2">
@@ -112,21 +112,21 @@ export default function ActivityScreen() {
                   </View>
                   <View className="flex-1">
                     <Text className="text-sm font-sans-semibold text-card-foreground">
-                      {item.description ?? item.type ?? "Activity"}
+                      {description}
                     </Text>
                     <Text className="text-xs text-muted-foreground font-sans">
-                      {payerName} {item.groupName ? `· ${item.groupName}` : ""}
+                      {actorName} {groupName ? `· ${groupName}` : ""}
                     </Text>
                   </View>
                   <View className="items-end">
-                    {item.amount != null && (
+                    {item.details?.amount != null && (
                       <Text className="text-sm font-sans-semibold text-foreground">
-                        {formatCurrency(item.amount)}
+                        {formatCents(item.details.amount as number)}
                       </Text>
                     )}
-                    {category && categoryLabels[category] && (
+                    {categoryLabels[categoryKey] && (
                       <Text className="text-xs text-muted-foreground font-sans">
-                        {categoryLabels[category]}
+                        {categoryLabels[categoryKey]}
                       </Text>
                     )}
                   </View>

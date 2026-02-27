@@ -15,13 +15,14 @@ import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { usersApi } from "@/lib/api";
-import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
+import { formatCents, formatCurrency, formatDate, getInitials } from "@/lib/utils";
+import type { ActivityLogDto } from "@/lib/types";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
   const { user } = useUser();
-  const [activity, setActivity] = useState<any[]>([]);
+  const [activity, setActivity] = useState<ActivityLogDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -144,34 +145,41 @@ export default function HomeScreen() {
               </Card>
             ) : (
               <View className="gap-2">
-                {activity.map((item: any) => (
-                  <Card key={item.id} className="p-4">
-                    <View className="flex-row items-center gap-3">
-                      <Avatar
-                        fallback={getInitials(item.paidBy?.name || item.performedBy?.name || "?")}
-                        size="md"
-                      />
-                      <View className="flex-1">
-                        <Text className="text-sm font-sans-semibold text-card-foreground">
-                          {item.description}
-                        </Text>
-                        <Text className="text-xs text-muted-foreground font-sans">
-                          {item.groupName || item.group?.name || ""}
-                        </Text>
-                      </View>
-                      <View className="items-end">
-                        {item.amount != null && (
-                          <Text className="text-sm font-sans-semibold text-foreground">
-                            {formatCurrency(item.amount)}
+                {activity.map((item) => {
+                  const actorName = item.actorUserName ?? item.actorGuestName ?? "?";
+                  const description = item.activityType
+                    .replace(/_/g, " ")
+                    .replace(/^\w/, (c) => c.toUpperCase());
+                  const groupName = (item.details?.groupName as string) ?? "";
+                  return (
+                    <Card key={item.id} className="p-4">
+                      <View className="flex-row items-center gap-3">
+                        <Avatar
+                          fallback={getInitials(actorName)}
+                          size="md"
+                        />
+                        <View className="flex-1">
+                          <Text className="text-sm font-sans-semibold text-card-foreground">
+                            {description}
                           </Text>
-                        )}
-                        <Text className="text-xs text-muted-foreground font-sans">
-                          {item.date || item.createdAt ? formatDate(item.date || item.createdAt) : ""}
-                        </Text>
+                          <Text className="text-xs text-muted-foreground font-sans">
+                            {groupName}
+                          </Text>
+                        </View>
+                        <View className="items-end">
+                          {item.details?.amount != null && (
+                            <Text className="text-sm font-sans-semibold text-foreground">
+                              {formatCents(item.details.amount as number)}
+                            </Text>
+                          )}
+                          <Text className="text-xs text-muted-foreground font-sans">
+                            {formatDate(item.createdAt)}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </View>
             )}
           </View>

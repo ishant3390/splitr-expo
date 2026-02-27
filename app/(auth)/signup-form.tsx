@@ -1,14 +1,17 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useSignUp } from "@clerk/clerk-expo";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { ArrowLeft } from "lucide-react-native";
 
 export default function SignUpFormScreen() {
   const router = useRouter();
+  const toast = useToast();
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(auth)"));
   const { signUp, setActive } = useSignUp();
 
   const [firstName, setFirstName] = useState("");
@@ -70,10 +73,7 @@ export default function SignUpFormScreen() {
         });
       }
     } catch (err: any) {
-      Alert.alert(
-        "Sign Up Error",
-        err?.errors?.[0]?.longMessage || err?.message || "Could not create account"
-      );
+      toast.error("Something went wrong. Try again later.");
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ export default function SignUpFormScreen() {
       >
         {/* Header */}
         <View className="flex-row items-center px-4 py-3">
-          <Button variant="ghost" size="icon" onPress={() => router.back()}>
+          <Button variant="ghost" size="icon" onPress={goBack}>
             <ArrowLeft size={24} color="#0f172a" />
           </Button>
           <Text className="flex-1 text-lg font-sans-semibold text-foreground text-center mr-10">

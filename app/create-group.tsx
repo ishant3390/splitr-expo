@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -16,11 +15,15 @@ import { ArrowLeft, X, UserPlus, Users, Mail } from "lucide-react-native";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { groupsApi } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { CreateGroupRequest, AddGuestMemberRequest } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
 
 export default function CreateGroupScreen() {
   const router = useRouter();
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/groups"));
   const { getToken } = useAuth();
+  const toast = useToast();
 
   const [groupName, setGroupName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
@@ -29,11 +32,11 @@ export default function CreateGroupScreen() {
 
   const handleInviteByEmail = () => {
     if (!inviteEmail.trim() || !/\S+@\S+\.\S+/.test(inviteEmail)) {
-      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      toast.error("Please enter a valid email address.");
       return;
     }
     if (invitedEmails.includes(inviteEmail.trim())) {
-      Alert.alert("Duplicate", "This email has already been added.");
+      toast.error("This email has already been added.");
       return;
     }
     setInvitedEmails((prev) => [...prev, inviteEmail.trim()]);
@@ -42,7 +45,7 @@ export default function CreateGroupScreen() {
 
   const handleCreate = async () => {
     if (!groupName.trim()) {
-      Alert.alert("Name Required", "Please give your group a name.");
+      toast.error("Please give your group a name.");
       return;
     }
 
@@ -51,22 +54,19 @@ export default function CreateGroupScreen() {
       const token = await getToken();
 
       // Create the group
-      const group = await groupsApi.create({ name: groupName.trim() }, token!);
+      const group = await groupsApi.create({ name: groupName.trim() } as CreateGroupRequest, token!);
 
       // Invite members by email as guests
       await Promise.all(
         invitedEmails.map((email) =>
-          groupsApi.addGuestMember(group.id, { name: email, email }, token!)
+          groupsApi.addGuestMember(group.id, { name: email, email } as AddGuestMemberRequest, token!)
         )
       );
 
-      Alert.alert(
-        "Group Created",
-        `"${groupName}" created${invitedEmails.length > 0 ? ` with ${invitedEmails.length} invite(s) sent` : ""}`,
-        [{ text: "OK", onPress: () => router.back() }]
-      );
+      toast.success(`"${groupName}" created successfully`);
+      goBack();
     } catch (err: any) {
-      Alert.alert("Error", err?.message || "Could not create group");
+      toast.error("Something went wrong. Try again later.");
     } finally {
       setSubmitting(false);
     }
@@ -80,7 +80,7 @@ export default function CreateGroupScreen() {
       >
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-          <Button variant="ghost" size="icon" onPress={() => router.back()}>
+          <Button variant="ghost" size="icon" onPress={goBack}>
             <ArrowLeft size={24} color="#0f172a" />
           </Button>
           <Text className="text-lg font-sans-semibold text-foreground">Create Group</Text>

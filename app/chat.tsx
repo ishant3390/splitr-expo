@@ -24,6 +24,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { chatStream } from "@/lib/api";
+import { useAuth } from "@clerk/clerk-expo";
 
 interface ChatMessage {
   id: string;
@@ -40,6 +41,8 @@ const suggestedPrompts = [
 
 export default function ChatScreen() {
   const router = useRouter();
+  const { getToken } = useAuth();
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)"));
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -53,7 +56,7 @@ export default function ChatScreen() {
   const listRef = useRef<FlatList>(null);
 
   const handleSend = useCallback(
-    (text?: string) => {
+    async (text?: string) => {
       const messageText = text || input.trim();
       if (!messageText || loading) return;
 
@@ -75,8 +78,11 @@ export default function ChatScreen() {
         content: m.content,
       }));
 
+      const token = await getToken();
+
       chatStream(
         allMessages,
+        token!,
         (chunk) => {
           if (chunk.type === "text") {
             assistantContent += chunk.content;
@@ -283,7 +289,7 @@ export default function ChatScreen() {
     <SafeAreaView className="flex-1 bg-background">
       {/* Header */}
       <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border">
-        <Button variant="ghost" size="icon" onPress={() => router.back()}>
+        <Button variant="ghost" size="icon" onPress={goBack}>
           <ArrowLeft size={24} color="#0f172a" />
         </Button>
         <View className="w-9 h-9 rounded-full bg-primary/10 items-center justify-center">

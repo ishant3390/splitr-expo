@@ -29,21 +29,21 @@ module.exports = {
           foreground: "#1a1a1a",
         },
         muted: {
-          DEFAULT: "#f1f5f9",
-          foreground: "#64748b",
+          DEFAULT: "var(--color-muted)",
+          foreground: "var(--color-muted-foreground)",
         },
         card: {
-          DEFAULT: "#ffffff",
-          foreground: "#0f172a",
+          DEFAULT: "var(--color-card)",
+          foreground: "var(--color-card-foreground)",
         },
-        border: "#e2e8f0",
-        input: "#e2e8f0",
+        border: "var(--color-border)",
+        input: "var(--color-input)",
         ring: "#0d9488",
-        background: "#f8fafb",
-        foreground: "#0f172a",
+        background: "var(--color-background)",
+        foreground: "var(--color-foreground)",
         secondary: {
-          DEFAULT: "#f1f5f9",
-          foreground: "#1e293b",
+          DEFAULT: "var(--color-secondary)",
+          foreground: "var(--color-secondary-foreground)",
         },
       },
       fontFamily: {
@@ -57,5 +57,6 @@ module.exports = {
       },
     },
   },
+  darkMode: "class",
   plugins: [],
 };

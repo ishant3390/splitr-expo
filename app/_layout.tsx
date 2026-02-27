@@ -1,10 +1,12 @@
 import "../global.css";
 import React, { useEffect } from "react";
-import { Slot, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
+import { useColorScheme } from "nativewind";
 import { usersApi } from "@/lib/api";
+import { ToastProvider } from "@/components/ui/toast";
 import * as SecureStore from "expo-secure-store";
 import {
   useFonts,
@@ -66,7 +68,17 @@ function AuthGate() {
     sync();
   }, [isSignedIn]);
 
-  return <Slot />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="receipt-scanner" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="chat" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="create-group" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="group/[id]" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="edit-profile" options={{ animation: "slide_from_right" }} />
+    </Stack>
+  );
 }
 
 export default function RootLayout() {
@@ -89,8 +101,10 @@ export default function RootLayout() {
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
       <ClerkLoaded>
         <SafeAreaProvider>
-          <StatusBar style="dark" />
-          <AuthGate />
+          <ToastProvider>
+            <StatusBar style="auto" />
+            <AuthGate />
+          </ToastProvider>
         </SafeAreaProvider>
       </ClerkLoaded>
     </ClerkProvider>

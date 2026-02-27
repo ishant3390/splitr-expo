@@ -5,15 +5,15 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import { ChevronRight, Plus } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
-import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { groupsApi } from "@/lib/api";
-import { formatCurrency, getInitials } from "@/lib/utils";
+import { getInitials } from "@/lib/utils";
+import { GroupDto } from "@/lib/types";
 
 export default function GroupsScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
-  const [groups, setGroups] = useState<any[]>([]);
+  const [groups, setGroups] = useState<GroupDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadGroups = useCallback(async () => {
@@ -67,73 +67,25 @@ export default function GroupsScreen() {
               </Text>
             </Card>
           }
-          renderItem={({ item: group }) => {
-            const members: any[] = group.members ?? [];
-            const totalAmount = group.totalAmount ?? group.totalSpent ?? 0;
-            const myBalance = group.myBalance ?? 0;
-
+          renderItem={({ item: group }: { item: GroupDto }) => {
             return (
               <Pressable onPress={() => router.push(`/group/${group.id}`)}>
                 <Card className="p-4">
-                  <View className="flex-row items-center justify-between mb-3">
+                  <View className="flex-row items-center justify-between">
                     <View className="flex-1">
                       <Text className="text-base font-sans-semibold text-card-foreground">
                         {group.name}
                       </Text>
                       <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                        {group.memberCount ?? members.length} members
-                        {" \u00b7 "}
-                        {group.expenseCount ?? 0} expenses
+                        {group.memberCount ?? 0} members
                       </Text>
+                      {group.description ? (
+                        <Text className="text-xs text-muted-foreground font-sans mt-1">
+                          {group.description}
+                        </Text>
+                      ) : null}
                     </View>
                     <ChevronRight size={20} color="#94a3b8" />
-                  </View>
-
-                  {/* Member avatars */}
-                  {members.length > 0 && (
-                    <View className="flex-row items-center mb-3">
-                      {members.slice(0, 4).map((member: any, idx: number) => (
-                        <View
-                          key={member.id}
-                          style={{ marginLeft: idx > 0 ? -8 : 0, zIndex: 10 - idx }}
-                        >
-                          <Avatar
-                            src={member.imageUrl ?? member.avatar}
-                            fallback={getInitials(member.name)}
-                            size="sm"
-                            className="border-2 border-card"
-                          />
-                        </View>
-                      ))}
-                      {members.length > 4 && (
-                        <View className="w-8 h-8 rounded-full bg-muted items-center justify-center -ml-2">
-                          <Text className="text-xs font-sans-medium text-muted-foreground">
-                            +{members.length - 4}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-
-                  {/* Balance summary */}
-                  <View className="flex-row items-center justify-between pt-3 border-t border-border">
-                    <View>
-                      <Text className="text-xs text-muted-foreground font-sans">Total spent</Text>
-                      <Text className="text-sm font-sans-semibold text-foreground">
-                        {formatCurrency(totalAmount)}
-                      </Text>
-                    </View>
-                    <View className="items-end">
-                      <Text className="text-xs text-muted-foreground font-sans">Your balance</Text>
-                      <Text
-                        className={`text-sm font-sans-semibold ${
-                          myBalance >= 0 ? "text-success" : "text-destructive"
-                        }`}
-                      >
-                        {myBalance >= 0 ? "+" : "-"}
-                        {formatCurrency(Math.abs(myBalance))}
-                      </Text>
-                    </View>
                   </View>
                 </Card>
               </Pressable>
