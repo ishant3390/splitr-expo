@@ -7,7 +7,6 @@ import {
   Plus,
   Receipt,
   User,
-  ScanLine,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 
@@ -52,13 +51,7 @@ export default function TabsLayout() {
         options={{
           title: "",
           tabBarButton: () => (
-            <View className="flex-1 flex-row items-center justify-center gap-1.5 -mt-4">
-              <Pressable
-                onPress={() => router.push("/receipt-scanner")}
-                className="w-10 h-10 rounded-full bg-accent items-center justify-center shadow-md"
-              >
-                <ScanLine size={20} color="#ffffff" />
-              </Pressable>
+            <View className="flex-1 items-center justify-center -mt-4">
               <Pressable
                 onPress={() => router.push("/(tabs)/add")}
                 className="w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"

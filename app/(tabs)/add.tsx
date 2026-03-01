@@ -9,18 +9,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
   ScanLine,
   ChevronDown,
   Plus,
-  Utensils,
-  Car,
-  Home,
-  Gamepad2,
-  ShoppingBag,
-  MoreHorizontal,
   Check,
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
@@ -28,23 +22,26 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { groupsApi } from "@/lib/api";
+import { groupsApi, categoriesApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { categoryLabels, getInitials, cn, amountToCents } from "@/lib/utils";
-import type { ExpenseCategory, GroupDto, GroupMemberDto, CreateExpenseRequest } from "@/lib/types";
+import { getInitials, cn, amountToCents } from "@/lib/utils";
+import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
 
-const categories: { id: ExpenseCategory; icon: typeof Utensils; label: string }[] = [
-  { id: "food", icon: Utensils, label: "Food" },
-  { id: "transport", icon: Car, label: "Transport" },
-  { id: "accommodation", icon: Home, label: "Stays" },
-  { id: "entertainment", icon: Gamepad2, label: "Fun" },
-  { id: "shopping", icon: ShoppingBag, label: "Shop" },
-  { id: "other", icon: MoreHorizontal, label: "Other" },
-];
+type SplitType = "equal" | "percentage" | "fixed";
 
 export default function AddExpenseScreen() {
   const router = useRouter();
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)"));
+  const params = useLocalSearchParams<{ returnGroupId?: string }>();
+  const returnGroupId = Array.isArray(params.returnGroupId) ? params.returnGroupId[0] : params.returnGroupId;
+  const goBack = () => {
+    if (returnGroupId) {
+      router.replace(`/group/${returnGroupId}`);
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)");
+    }
+  };
   const { getToken } = useAuth();
   const { user: clerkUser } = useUser();
   const toast = useToast();
@@ -54,23 +51,37 @@ export default function AddExpenseScreen() {
   const [selectedGroup, setSelectedGroup] = useState<GroupDto | null>(null);
   const [members, setMembers] = useState<GroupMemberDto[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
 
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory>("food");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedPayerMemberId, setSelectedPayerMemberId] = useState<string | null>(null);
   const [splitWith, setSplitWith] = useState<string[]>([]);
+  const [splitType, setSplitType] = useState<SplitType>("equal");
+  const [splitPercentages, setSplitPercentages] = useState<Record<string, string>>({});
+  const [splitFixedAmounts, setSplitFixedAmounts] = useState<Record<string, string>>({});
   const [showGroupPicker, setShowGroupPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Load groups on mount
+  // Load groups and categories on mount
   useEffect(() => {
     const load = async () => {
       try {
         const token = await getToken();
-        const data = await groupsApi.list(token!);
-        const list = Array.isArray(data) ? data : [];
+        const [groupsData, categoriesData] = await Promise.all([
+          groupsApi.list(token!),
+          categoriesApi.list(token!),
+        ]);
+        const list = Array.isArray(groupsData) ? groupsData : [];
         setGroups(list);
-        if (list.length > 0) setSelectedGroup(list[0]);
+        if (list.length > 0) {
+          const preferred = returnGroupId ? list.find((g) => g.id === returnGroupId) : null;
+          setSelectedGroup(preferred ?? list[0]);
+        }
+        const cats = Array.isArray(categoriesData) ? categoriesData : [];
+        setCategories(cats);
+        if (cats.length > 0) setSelectedCategoryId(cats[0].id);
       } catch {
         setGroups([]);
       } finally {
@@ -88,9 +99,20 @@ export default function AddExpenseScreen() {
       try {
         const token = await getToken();
         const data = await groupsApi.listMembers(selectedGroup.id, token!);
-        const list: GroupMemberDto[] = Array.isArray(data) ? data : [];
+        const raw: GroupMemberDto[] = Array.isArray(data) ? data : [];
+        const seen = new Set<string>();
+        const list = raw.filter((m) => {
+          if (seen.has(m.id)) return false;
+          seen.add(m.id);
+          return true;
+        });
         setMembers(list);
-        setSplitWith(list.map((m) => m.id));
+        const ids = list.map((m) => m.id);
+        setSplitWith(ids);
+        initSplitValues(ids, splitType, amount);
+        const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+        const currentMember = list.find((m) => m.user?.email === currentEmail);
+        setSelectedPayerMemberId(currentMember?.id ?? list[0]?.id ?? null);
       } catch {
         setMembers([]);
         setSplitWith([]);
@@ -101,12 +123,34 @@ export default function AddExpenseScreen() {
     load();
   }, [selectedGroup?.id]);
 
+  const initSplitValues = (memberIds: string[], type: SplitType, totalStr: string) => {
+    if (type === "percentage" && memberIds.length > 0) {
+      const even = (100 / memberIds.length).toFixed(2);
+      const map: Record<string, string> = {};
+      memberIds.forEach((id) => { map[id] = even; });
+      setSplitPercentages(map);
+    } else if (type === "fixed" && memberIds.length > 0) {
+      const total = parseFloat(totalStr) || 0;
+      const even = (total / memberIds.length).toFixed(2);
+      const map: Record<string, string> = {};
+      memberIds.forEach((id) => { map[id] = even; });
+      setSplitFixedAmounts(map);
+    }
+  };
+
+  const handleSplitTypeChange = (type: SplitType) => {
+    setSplitType(type);
+    initSplitValues(splitWith, type, amount);
+  };
+
   const handleToggleMember = (memberId: string) => {
-    setSplitWith((prev) =>
-      prev.includes(memberId)
+    setSplitWith((prev) => {
+      const next = prev.includes(memberId)
         ? prev.filter((id) => id !== memberId)
-        : [...prev, memberId]
-    );
+        : [...prev, memberId];
+      initSplitValues(next, splitType, amount);
+      return next;
+    });
   };
 
   const handleSubmit = async () => {
@@ -127,26 +171,71 @@ export default function AddExpenseScreen() {
     try {
       const token = await getToken();
       const parsedAmount = parseFloat(amount);
-      const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress;
-      const currentMember = members.find((m) => m.user?.email === currentEmail);
-      const payerUserId = currentMember?.user?.id;
+      const payerMember = members.find((m) => m.id === selectedPayerMemberId);
+      const totalCents = amountToCents(parsedAmount);
+
+      // Deduplicate splits by underlying userId/guestUserId
+      const seenSplitIds = new Set<string>();
+      const uniqueSplitMembers = splitWith
+        .map((memberId) => members.find((m) => m.id === memberId))
+        .filter((member): member is GroupMemberDto => {
+          if (!member) return false;
+          const key = member.user?.id ?? member.guestUser?.id;
+          if (!key || seenSplitIds.has(key)) return false;
+          seenSplitIds.add(key);
+          return true;
+        });
+
+      let splits: SplitRequest[];
+
+      if (splitType === "percentage") {
+        const totalPct = uniqueSplitMembers.reduce(
+          (s, m) => s + (parseFloat(splitPercentages[m.id] ?? "0") || 0), 0
+        );
+        if (Math.abs(totalPct - 100) > 0.5) {
+          toast.error(`Percentages must add up to 100% (currently ${totalPct.toFixed(1)}%)`);
+          setSubmitting(false);
+          return;
+        }
+        splits = uniqueSplitMembers.map((member) => ({
+          userId: member.user?.id,
+          guestUserId: member.guestUser?.id,
+          percentage: parseFloat(splitPercentages[member.id] ?? "0"),
+          splitAmount: Math.round(totalCents * (parseFloat(splitPercentages[member.id] ?? "0") / 100)),
+        }));
+      } else if (splitType === "fixed") {
+        const totalFixedCents = uniqueSplitMembers.reduce(
+          (s, m) => s + amountToCents(parseFloat(splitFixedAmounts[m.id] ?? "0") || 0), 0
+        );
+        if (Math.abs(totalFixedCents - totalCents) > 1) {
+          toast.error(`Fixed amounts must add up to $${parsedAmount.toFixed(2)}`);
+          setSubmitting(false);
+          return;
+        }
+        splits = uniqueSplitMembers.map((member) => ({
+          userId: member.user?.id,
+          guestUserId: member.guestUser?.id,
+          splitAmount: amountToCents(parseFloat(splitFixedAmounts[member.id] ?? "0") || 0),
+        }));
+      } else {
+        const perPersonCents = Math.floor(totalCents / uniqueSplitMembers.length);
+        const remainder = totalCents - perPersonCents * uniqueSplitMembers.length;
+        splits = uniqueSplitMembers.map((member, idx) => ({
+          userId: member.user?.id,
+          guestUserId: member.guestUser?.id,
+          splitAmount: idx === uniqueSplitMembers.length - 1 ? perPersonCents + remainder : perPersonCents,
+        }));
+      }
 
       const expenseRequest: CreateExpenseRequest = {
         description: description.trim(),
-        totalAmount: amountToCents(parsedAmount),
+        totalAmount: totalCents,
         currency: selectedGroup.defaultCurrency || "USD",
-        categoryId: selectedCategory,
+        categoryId: selectedCategoryId ?? undefined,
         expenseDate: new Date().toISOString().split("T")[0],
-        splitType: "equal",
-        payers: [{ userId: payerUserId, amountPaid: amountToCents(parsedAmount) }],
-        splits: splitWith.map((memberId) => {
-          const member = members.find((m) => m.id === memberId);
-          return {
-            userId: member?.user?.id,
-            guestUserId: member?.guestUser?.id,
-            splitAmount: amountToCents(parsedAmount / splitWith.length),
-          };
-        }),
+        splitType: splitType === "fixed" ? "exact" : splitType,
+        payers: [{ userId: payerMember?.user?.id, guestUserId: payerMember?.guestUser?.id, amountPaid: totalCents }],
+        splits,
       };
 
       await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
@@ -163,6 +252,8 @@ export default function AddExpenseScreen() {
     amount && splitWith.length > 0
       ? (parseFloat(amount) / splitWith.length).toFixed(2)
       : "0.00";
+  const totalPct = splitWith.reduce((s, id) => s + (parseFloat(splitPercentages[id] ?? "0") || 0), 0);
+  const totalFixed = splitWith.reduce((s, id) => s + (parseFloat(splitFixedAmounts[id] ?? "0") || 0), 0);
 
   if (groupsLoading) {
     return (
@@ -197,18 +288,6 @@ export default function AddExpenseScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Scan receipt button */}
-          <Button
-            variant="outline"
-            onPress={() => router.push("/receipt-scanner")}
-            className="flex-row items-center justify-center gap-3 bg-accent/10 border-accent"
-          >
-            <ScanLine size={20} color="#14b8a6" />
-            <Text className="text-base font-sans-medium text-accent">
-              Scan Receipt Instead
-            </Text>
-          </Button>
-
           {/* Amount */}
           <View className="items-center py-4">
             <Text className="text-sm text-muted-foreground font-sans mb-2">Amount</Text>
@@ -235,32 +314,35 @@ export default function AddExpenseScreen() {
           {/* Category */}
           <View>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Category</Text>
-            <View className="flex-row flex-wrap gap-2">
-              {categories.map((cat) => {
-                const Icon = cat.icon;
-                const isSelected = selectedCategory === cat.id;
-                return (
-                  <Pressable
-                    key={cat.id}
-                    onPress={() => setSelectedCategory(cat.id)}
-                    className={cn(
-                      "flex-row items-center gap-2 px-3 py-2 rounded-xl border",
-                      isSelected ? "bg-primary border-primary" : "bg-card border-border"
-                    )}
-                  >
-                    <Icon size={16} color={isSelected ? "#ffffff" : "#64748b"} />
-                    <Text
+            {categories.length === 0 ? (
+              <ActivityIndicator color="#0d9488" />
+            ) : (
+              <View className="flex-row flex-wrap gap-2">
+                {categories.map((cat) => {
+                  const isSelected = selectedCategoryId === cat.id;
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => setSelectedCategoryId(cat.id)}
                       className={cn(
-                        "text-sm font-sans-medium",
-                        isSelected ? "text-primary-foreground" : "text-foreground"
+                        "flex-row items-center gap-2 px-3 py-2 rounded-xl border",
+                        isSelected ? "bg-primary border-primary" : "bg-card border-border"
                       )}
                     >
-                      {cat.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                      {cat.icon ? <Text style={{ fontSize: 15 }}>{cat.icon}</Text> : null}
+                      <Text
+                        className={cn(
+                          "text-sm font-sans-medium",
+                          isSelected ? "text-primary-foreground" : "text-foreground"
+                        )}
+                      >
+                        {cat.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           {/* Group selector */}
@@ -330,17 +412,106 @@ export default function AddExpenseScreen() {
             )}
           </View>
 
+          {/* Paid by */}
+          {selectedGroup && members.length > 0 && (
+            <View>
+              <Text className="text-sm font-sans-medium text-foreground mb-2">Paid by</Text>
+              {membersLoading ? (
+                <ActivityIndicator color="#0d9488" />
+              ) : (
+                <View className="gap-2">
+                  {members.map((member) => {
+                    const isSelected = selectedPayerMemberId === member.id;
+                    const memberName =
+                      member.user?.name ?? member.guestUser?.name ?? member.displayName ?? "Member";
+                    return (
+                      <Pressable
+                        key={member.id}
+                        onPress={() => setSelectedPayerMemberId(member.id)}
+                      >
+                        <Card
+                          className={cn(
+                            "p-3 flex-row items-center gap-3",
+                            isSelected && "border-primary/30 bg-primary/5"
+                          )}
+                        >
+                          <View
+                            className={cn(
+                              "w-5 h-5 rounded-full border-2 items-center justify-center",
+                              isSelected ? "border-primary bg-primary" : "border-muted-foreground"
+                            )}
+                          >
+                            {isSelected && <Check size={12} color="#ffffff" />}
+                          </View>
+                          <Avatar
+                            src={member.user?.avatarUrl}
+                            fallback={getInitials(memberName)}
+                            size="sm"
+                          />
+                          <Text className="flex-1 text-sm font-sans-medium text-card-foreground">
+                            {memberName}
+                          </Text>
+                        </Card>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Split with */}
           {selectedGroup && (
             <View>
+              {/* Header row */}
               <View className="flex-row items-center justify-between mb-2">
                 <Text className="text-sm font-sans-medium text-foreground">
                   Split with ({splitWith.length})
                 </Text>
-                <Text className="text-sm text-primary font-sans-semibold">
-                  ${perPerson}/person
-                </Text>
+                {splitType === "equal" && (
+                  <Text className="text-sm text-primary font-sans-semibold">
+                    ${perPerson}/person
+                  </Text>
+                )}
+                {splitType === "percentage" && (
+                  <Text className={cn(
+                    "text-sm font-sans-semibold",
+                    Math.abs(totalPct - 100) < 0.5 ? "text-primary" : "text-destructive"
+                  )}>
+                    {totalPct.toFixed(1)}% / 100%
+                  </Text>
+                )}
+                {splitType === "fixed" && (
+                  <Text className={cn(
+                    "text-sm font-sans-semibold",
+                    Math.abs(totalFixed - (parseFloat(amount) || 0)) < 0.01 ? "text-primary" : "text-destructive"
+                  )}>
+                    ${totalFixed.toFixed(2)} / ${amount || "0.00"}
+                  </Text>
+                )}
               </View>
+
+              {/* Split type selector */}
+              <View className="flex-row gap-2 mb-3">
+                {(["equal", "percentage", "fixed"] as SplitType[]).map((type) => (
+                  <Pressable
+                    key={type}
+                    onPress={() => handleSplitTypeChange(type)}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg border items-center",
+                      splitType === type ? "bg-primary border-primary" : "bg-card border-border"
+                    )}
+                  >
+                    <Text className={cn(
+                      "text-xs font-sans-semibold",
+                      splitType === type ? "text-primary-foreground" : "text-muted-foreground"
+                    )}>
+                      {type === "equal" ? "Equal" : type === "percentage" ? "Percentage" : "Fixed"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
               {membersLoading ? (
                 <ActivityIndicator color="#0d9488" />
               ) : (
@@ -371,10 +542,40 @@ export default function AddExpenseScreen() {
                           <Text className="flex-1 text-sm font-sans-medium text-card-foreground">
                             {memberName}
                           </Text>
-                          {isChecked && amount && (
+                          {isChecked && splitType === "equal" && amount && (
                             <Text className="text-sm font-sans-semibold text-primary">
                               ${perPerson}
                             </Text>
+                          )}
+                          {isChecked && splitType === "percentage" && (
+                            <Pressable onPress={(e) => e.stopPropagation()}>
+                              <View className="flex-row items-center gap-1">
+                                <Input
+                                  value={splitPercentages[member.id] ?? ""}
+                                  onChangeText={(val) =>
+                                    setSplitPercentages((prev) => ({ ...prev, [member.id]: val }))
+                                  }
+                                  keyboardType="decimal-pad"
+                                  className="w-16 text-sm text-right p-1"
+                                />
+                                <Text className="text-sm text-muted-foreground font-sans">%</Text>
+                              </View>
+                            </Pressable>
+                          )}
+                          {isChecked && splitType === "fixed" && (
+                            <Pressable onPress={(e) => e.stopPropagation()}>
+                              <View className="flex-row items-center gap-1">
+                                <Text className="text-sm text-muted-foreground font-sans">$</Text>
+                                <Input
+                                  value={splitFixedAmounts[member.id] ?? ""}
+                                  onChangeText={(val) =>
+                                    setSplitFixedAmounts((prev) => ({ ...prev, [member.id]: val }))
+                                  }
+                                  keyboardType="decimal-pad"
+                                  className="w-20 text-sm text-right p-1"
+                                />
+                              </View>
+                            </Pressable>
                           )}
                         </Card>
                       </Pressable>

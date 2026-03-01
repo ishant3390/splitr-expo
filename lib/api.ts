@@ -20,6 +20,7 @@ import type {
   ExpenseListResponse,
   UpdateExpenseRequest,
   ActivityLogDto,
+  CategoryDto,
 } from "./types";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8085/api";
@@ -160,6 +161,13 @@ export const groupsApi = {
     );
     return flattenMap(data);
   },
+};
+
+// ---- Categories ----
+
+export const categoriesApi = {
+  list: (token: string) =>
+    request<CategoryDto[]>("/v1/categories", undefined, token),
 };
 
 // ---- Expenses ----
