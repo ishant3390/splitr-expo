@@ -51,12 +51,12 @@ export default function TabsLayout() {
         options={{
           title: "",
           tabBarButton: () => (
-            <View className="flex-1 items-center justify-center -mt-4">
+            <View className="flex-1 items-center justify-center">
               <Pressable
                 onPress={() => router.push("/(tabs)/add")}
-                className="w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
+                className="w-12 h-12 rounded-full bg-primary items-center justify-center"
               >
-                <Plus size={26} color="#ffffff" />
+                <Plus size={22} color="#ffffff" />
               </Pressable>
             </View>
           ),

@@ -216,6 +216,7 @@ export interface ExpenseSummary {
 export interface ActivityLogDto {
   id: string;
   groupId?: string;
+  groupName?: string;
   activityType: string;
   expenseId?: string;
   settlementId?: string;

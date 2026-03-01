@@ -1,31 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, SectionList, ActivityIndicator } from "react-native";
+import { View, Text, SectionList, ActivityIndicator, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@clerk/clerk-expo";
-import {
-  Utensils,
-  Car,
-  Home,
-  Gamepad2,
-  ShoppingBag,
-  MoreHorizontal,
-} from "lucide-react-native";
+import { useRouter } from "expo-router";
 import { Card } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
 import { usersApi } from "@/lib/api";
-import { formatCents, formatDate, categoryLabels } from "@/lib/utils";
-import type { ActivityLogDto, ExpenseCategory } from "@/lib/types";
-
-const iconMap: Record<ExpenseCategory, typeof Utensils> = {
-  food: Utensils,
-  transport: Car,
-  accommodation: Home,
-  entertainment: Gamepad2,
-  shopping: ShoppingBag,
-  other: MoreHorizontal,
-};
+import { formatCents, formatDate, getInitials } from "@/lib/utils";
+import type { ActivityLogDto } from "@/lib/types";
 
 export default function ActivityScreen() {
   const { getToken } = useAuth();
+  const router = useRouter();
   const [sections, setSections] = useState<{ title: string; data: ActivityLogDto[] }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,19 +22,14 @@ export default function ActivityScreen() {
         const data = await usersApi.activity(token!);
         const list: ActivityLogDto[] = Array.isArray(data) ? data : [];
 
-        // Group by date label
         const grouped = list.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
-          const label = item.createdAt
-            ? formatDate(item.createdAt)
-            : "Recent";
+          const label = item.createdAt ? formatDate(item.createdAt) : "Recent";
           if (!acc[label]) acc[label] = [];
           acc[label].push(item);
           return acc;
         }, {});
 
-        setSections(
-          Object.entries(grouped).map(([title, data]) => ({ title, data }))
-        );
+        setSections(Object.entries(grouped).map(([title, data]) => ({ title, data })));
       } catch {
         setSections([]);
       } finally {
@@ -87,7 +68,7 @@ export default function ActivityScreen() {
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}
-          contentContainerClassName="px-5 pb-8"
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section: { title } }) => (
@@ -96,42 +77,89 @@ export default function ActivityScreen() {
             </Text>
           )}
           renderItem={({ item }) => {
-            const categoryKey = ((item.details?.categoryIcon as string) ?? "other") as ExpenseCategory;
-            const Icon = iconMap[categoryKey] ?? MoreHorizontal;
             const actorName = item.actorUserName ?? item.actorGuestName ?? "Someone";
             const description = item.activityType
               .replace(/_/g, " ")
               .replace(/^\w/, (c) => c.toUpperCase());
-            const groupName = (item.details?.groupName as string) ?? "";
+            const groupName = item.groupName ?? (item.details?.groupName as string) ?? "";
+
+            const isExpenseUpdated = item.activityType === "expense_updated";
+            const expenseName = (item.details?.newDescription ?? item.details?.description) as string | undefined;
+            const oldAmount = item.details?.oldAmount as number | undefined;
+            const newAmount = item.details?.newAmount as number | undefined;
+            const amountChanged = oldAmount != null && newAmount != null && oldAmount !== newAmount;
+            const oldDesc = item.details?.oldDescription as string | undefined;
+            const newDesc = item.details?.newDescription as string | undefined;
+            const descChanged = oldDesc != null && newDesc != null && oldDesc !== newDesc;
+
+            const isExpenseCreated = item.activityType === "expense_created";
+            const createdExpenseName = (item.details?.description) as string | undefined;
+            const isMemberJoined = item.activityType === "member_joined";
+            const memberRole = (item.details?.role as string) ?? "";
+            const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
+
+            const destination = item.expenseId
+              ? { pathname: `/edit-expense/${item.expenseId}` as const, params: { groupId: item.groupId } }
+              : item.groupId
+              ? { pathname: `/group/${item.groupId}` as const }
+              : null;
 
             return (
-              <Card className="p-4 mb-2">
-                <View className="flex-row items-center gap-3">
-                  <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-                    <Icon size={20} color="#0d9488" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-sans-semibold text-card-foreground">
-                      {description}
-                    </Text>
-                    <Text className="text-xs text-muted-foreground font-sans">
-                      {actorName} {groupName ? `· ${groupName}` : ""}
-                    </Text>
-                  </View>
-                  <View className="items-end">
-                    {item.details?.amount != null && (
-                      <Text className="text-sm font-sans-semibold text-foreground">
-                        {formatCents(item.details.amount as number)}
+              <Pressable
+                onPress={() => destination && router.push(destination as any)}
+                disabled={!destination}
+                className="active:opacity-70 mb-2"
+              >
+                <Card className="p-4">
+                  <View className="flex-row items-center gap-3">
+                    <Avatar fallback={getInitials(actorName)} size="md" />
+                    <View className="flex-1">
+                      <Text className="text-sm font-sans-semibold text-card-foreground">
+                        {description}
                       </Text>
-                    )}
-                    {categoryLabels[categoryKey] && (
+                      {isExpenseUpdated && expenseName ? (
+                        <Text className="text-xs text-foreground font-sans-medium mt-0.5">
+                          {expenseName}
+                        </Text>
+                      ) : null}
+                      {isExpenseUpdated && amountChanged ? (
+                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                          {formatCents(oldAmount!)} → {formatCents(newAmount!)}
+                        </Text>
+                      ) : null}
+                      {isExpenseUpdated && descChanged ? (
+                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                          "{oldDesc}" → "{newDesc}"
+                        </Text>
+                      ) : null}
+                      {isExpenseCreated && createdExpenseName ? (
+                        <Text className="text-xs text-foreground font-sans-medium mt-0.5">
+                          {createdExpenseName}
+                        </Text>
+                      ) : null}
+                      {isMemberJoined ? (
+                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                          {actorName} joined {item.groupName ?? groupName}{memberRole ? ` as ${memberRole}` : ""}
+                        </Text>
+                      ) : (
+                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                          {groupName}
+                        </Text>
+                      )}
+                    </View>
+                    <View className="items-end">
+                      {displayAmount != null && (
+                        <Text className="text-sm font-sans-semibold text-foreground">
+                          {formatCents(displayAmount)}
+                        </Text>
+                      )}
                       <Text className="text-xs text-muted-foreground font-sans">
-                        {categoryLabels[categoryKey]}
+                        {formatDate(item.createdAt)}
                       </Text>
-                    )}
+                    </View>
                   </View>
-                </View>
-              </Card>
+                </Card>
+              </Pressable>
             );
           }}
         />

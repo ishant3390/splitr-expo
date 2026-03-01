@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
+  TextInput,
   ScrollView,
   Pressable,
   KeyboardAvoidingView,
@@ -549,30 +550,34 @@ export default function AddExpenseScreen() {
                           )}
                           {isChecked && splitType === "percentage" && (
                             <Pressable onPress={(e) => e.stopPropagation()}>
-                              <View className="flex-row items-center gap-1">
-                                <Input
+                              <View className="flex-row items-center border border-border rounded-lg bg-muted overflow-hidden">
+                                <TextInput
                                   value={splitPercentages[member.id] ?? ""}
                                   onChangeText={(val) =>
                                     setSplitPercentages((prev) => ({ ...prev, [member.id]: val }))
                                   }
                                   keyboardType="decimal-pad"
-                                  className="w-16 text-sm text-right p-1"
+                                  placeholder="0"
+                                  placeholderTextColor="#94a3b8"
+                                  style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: "#0f172a", fontFamily: "Inter_400Regular" }}
                                 />
-                                <Text className="text-sm text-muted-foreground font-sans">%</Text>
+                                <Text className="text-sm text-muted-foreground font-sans pr-2">%</Text>
                               </View>
                             </Pressable>
                           )}
                           {isChecked && splitType === "fixed" && (
                             <Pressable onPress={(e) => e.stopPropagation()}>
-                              <View className="flex-row items-center gap-1">
-                                <Text className="text-sm text-muted-foreground font-sans">$</Text>
-                                <Input
+                              <View className="flex-row items-center border border-border rounded-lg bg-muted overflow-hidden">
+                                <Text className="text-sm text-muted-foreground font-sans pl-2">$</Text>
+                                <TextInput
                                   value={splitFixedAmounts[member.id] ?? ""}
                                   onChangeText={(val) =>
                                     setSplitFixedAmounts((prev) => ({ ...prev, [member.id]: val }))
                                   }
                                   keyboardType="decimal-pad"
-                                  className="w-20 text-sm text-right p-1"
+                                  placeholder="0.00"
+                                  placeholderTextColor="#94a3b8"
+                                  style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: "#0f172a", fontFamily: "Inter_400Regular" }}
                                 />
                               </View>
                             </Pressable>

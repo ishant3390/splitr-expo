@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { ChevronRight, Plus } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
@@ -29,9 +30,7 @@ export default function GroupsScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadGroups();
-  }, []);
+  useFocusEffect(loadGroups);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>

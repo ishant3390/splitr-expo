@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
   ScanLine,
@@ -14,7 +15,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { usersApi } from "@/lib/api";
+import { usersApi, groupsApi } from "@/lib/api";
 import { formatCents, formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import type { ActivityLogDto } from "@/lib/types";
 
@@ -24,21 +25,57 @@ export default function HomeScreen() {
   const { user } = useUser();
   const [activity, setActivity] = useState<ActivityLogDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalOwedCents, setTotalOwedCents] = useState(0);
+  const [totalOwesCents, setTotalOwesCents] = useState(0);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      const load = async () => {
         const token = await getToken();
-        const data = await usersApi.activity(token!);
-        setActivity(Array.isArray(data) ? data.slice(0, 5) : []);
-      } catch {
-        setActivity([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+        const currentEmail = user.primaryEmailAddress?.emailAddress;
+
+        try {
+          console.log("[HomeScreen] Fetching activity...");
+          const data = await usersApi.activity(token!);
+          console.log("[HomeScreen] Activity response:", JSON.stringify(data, null, 2));
+          const sliced = Array.isArray(data) ? data.slice(0, 5) : [];
+          console.log(`[HomeScreen] Showing ${sliced.length} of ${Array.isArray(data) ? data.length : 0} items`);
+          setActivity(sliced);
+        } catch (err) {
+          console.error("[HomeScreen] Failed to fetch activity:", err);
+          setActivity([]);
+        } finally {
+          setLoading(false);
+        }
+
+        try {
+          console.log("[HomeScreen] Fetching balances for:", currentEmail);
+          const groups = await groupsApi.list(token!);
+          const groupList = Array.isArray(groups) ? groups : [];
+          const memberResults = await Promise.all(
+            groupList.map((g) => groupsApi.listMembers(g.id, token!))
+          );
+          let owed = 0;
+          let owes = 0;
+          memberResults.forEach((members) => {
+            const list = Array.isArray(members) ? members : [];
+            const me = list.find((m) => m.user?.email === currentEmail);
+            if (me?.balance != null) {
+              if (me.balance > 0) owed += me.balance;
+              else if (me.balance < 0) owes += Math.abs(me.balance);
+            }
+          });
+          console.log(`[HomeScreen] Balances — owed: ${owed}, owes: ${owes}`);
+          setTotalOwedCents(owed);
+          setTotalOwesCents(owes);
+        } catch (err) {
+          console.error("[HomeScreen] Failed to fetch balances:", err);
+        }
+      };
+      load();
+    }, [user])
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -104,7 +141,7 @@ export default function HomeScreen() {
               Net Balance
             </Text>
             <Text className="text-3xl font-sans-bold text-primary-foreground mb-4">
-              {formatCurrency(0)}
+              {formatCents(totalOwedCents - totalOwesCents)}
             </Text>
             <View className="flex-row gap-6">
               <View className="flex-row items-center gap-2">
@@ -114,7 +151,7 @@ export default function HomeScreen() {
                 <View>
                   <Text className="text-xs text-primary-foreground/60 font-sans">You are owed</Text>
                   <Text className="text-sm font-sans-semibold text-primary-foreground">
-                    {formatCurrency(0)}
+                    {formatCents(totalOwedCents)}
                   </Text>
                 </View>
               </View>
@@ -125,7 +162,7 @@ export default function HomeScreen() {
                 <View>
                   <Text className="text-xs text-primary-foreground/60 font-sans">You owe</Text>
                   <Text className="text-sm font-sans-semibold text-primary-foreground">
-                    {formatCurrency(0)}
+                    {formatCents(totalOwesCents)}
                   </Text>
                 </View>
               </View>
@@ -150,34 +187,87 @@ export default function HomeScreen() {
                   const description = item.activityType
                     .replace(/_/g, " ")
                     .replace(/^\w/, (c) => c.toUpperCase());
-                  const groupName = (item.details?.groupName as string) ?? "";
+                  const groupName = item.groupName ?? (item.details?.groupName as string) ?? "";
+                  const isExpenseUpdated = item.activityType === "expense_updated";
+                  const expenseName = (item.details?.newDescription ?? item.details?.description) as string | undefined;
+                  const oldAmount = item.details?.oldAmount as number | undefined;
+                  const newAmount = item.details?.newAmount as number | undefined;
+                  const amountChanged = oldAmount != null && newAmount != null && oldAmount !== newAmount;
+                  const oldDesc = item.details?.oldDescription as string | undefined;
+                  const newDesc = item.details?.newDescription as string | undefined;
+                  const descChanged = oldDesc != null && newDesc != null && oldDesc !== newDesc;
+                  const isExpenseCreated = item.activityType === "expense_created";
+                  const createdExpenseName = (item.details?.description) as string | undefined;
+                  const createdAmountCents = item.details?.amountCents as number | undefined;
+                  const isMemberJoined = item.activityType === "member_joined";
+                  const memberRole = (item.details?.role as string) ?? "";
+                  const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
+                  const destination = item.expenseId
+                    ? { pathname: `/edit-expense/${item.expenseId}` as const, params: { groupId: item.groupId } }
+                    : item.groupId
+                    ? { pathname: `/group/${item.groupId}` as const }
+                    : null;
+
                   return (
-                    <Card key={item.id} className="p-4">
-                      <View className="flex-row items-center gap-3">
-                        <Avatar
-                          fallback={getInitials(actorName)}
-                          size="md"
-                        />
-                        <View className="flex-1">
-                          <Text className="text-sm font-sans-semibold text-card-foreground">
-                            {description}
-                          </Text>
-                          <Text className="text-xs text-muted-foreground font-sans">
-                            {groupName}
-                          </Text>
-                        </View>
-                        <View className="items-end">
-                          {item.details?.amount != null && (
-                            <Text className="text-sm font-sans-semibold text-foreground">
-                              {formatCents(item.details.amount as number)}
+                    <Pressable
+                      key={item.id}
+                      onPress={() => destination && router.push(destination as any)}
+                      disabled={!destination}
+                      className="active:opacity-70"
+                    >
+                      <Card className="p-4">
+                        <View className="flex-row items-center gap-3">
+                          <Avatar
+                            fallback={getInitials(actorName)}
+                            size="md"
+                          />
+                          <View className="flex-1">
+                            <Text className="text-sm font-sans-semibold text-card-foreground">
+                              {description}
                             </Text>
-                          )}
-                          <Text className="text-xs text-muted-foreground font-sans">
-                            {formatDate(item.createdAt)}
-                          </Text>
+                            {isExpenseUpdated && expenseName ? (
+                              <Text className="text-xs text-foreground font-sans-medium mt-0.5">
+                                {expenseName}
+                              </Text>
+                            ) : null}
+                            {isExpenseUpdated && amountChanged ? (
+                              <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                                {formatCents(oldAmount!)} → {formatCents(newAmount!)}
+                              </Text>
+                            ) : null}
+                            {isExpenseUpdated && descChanged ? (
+                              <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                                "{oldDesc}" → "{newDesc}"
+                              </Text>
+                            ) : null}
+                            {isExpenseCreated && createdExpenseName ? (
+                              <Text className="text-xs text-foreground font-sans-medium mt-0.5">
+                                {createdExpenseName}
+                              </Text>
+                            ) : null}
+                            {isMemberJoined ? (
+                              <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                                {actorName} joined {item.groupName ?? groupName}{memberRole ? ` as ${memberRole}` : ""}
+                              </Text>
+                            ) : (
+                              <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                                {groupName}
+                              </Text>
+                            )}
+                          </View>
+                          <View className="items-end">
+                            {displayAmount != null && (
+                              <Text className="text-sm font-sans-semibold text-foreground">
+                                {formatCents(displayAmount)}
+                              </Text>
+                            )}
+                            <Text className="text-xs text-muted-foreground font-sans">
+                              {formatDate(item.createdAt)}
+                            </Text>
+                          </View>
                         </View>
-                      </View>
-                    </Card>
+                      </Card>
+                    </Pressable>
                   );
                 })}
               </View>
