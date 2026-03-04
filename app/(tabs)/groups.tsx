@@ -67,22 +67,22 @@ export default function GroupsScreen() {
             </Card>
           }
           renderItem={({ item: group }: { item: GroupDto }) => {
+            const emoji = group.emoji ?? "👥";
             return (
               <Pressable onPress={() => router.push(`/group/${group.id}`)}>
                 <Card className="p-4">
-                  <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-3">
+                    <View className="w-11 h-11 rounded-2xl bg-primary/10 items-center justify-center">
+                      <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                    </View>
                     <View className="flex-1">
                       <Text className="text-base font-sans-semibold text-card-foreground">
                         {group.name}
                       </Text>
                       <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                         {group.memberCount ?? 0} members
+                        {group.defaultCurrency ? ` · ${group.defaultCurrency}` : ""}
                       </Text>
-                      {group.description ? (
-                        <Text className="text-xs text-muted-foreground font-sans mt-1">
-                          {group.description}
-                        </Text>
-                      ) : null}
                     </View>
                     <ChevronRight size={20} color="#94a3b8" />
                   </View>

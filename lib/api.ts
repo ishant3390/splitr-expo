@@ -21,6 +21,10 @@ import type {
   UpdateExpenseRequest,
   ActivityLogDto,
   CategoryDto,
+  SettlementDto,
+  SettlementSuggestionDto,
+  CreateSettlementRequest,
+  UpdateSettlementRequest,
 } from "./types";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8085/api";
@@ -202,6 +206,40 @@ export const expensesApi = {
       }
       return res.json() as Promise<Record<string, unknown>>;
     }),
+};
+
+// ---- Settlements ----
+
+export const settlementsApi = {
+  list: (groupId: string, token: string) =>
+    request<SettlementDto[]>(`/v1/groups/${groupId}/settlements`, undefined, token),
+
+  suggestions: (groupId: string, token: string) =>
+    request<SettlementSuggestionDto[]>(
+      `/v1/groups/${groupId}/settlements/suggestions`,
+      undefined,
+      token
+    ),
+
+  create: (groupId: string, data: CreateSettlementRequest, token: string) =>
+    request<SettlementDto>(
+      `/v1/groups/${groupId}/settlements`,
+      { method: "POST", body: JSON.stringify(data) },
+      token
+    ),
+
+  get: (settlementId: string, token: string) =>
+    request<SettlementDto>(`/v1/settlements/${settlementId}`, undefined, token),
+
+  update: (settlementId: string, data: UpdateSettlementRequest, token: string) =>
+    request<SettlementDto>(
+      `/v1/settlements/${settlementId}`,
+      { method: "PUT", body: JSON.stringify(data) },
+      token
+    ),
+
+  delete: (settlementId: string, token: string) =>
+    request<void>(`/v1/settlements/${settlementId}`, { method: "DELETE" }, token),
 };
 
 // ---- Chat (SSE streaming) ----

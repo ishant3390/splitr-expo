@@ -28,6 +28,60 @@ import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents } from "@/lib/utils";
 import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
 
+// Map backend icon names to emojis
+const ICON_TO_EMOJI: Record<string, string> = {
+  restaurant: "🍕",
+  "food_and_drink": "🍔",
+  food: "🍕",
+  fastfood: "🍔",
+  local_cafe: "☕",
+  coffee: "☕",
+  local_bar: "🍺",
+  directions_car: "🚗",
+  transport: "🚗",
+  car: "🚗",
+  flight: "✈️",
+  travel: "✈️",
+  hotel: "🏨",
+  accommodation: "🏠",
+  home: "🏠",
+  house: "🏠",
+  sports_esports: "🎮",
+  entertainment: "🎮",
+  movie: "🎬",
+  theaters: "🎭",
+  shopping_bag: "🛍️",
+  shopping: "🛍️",
+  shopping_cart: "🛒",
+  groceries: "🛒",
+  local_grocery_store: "🛒",
+  receipt: "🧾",
+  payments: "💳",
+  health: "❤️",
+  local_hospital: "🏥",
+  fitness_center: "💪",
+  card_giftcard: "🎁",
+  gifts: "🎁",
+  work: "💼",
+  business: "💼",
+  wifi: "📡",
+  utilities: "📡",
+  electric_bolt: "⚡",
+  water_drop: "💧",
+  pets: "🐾",
+  school: "📚",
+  education: "📚",
+  other: "📋",
+  more_horiz: "📋",
+};
+
+function getCategoryEmoji(icon?: string): string {
+  if (!icon) return "📋";
+  // If it's already an emoji (starts with non-ASCII), return as-is
+  if (/^\p{Emoji}/u.test(icon)) return icon;
+  return ICON_TO_EMOJI[icon.toLowerCase()] ?? ICON_TO_EMOJI[icon] ?? "📋";
+}
+
 type SplitType = "equal" | "percentage" | "fixed";
 
 export default function AddExpenseScreen() {
@@ -65,7 +119,7 @@ export default function AddExpenseScreen() {
   const [showGroupPicker, setShowGroupPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Load groups and categories on mount
+  // Load groups and categories on mount; auto-create "Personal" group if none exist
   useEffect(() => {
     const load = async () => {
       try {
@@ -74,7 +128,21 @@ export default function AddExpenseScreen() {
           groupsApi.list(token!),
           categoriesApi.list(token!),
         ]);
-        const list = Array.isArray(groupsData) ? groupsData : [];
+        let list = Array.isArray(groupsData) ? groupsData : [];
+
+        // Auto-create a Personal group so expenses always have a home
+        if (list.length === 0) {
+          try {
+            const personal = await groupsApi.create(
+              { name: "Personal", description: "Quick personal expenses" },
+              token!
+            );
+            list = [personal];
+          } catch {
+            // If creation fails, continue — user can still create a group manually
+          }
+        }
+
         setGroups(list);
         if (list.length > 0) {
           const preferred = returnGroupId ? list.find((g) => g.id === returnGroupId) : null;
@@ -330,7 +398,7 @@ export default function AddExpenseScreen() {
                         isSelected ? "bg-primary border-primary" : "bg-card border-border"
                       )}
                     >
-                      {cat.icon ? <Text style={{ fontSize: 15 }}>{cat.icon}</Text> : null}
+                      <Text style={{ fontSize: 15 }}>{getCategoryEmoji(cat.icon)}</Text>
                       <Text
                         className={cn(
                           "text-sm font-sans-medium",
@@ -346,70 +414,54 @@ export default function AddExpenseScreen() {
             )}
           </View>
 
-          {/* Group selector */}
+          {/* Group selector — compact chip style, auto-selects first group */}
           <View>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Group</Text>
-            {groups.length === 0 ? (
-              <Card className="p-4 items-center">
-                <Text className="text-sm text-muted-foreground font-sans">
-                  No groups yet.{" "}
-                  <Text
-                    className="text-primary font-sans-semibold"
-                    onPress={() => router.push("/create-group")}
-                  >
-                    Create one
-                  </Text>
+            <Pressable onPress={() => setShowGroupPicker(!showGroupPicker)}>
+              <Card className="p-3.5 flex-row items-center justify-between">
+                <Text className="font-sans-medium text-card-foreground">
+                  {selectedGroup?.name ?? "Select a group"}
                 </Text>
+                <ChevronDown size={20} color="#64748b" />
               </Card>
-            ) : (
-              <>
-                <Pressable onPress={() => setShowGroupPicker(!showGroupPicker)}>
-                  <Card className="p-3.5 flex-row items-center justify-between">
-                    <Text className="font-sans-medium text-card-foreground">
-                      {selectedGroup?.name ?? "Select a group"}
-                    </Text>
-                    <ChevronDown size={20} color="#64748b" />
-                  </Card>
-                </Pressable>
-                {showGroupPicker && (
-                  <Card className="mt-2 p-2 gap-1">
-                    {groups.map((group) => (
-                      <Pressable
-                        key={group.id}
-                        onPress={() => {
-                          setSelectedGroup(group);
-                          setShowGroupPicker(false);
-                        }}
-                        className={cn(
-                          "px-3 py-2.5 rounded-lg",
-                          group.id === selectedGroup?.id ? "bg-primary" : "bg-transparent"
-                        )}
-                      >
-                        <Text
-                          className={cn(
-                            "font-sans-medium",
-                            group.id === selectedGroup?.id
-                              ? "text-primary-foreground"
-                              : "text-card-foreground"
-                          )}
-                        >
-                          {group.name}
-                        </Text>
-                      </Pressable>
-                    ))}
-                    <Pressable
-                      onPress={() => {
-                        setShowGroupPicker(false);
-                        router.push("/create-group");
-                      }}
-                      className="flex-row items-center gap-2 px-3 py-2.5 rounded-lg"
+            </Pressable>
+            {showGroupPicker && (
+              <Card className="mt-2 p-2 gap-1">
+                {groups.map((group) => (
+                  <Pressable
+                    key={group.id}
+                    onPress={() => {
+                      setSelectedGroup(group);
+                      setShowGroupPicker(false);
+                    }}
+                    className={cn(
+                      "px-3 py-2.5 rounded-lg",
+                      group.id === selectedGroup?.id ? "bg-primary" : "bg-transparent"
+                    )}
+                  >
+                    <Text
+                      className={cn(
+                        "font-sans-medium",
+                        group.id === selectedGroup?.id
+                          ? "text-primary-foreground"
+                          : "text-card-foreground"
+                      )}
                     >
-                      <Plus size={16} color="#14b8a6" />
-                      <Text className="font-sans-medium text-accent">Create New Group</Text>
-                    </Pressable>
-                  </Card>
-                )}
-              </>
+                      {group.name}
+                    </Text>
+                  </Pressable>
+                ))}
+                <Pressable
+                  onPress={() => {
+                    setShowGroupPicker(false);
+                    router.push("/create-group");
+                  }}
+                  className="flex-row items-center gap-2 px-3 py-2.5 rounded-lg"
+                >
+                  <Plus size={16} color="#14b8a6" />
+                  <Text className="font-sans-medium text-accent">Create New Group</Text>
+                </Pressable>
+              </Card>
             )}
           </View>
 

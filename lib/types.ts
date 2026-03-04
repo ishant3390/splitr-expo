@@ -41,6 +41,8 @@ export interface GroupDto {
   id: string;
   name: string;
   description?: string;
+  groupType?: string;
+  emoji?: string;
   defaultCurrency?: string;
   simplifyDebts?: boolean;
   inviteCode?: string;
@@ -57,6 +59,8 @@ export interface GroupDto {
 export interface CreateGroupRequest {
   name: string;
   description?: string;
+  groupType?: string;
+  emoji?: string;
   defaultCurrency?: string;
   simplifyDebts?: boolean;
 }
@@ -226,6 +230,63 @@ export interface ActivityLogDto {
   actorGuestName?: string;
   details?: Record<string, unknown>;
   createdAt: string;
+}
+
+// ---- Settlement ----
+
+export interface SettlementDto {
+  id: string;
+  groupId: string;
+  payerUser?: UserSummaryDto;
+  payerGuest?: GuestUserDto;
+  payeeUser?: UserSummaryDto;
+  payeeGuest?: GuestUserDto;
+  amount: number;
+  currency: string;
+  paymentMethod?: string;
+  paymentReference?: string;
+  settlementDate: string;
+  notes?: string;
+  createdBy?: UserSummaryDto;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+export interface SettlementSuggestionDto {
+  fromUser?: UserSummaryDto;
+  fromGuest?: GuestUserDto;
+  toUser?: UserSummaryDto;
+  toGuest?: GuestUserDto;
+  amount: number;
+  currency: string;
+}
+
+export interface CreateSettlementRequest {
+  payerUserId?: string;
+  payerGuestUserId?: string;
+  payeeUserId?: string;
+  payeeGuestUserId?: string;
+  amount: number;
+  currency: string;
+  paymentMethod?: string;
+  paymentReference?: string;
+  settlementDate: string;
+  notes?: string;
+}
+
+export interface UpdateSettlementRequest {
+  payerUserId?: string;
+  payerGuestUserId?: string;
+  payeeUserId?: string;
+  payeeGuestUserId?: string;
+  amount?: number;
+  currency?: string;
+  paymentMethod?: string;
+  paymentReference?: string;
+  settlementDate?: string;
+  notes?: string;
+  version?: number;
 }
 
 // ---- Legacy aliases for backward compat ----

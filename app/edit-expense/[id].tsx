@@ -34,6 +34,29 @@ import type {
   SplitRequest,
 } from "@/lib/types";
 
+const ICON_TO_EMOJI: Record<string, string> = {
+  restaurant: "🍕", "food_and_drink": "🍔", food: "🍕", fastfood: "🍔",
+  local_cafe: "☕", coffee: "☕", local_bar: "🍺",
+  directions_car: "🚗", transport: "🚗", car: "🚗",
+  flight: "✈️", travel: "✈️", hotel: "🏨",
+  accommodation: "🏠", home: "🏠", house: "🏠",
+  sports_esports: "🎮", entertainment: "🎮", movie: "🎬",
+  shopping_bag: "🛍️", shopping: "🛍️", shopping_cart: "🛒",
+  groceries: "🛒", local_grocery_store: "🛒",
+  health: "❤️", local_hospital: "🏥", fitness_center: "💪",
+  card_giftcard: "🎁", gifts: "🎁",
+  work: "💼", business: "💼",
+  wifi: "📡", utilities: "📡", electric_bolt: "⚡",
+  pets: "🐾", school: "📚", education: "📚",
+  other: "📋", more_horiz: "📋",
+};
+
+function getCategoryEmoji(icon?: string): string {
+  if (!icon) return "📋";
+  if (/^\p{Emoji}/u.test(icon)) return icon;
+  return ICON_TO_EMOJI[icon.toLowerCase()] ?? "📋";
+}
+
 type SplitType = "equal" | "percentage" | "fixed";
 
 export default function EditExpenseScreen() {
@@ -399,7 +422,7 @@ export default function EditExpenseScreen() {
                         isSelected ? "bg-primary border-primary" : "bg-card border-border"
                       )}
                     >
-                      {cat.icon ? <Text style={{ fontSize: 15 }}>{cat.icon}</Text> : null}
+                      <Text style={{ fontSize: 15 }}>{getCategoryEmoji(cat.icon)}</Text>
                       <Text
                         className={cn(
                           "text-sm font-sans-medium",

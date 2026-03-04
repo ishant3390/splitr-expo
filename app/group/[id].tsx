@@ -22,6 +22,7 @@ import {
   ShoppingBag,
   MoreHorizontal,
   UserPlus,
+  HandCoins,
   X,
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
@@ -209,7 +210,6 @@ export default function GroupDetailScreen() {
       const token = await getToken();
       await groupsApi.removeMember(id, memberToRemove.id, token!);
       toast.success("Member removed from group.");
-      setHoveredMemberId(null);
       // Refresh members list
       const updatedRaw = await groupsApi.listMembers(id, token!);
       const updatedList = Array.isArray(updatedRaw) ? updatedRaw : [];
@@ -252,7 +252,9 @@ export default function GroupDetailScreen() {
         <Button variant="ghost" size="icon" onPress={goBack}>
           <ArrowLeft size={24} color="#0f172a" />
         </Button>
-        <Text className="text-lg font-sans-semibold text-foreground">{group.name}</Text>
+        <Text className="text-lg font-sans-semibold text-foreground">
+          {group.emoji ? `${group.emoji} ` : ""}{group.name}
+        </Text>
         <Button
           variant="ghost"
           size="icon"
@@ -349,6 +351,19 @@ export default function GroupDetailScreen() {
             </View>
           </View>
         </Card>
+
+        {/* Settle Up button */}
+        <Pressable
+          onPress={() => router.push({ pathname: "/settle-up", params: { groupId: id } })}
+          className="mb-4"
+        >
+          <Card className="p-4 flex-row items-center justify-center gap-2 bg-success/10 border-success/20">
+            <HandCoins size={20} color="#10b981" />
+            <Text className="text-base font-sans-semibold text-success">
+              Settle Up
+            </Text>
+          </Card>
+        </Pressable>
 
         {/* Expenses list */}
         <Text className="text-sm font-sans-semibold text-muted-foreground mb-3">

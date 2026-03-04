@@ -77,6 +77,7 @@ function AuthGate() {
       <Stack.Screen name="create-group" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="group/[id]" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="edit-profile" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="settle-up" options={{ animation: "slide_from_right" }} />
     </Stack>
   );
 }

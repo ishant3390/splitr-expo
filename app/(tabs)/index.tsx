@@ -11,13 +11,59 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Bell,
+  Utensils,
+  Car,
+  Home as HomeIcon,
+  Gamepad2,
+  ShoppingBag,
+  Plane,
+  Heart,
+  Zap,
+  Coffee,
+  Gift,
+  Briefcase,
+  Wifi,
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { usersApi, groupsApi } from "@/lib/api";
-import { formatCents, formatCurrency, formatDate, getInitials } from "@/lib/utils";
+import { formatCents, formatDate, getInitials } from "@/lib/utils";
 import type { ActivityLogDto } from "@/lib/types";
+
+// Airbnb-style category data
+const CATEGORIES = [
+  { key: "all", label: "All", icon: Zap, emoji: "⚡" },
+  { key: "food", label: "Food", icon: Utensils, emoji: "🍕" },
+  { key: "transport", label: "Transport", icon: Car, emoji: "🚗" },
+  { key: "travel", label: "Travel", icon: Plane, emoji: "✈️" },
+  { key: "home", label: "Home", icon: HomeIcon, emoji: "🏠" },
+  { key: "entertainment", label: "Fun", icon: Gamepad2, emoji: "🎮" },
+  { key: "shopping", label: "Shopping", icon: ShoppingBag, emoji: "🛍️" },
+  { key: "coffee", label: "Coffee", icon: Coffee, emoji: "☕" },
+  { key: "gifts", label: "Gifts", icon: Gift, emoji: "🎁" },
+  { key: "health", label: "Health", icon: Heart, emoji: "❤️" },
+  { key: "work", label: "Work", icon: Briefcase, emoji: "💼" },
+  { key: "utilities", label: "Utilities", icon: Wifi, emoji: "📡" },
+] as const;
+
+// Map activity type or category name to an emoji for activity items
+const ACTIVITY_EMOJI_MAP: Record<string, string> = {
+  expense_created: "💸",
+  expense_updated: "✏️",
+  expense_deleted: "🗑️",
+  member_joined: "👋",
+  member_left: "👋",
+  group_created: "🎉",
+  settlement_created: "🤝",
+  food: "🍕",
+  transport: "🚗",
+  accommodation: "🏠",
+  entertainment: "🎮",
+  shopping: "🛍️",
+  travel: "✈️",
+  other: "📋",
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -27,6 +73,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [totalOwedCents, setTotalOwedCents] = useState(0);
   const [totalOwesCents, setTotalOwesCents] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   useFocusEffect(
     useCallback(() => {
@@ -39,7 +86,7 @@ export default function HomeScreen() {
           console.log("[HomeScreen] Fetching activity...");
           const data = await usersApi.activity(token!);
           console.log("[HomeScreen] Activity response:", JSON.stringify(data, null, 2));
-          const sliced = Array.isArray(data) ? data.slice(0, 5) : [];
+          const sliced = Array.isArray(data) ? data.slice(0, 20) : [];
           console.log(`[HomeScreen] Showing ${sliced.length} of ${Array.isArray(data) ? data.length : 0} items`);
           setActivity(sliced);
         } catch (err) {
@@ -169,6 +216,42 @@ export default function HomeScreen() {
             </View>
           </Card>
 
+          {/* Airbnb-style Category Bar */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 4, paddingRight: 8 }}
+          >
+            {CATEGORIES.map((cat) => {
+              const isActive = selectedCategory === cat.key;
+              const Icon = cat.icon;
+              return (
+                <Pressable
+                  key={cat.key}
+                  onPress={() => setSelectedCategory(cat.key)}
+                  className={`items-center py-2 px-3 rounded-xl border ${
+                    isActive
+                      ? "bg-foreground border-foreground"
+                      : "bg-card border-border"
+                  }`}
+                  style={{ minWidth: 64 }}
+                >
+                  <Icon
+                    size={20}
+                    color={isActive ? "#ffffff" : "#64748b"}
+                  />
+                  <Text
+                    className={`text-[10px] font-sans-medium mt-1 ${
+                      isActive ? "text-white" : "text-muted-foreground"
+                    }`}
+                  >
+                    {cat.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
           {/* Recent Activity */}
           <View>
             <Text className="text-lg font-sans-semibold text-foreground mb-3">
@@ -176,13 +259,33 @@ export default function HomeScreen() {
             </Text>
             {loading ? (
               <ActivityIndicator color="#0d9488" />
-            ) : activity.length === 0 ? (
-              <Card className="p-6 items-center">
-                <Text className="text-sm text-muted-foreground font-sans">No recent activity</Text>
-              </Card>
-            ) : (
+            ) : (() => {
+              // Filter activity by selected category
+              const filtered = selectedCategory === "all"
+                ? activity
+                : activity.filter((item) => {
+                    const catName = (
+                      (item.details?.categoryName as string) ??
+                      (item.details?.category as string) ??
+                      ""
+                    ).toLowerCase();
+                    const desc = (
+                      (item.details?.description as string) ?? ""
+                    ).toLowerCase();
+                    // Match by category name or keyword in description
+                    return catName === selectedCategory ||
+                      catName.includes(selectedCategory) ||
+                      desc.includes(selectedCategory);
+                  });
+              return filtered.length === 0 ? (
+                <Card className="p-6 items-center">
+                  <Text className="text-sm text-muted-foreground font-sans">
+                    {selectedCategory === "all" ? "No recent activity" : `No ${selectedCategory} activity`}
+                  </Text>
+                </Card>
+              ) : (
               <View className="gap-2">
-                {activity.map((item) => {
+                {filtered.map((item) => {
                   const actorName = item.actorUserName ?? item.actorGuestName ?? "?";
                   const description = item.activityType
                     .replace(/_/g, " ")
@@ -208,6 +311,13 @@ export default function HomeScreen() {
                     ? { pathname: `/group/${item.groupId}` as const }
                     : null;
 
+                  // Get emoji for this activity item
+                  const categoryName = (item.details?.categoryName ?? item.details?.category) as string | undefined;
+                  const activityEmoji =
+                    ACTIVITY_EMOJI_MAP[categoryName?.toLowerCase() ?? ""] ||
+                    ACTIVITY_EMOJI_MAP[item.activityType] ||
+                    "📋";
+
                   return (
                     <Pressable
                       key={item.id}
@@ -217,10 +327,9 @@ export default function HomeScreen() {
                     >
                       <Card className="p-4">
                         <View className="flex-row items-center gap-3">
-                          <Avatar
-                            fallback={getInitials(actorName)}
-                            size="md"
-                          />
+                          <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
+                            <Text style={{ fontSize: 20 }}>{activityEmoji}</Text>
+                          </View>
                           <View className="flex-1">
                             <Text className="text-sm font-sans-semibold text-card-foreground">
                               {description}
@@ -271,7 +380,8 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
-            )}
+            );
+            })()}
           </View>
         </View>
       </ScrollView>
