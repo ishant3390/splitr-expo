@@ -7,13 +7,14 @@ interface CardProps extends ViewProps {
   children: React.ReactNode;
 }
 
-export function Card({ className, children, ...props }: CardProps) {
+export function Card({ className, style, children, ...props }: CardProps) {
   return (
     <View
       className={clsx(
         "bg-card rounded-xl border border-border",
         className
       )}
+      style={[{ borderCurve: "continuous" as any }, style]}
       {...props}
     >
       {children}

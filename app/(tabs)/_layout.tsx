@@ -9,6 +9,7 @@ import {
   User,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { hapticMedium } from "@/lib/haptics";
 
 export default function TabsLayout() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function TabsLayout() {
           tabBarButton: () => (
             <View className="flex-1 items-center justify-center">
               <Pressable
-                onPress={() => router.push("/(tabs)/add")}
+                onPress={() => { hapticMedium(); router.push("/(tabs)/add"); }}
                 className="w-12 h-12 rounded-full bg-primary items-center justify-center"
               >
                 <Plus size={22} color="#ffffff" />

@@ -21,6 +21,7 @@ import {
   Trash2,
   X,
 } from "lucide-react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { settlementsApi, groupsApi } from "@/lib/api";
 import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
+import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
 import type {
   SettlementDto,
   SettlementSuggestionDto,
@@ -126,6 +128,7 @@ export default function SettleUpScreen() {
     if (!createFrom) return;
     const parsedAmount = Math.round(parseFloat(amount) * 100);
     if (!parsedAmount || parsedAmount < 1) {
+      hapticError();
       toast.error("Please enter a valid amount.");
       return;
     }
@@ -149,10 +152,12 @@ export default function SettleUpScreen() {
         },
         token!
       );
+      hapticSuccess();
       toast.success("Settlement recorded!");
       setShowCreate(false);
       await loadData();
     } catch {
+      hapticError();
       toast.error("Failed to record settlement.");
     } finally {
       setSubmitting(false);
@@ -212,7 +217,7 @@ export default function SettleUpScreen() {
       {/* Tab switcher */}
       <View className="flex-row mx-5 mb-4 rounded-xl bg-muted p-1">
         <Pressable
-          onPress={() => setActiveTab("suggestions")}
+          onPress={() => { hapticSelection(); setActiveTab("suggestions"); }}
           className={cn(
             "flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg",
             activeTab === "suggestions" ? "bg-card" : "bg-transparent"
@@ -234,7 +239,7 @@ export default function SettleUpScreen() {
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => setActiveTab("history")}
+          onPress={() => { hapticSelection(); setActiveTab("history"); }}
           className={cn(
             "flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg",
             activeTab === "history" ? "bg-card" : "bg-transparent"
@@ -261,6 +266,7 @@ export default function SettleUpScreen() {
         className="flex-1"
         contentContainerClassName="px-5 pb-8"
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       >
         {activeTab === "suggestions" ? (
           <>
@@ -279,15 +285,18 @@ export default function SettleUpScreen() {
                 <Text className="text-xs font-sans-semibold text-muted-foreground mb-1">
                   SUGGESTED PAYMENTS ({suggestions.length})
                 </Text>
-                {suggestions.map((s, idx) => {
+                {suggestions.map((s, suggIdx) => {
                   const fromName =
                     s.fromUser?.name ?? s.fromGuest?.name ?? "Someone";
                   const toName =
                     s.toUser?.name ?? s.toGuest?.name ?? "Someone";
                   return (
+                    <Animated.View
+                      key={suggIdx}
+                      entering={FadeInDown.delay(suggIdx * 60).duration(300).springify()}
+                    >
                     <Pressable
-                      key={idx}
-                      onPress={() => openCreateModal(s)}
+                      onPress={() => { hapticHeavy(); openCreateModal(s); }}
                       className="active:opacity-70"
                     >
                       <Card className="p-4">
@@ -333,6 +342,7 @@ export default function SettleUpScreen() {
                         </View>
                       </Card>
                     </Pressable>
+                    </Animated.View>
                   );
                 })}
               </View>
@@ -391,11 +401,11 @@ export default function SettleUpScreen() {
                             ) : null}
                           </View>
                           <View className="items-end gap-1">
-                            <Text className="text-sm font-sans-bold text-success">
+                            <Text selectable className="text-sm font-sans-bold text-success" style={{ fontVariant: ["tabular-nums"] }}>
                               {formatCents(s.amount)}
                             </Text>
                             <Pressable
-                              onPress={() => setSettlementToDelete(s)}
+                              onPress={() => { hapticWarning(); setSettlementToDelete(s); }}
                               hitSlop={8}
                             >
                               <Trash2 size={14} color="#ef4444" />
@@ -526,7 +536,7 @@ export default function SettleUpScreen() {
                     return (
                       <Pressable
                         key={m.key}
-                        onPress={() => setPaymentMethod(m.key)}
+                        onPress={() => { hapticSelection(); setPaymentMethod(m.key); }}
                         className={cn(
                           "flex-row items-center gap-1.5 px-3 py-2 rounded-xl border",
                           isSelected

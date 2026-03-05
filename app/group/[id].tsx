@@ -25,6 +25,7 @@ import {
   HandCoins,
   X,
 } from "lucide-react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { groupsApi } from "@/lib/api";
 import { formatCents, formatDate, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
+import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import type { GroupDto, GroupMemberDto, ExpenseDto, ExpenseCategory } from "@/lib/types";
 
 const iconMap: Record<ExpenseCategory, typeof Utensils> = {
@@ -115,6 +117,7 @@ export default function GroupDetailScreen() {
         },
         token!
       );
+      hapticSuccess();
       toast.success("Member added successfully.");
       setAddMemberEmail("");
       setAddMemberName("");
@@ -268,6 +271,7 @@ export default function GroupDetailScreen() {
         className="flex-1"
         contentContainerClassName="px-5 pb-8"
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       >
         {/* Members */}
         <View className="py-4">
@@ -321,7 +325,7 @@ export default function GroupDetailScreen() {
                         </Text>
                       </Card>
                       <Pressable
-                        onPress={() => setMemberToRemove(member)}
+                        onPress={() => { hapticWarning(); setMemberToRemove(member); }}
                         className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive items-center justify-center"
                       >
                         <X size={11} color="#ffffff" />
@@ -339,13 +343,13 @@ export default function GroupDetailScreen() {
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-xs text-muted-foreground font-sans">Total Spent</Text>
-              <Text className="text-xl font-sans-bold text-foreground">
+              <Text selectable className="text-xl font-sans-bold text-foreground" style={{ fontVariant: ["tabular-nums"] }}>
                 {formatCents(totalSpent)}
               </Text>
             </View>
             <View className="items-end">
               <Text className="text-xs text-muted-foreground font-sans">Per Person (avg)</Text>
-              <Text className="text-xl font-sans-bold text-primary">
+              <Text selectable className="text-xl font-sans-bold text-primary" style={{ fontVariant: ["tabular-nums"] }}>
                 {formatCents(members.length > 0 ? totalSpent / members.length : 0)}
               </Text>
             </View>
@@ -384,7 +388,7 @@ export default function GroupDetailScreen() {
                 const dateB = b.date || b.createdAt || "";
                 return new Date(dateB).getTime() - new Date(dateA).getTime();
               })
-              .map((expense) => {
+              .map((expense, idx) => {
                 const categoryKey = (expense.category?.icon ??
                   expense.category?.name ??
                   "other") as ExpenseCategory;
@@ -410,14 +414,18 @@ export default function GroupDetailScreen() {
                 const expenseDate = expense.date || expense.createdAt;
 
                 return (
-                  <Pressable
+                  <Animated.View
                     key={expense.id}
-                    onPress={() =>
+                    entering={FadeInDown.delay(idx * 50).duration(300).springify()}
+                  >
+                  <Pressable
+                    onPress={() => {
+                      hapticLight();
                       router.push({
                         pathname: "/edit-expense/[id]",
                         params: { id: expense.id, groupId: id },
-                      })
-                    }
+                      });
+                    }}
                   >
                     <Card className="p-4">
                       <View className="flex-row items-center gap-3">
@@ -434,7 +442,7 @@ export default function GroupDetailScreen() {
                           </Text>
                         </View>
                         <View className="items-end">
-                          <Text className="text-sm font-sans-bold text-foreground">
+                          <Text selectable className="text-sm font-sans-bold text-foreground" style={{ fontVariant: ["tabular-nums"] }}>
                             {formatCents(expense.amountCents)}
                           </Text>
                           <Text className="text-xs text-muted-foreground font-sans">
@@ -444,6 +452,7 @@ export default function GroupDetailScreen() {
                       </View>
                     </Card>
                   </Pressable>
+                  </Animated.View>
                 );
               })}
           </View>

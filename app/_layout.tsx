@@ -74,10 +74,26 @@ function AuthGate() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="receipt-scanner" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="chat" options={{ animation: "slide_from_right" }} />
-      <Stack.Screen name="create-group" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen
+        name="create-group"
+        options={{
+          animation: "slide_from_right",
+          presentation: "formSheet",
+          sheetGrabberVisible: true,
+          sheetAllowedDetents: [0.85, 1.0],
+        }}
+      />
       <Stack.Screen name="group/[id]" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="edit-profile" options={{ animation: "slide_from_right" }} />
-      <Stack.Screen name="settle-up" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen
+        name="settle-up"
+        options={{
+          animation: "slide_from_right",
+          presentation: "formSheet",
+          sheetGrabberVisible: true,
+          sheetAllowedDetents: [0.75, 1.0],
+        }}
+      />
     </Stack>
   );
 }

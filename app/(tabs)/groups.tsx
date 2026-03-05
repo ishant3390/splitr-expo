@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from "react";
 import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { hapticLight } from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
@@ -59,6 +61,7 @@ export default function GroupsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerClassName="px-5 pb-6 gap-3"
           showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="automatic"
           ListEmptyComponent={
             <Card className="p-6 items-center">
               <Text className="text-sm text-muted-foreground font-sans">
@@ -66,10 +69,11 @@ export default function GroupsScreen() {
               </Text>
             </Card>
           }
-          renderItem={({ item: group }: { item: GroupDto }) => {
+          renderItem={({ item: group, index }: { item: GroupDto; index: number }) => {
             const emoji = group.emoji ?? "👥";
             return (
-              <Pressable onPress={() => router.push(`/group/${group.id}`)}>
+              <Animated.View entering={FadeInDown.delay(index * 60).duration(300).springify()}>
+              <Pressable onPress={() => { hapticLight(); router.push(`/group/${group.id}`); }}>
                 <Card className="p-4">
                   <View className="flex-row items-center gap-3">
                     <View className="w-11 h-11 rounded-2xl bg-primary/10 items-center justify-center">
@@ -88,6 +92,7 @@ export default function GroupsScreen() {
                   </View>
                 </Card>
               </Pressable>
+              </Animated.View>
             );
           }}
         />

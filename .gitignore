@@ -30,3 +30,6 @@ ios/
 
 # Logs
 *.log
+
+# Playwright CLI
+.playwright-cli/

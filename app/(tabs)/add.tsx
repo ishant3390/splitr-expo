@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { groupsApi, categoriesApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents } from "@/lib/utils";
+import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
 import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
 
 // Map backend icon names to emojis
@@ -109,6 +110,7 @@ export default function AddExpenseScreen() {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
 
   const [description, setDescription] = useState("");
+  const amountInputRef = useRef<TextInput>(null);
   const [amount, setAmount] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedPayerMemberId, setSelectedPayerMemberId] = useState<string | null>(null);
@@ -208,11 +210,13 @@ export default function AddExpenseScreen() {
   };
 
   const handleSplitTypeChange = (type: SplitType) => {
+    hapticSelection();
     setSplitType(type);
     initSplitValues(splitWith, type, amount);
   };
 
   const handleToggleMember = (memberId: string) => {
+    hapticLight();
     setSplitWith((prev) => {
       const next = prev.includes(memberId)
         ? prev.filter((id) => id !== memberId)
@@ -223,15 +227,34 @@ export default function AddExpenseScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!amount || !description) {
-      toast.error("Please enter an amount and description.");
+    const parsedAmount = parseFloat(amount);
+    if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      hapticError();
+      toast.error("Please enter a valid amount.");
       return;
     }
+
+    // Use category name as fallback description
+    const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+    const finalDescription = description.trim() || selectedCategory?.name;
+    if (!finalDescription) {
+      hapticError();
+      toast.error("Please enter a description or select a category.");
+      return;
+    }
+
     if (!selectedGroup) {
+      hapticError();
       toast.error("Please select a group.");
       return;
     }
+    if (!selectedPayerMemberId) {
+      hapticError();
+      toast.error("Please select who paid.");
+      return;
+    }
     if (splitWith.length === 0) {
+      hapticError();
       toast.error("Please select at least one member to split with.");
       return;
     }
@@ -239,7 +262,6 @@ export default function AddExpenseScreen() {
     setSubmitting(true);
     try {
       const token = await getToken();
-      const parsedAmount = parseFloat(amount);
       const payerMember = members.find((m) => m.id === selectedPayerMemberId);
       const totalCents = amountToCents(parsedAmount);
 
@@ -262,6 +284,7 @@ export default function AddExpenseScreen() {
           (s, m) => s + (parseFloat(splitPercentages[m.id] ?? "0") || 0), 0
         );
         if (Math.abs(totalPct - 100) > 0.5) {
+          hapticError();
           toast.error(`Percentages must add up to 100% (currently ${totalPct.toFixed(1)}%)`);
           setSubmitting(false);
           return;
@@ -277,6 +300,7 @@ export default function AddExpenseScreen() {
           (s, m) => s + amountToCents(parseFloat(splitFixedAmounts[m.id] ?? "0") || 0), 0
         );
         if (Math.abs(totalFixedCents - totalCents) > 1) {
+          hapticError();
           toast.error(`Fixed amounts must add up to $${parsedAmount.toFixed(2)}`);
           setSubmitting(false);
           return;
@@ -297,7 +321,7 @@ export default function AddExpenseScreen() {
       }
 
       const expenseRequest: CreateExpenseRequest = {
-        description: description.trim(),
+        description: finalDescription,
         totalAmount: totalCents,
         currency: selectedGroup.defaultCurrency || "USD",
         categoryId: selectedCategoryId ?? undefined,
@@ -308,9 +332,11 @@ export default function AddExpenseScreen() {
       };
 
       await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
-      toast.success(`"${description}" added to ${selectedGroup.name}`);
+      hapticSuccess();
+      toast.success(`"${finalDescription}" added to ${selectedGroup.name}`);
       goBack();
     } catch (err: any) {
+      hapticError();
       toast.error("Something went wrong. Try again later.");
     } finally {
       setSubmitting(false);
@@ -356,20 +382,32 @@ export default function AddExpenseScreen() {
           contentContainerClassName="px-5 py-6 gap-6"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior="automatic"
         >
           {/* Amount */}
-          <View className="items-center py-4">
-            <Text className="text-sm text-muted-foreground font-sans mb-2">Amount</Text>
-            <View className="flex-row items-baseline">
-              <Text className="text-4xl font-sans-bold text-foreground">$</Text>
-              <Input
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="decimal-pad"
-                placeholder="0.00"
-                className="text-4xl font-sans-bold text-foreground bg-transparent border-0 p-0 min-w-[120px] text-center"
-              />
-            </View>
+          <View className="items-center py-8">
+            <TextInput
+              ref={amountInputRef}
+              value={amount ? `$${amount}` : ""}
+              onChangeText={(val) => {
+                // Strip the $ prefix before processing
+                const raw = val.startsWith("$") ? val.slice(1) : val;
+                if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) {
+                  setAmount(raw);
+                }
+              }}
+              keyboardType="decimal-pad"
+              placeholder="$0"
+              placeholderTextColor="#94a3b8"
+              className="text-foreground"
+              style={{
+                fontSize: 56,
+                fontWeight: "700",
+                padding: 0,
+                textAlign: "center",
+                fontVariant: ["tabular-nums"],
+              }}
+            />
           </View>
 
           {/* Description */}
@@ -392,7 +430,7 @@ export default function AddExpenseScreen() {
                   return (
                     <Pressable
                       key={cat.id}
-                      onPress={() => setSelectedCategoryId(cat.id)}
+                      onPress={() => { hapticSelection(); setSelectedCategoryId(cat.id); }}
                       className={cn(
                         "flex-row items-center gap-2 px-3 py-2 rounded-xl border",
                         isSelected ? "bg-primary border-primary" : "bg-card border-border"
@@ -523,7 +561,7 @@ export default function AddExpenseScreen() {
                 </Text>
                 {splitType === "equal" && (
                   <Text className="text-sm text-primary font-sans-semibold">
-                    ${perPerson}/person
+                    {`$${perPerson}/person`}
                   </Text>
                 )}
                 {splitType === "percentage" && (
@@ -539,7 +577,7 @@ export default function AddExpenseScreen() {
                     "text-sm font-sans-semibold",
                     Math.abs(totalFixed - (parseFloat(amount) || 0)) < 0.01 ? "text-primary" : "text-destructive"
                   )}>
-                    ${totalFixed.toFixed(2)} / ${amount || "0.00"}
+                    {`$${totalFixed.toFixed(2)} / $${amount || "0.00"}`}
                   </Text>
                 )}
               </View>
@@ -595,9 +633,9 @@ export default function AddExpenseScreen() {
                           <Text className="flex-1 text-sm font-sans-medium text-card-foreground">
                             {memberName}
                           </Text>
-                          {isChecked && splitType === "equal" && amount && (
+                          {isChecked && splitType === "equal" && !!amount && (
                             <Text className="text-sm font-sans-semibold text-primary">
-                              ${perPerson}
+                              {`$${perPerson}`}
                             </Text>
                           )}
                           {isChecked && splitType === "percentage" && (

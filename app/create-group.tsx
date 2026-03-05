@@ -36,6 +36,7 @@ import { Card } from "@/components/ui/card";
 import { groupsApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
 import type { CreateGroupRequest, AddGuestMemberRequest } from "@/lib/types";
 
 // Group types — much richer than Splitwise's 4 icons
@@ -120,6 +121,7 @@ export default function CreateGroupScreen() {
   })();
 
   const handleSelectType = (key: string) => {
+    hapticSelection();
     setSelectedType(key);
     const type = GROUP_TYPES.find((t) => t.key === key);
     if (type) setSelectedEmoji(type.emoji);
@@ -169,9 +171,11 @@ export default function CreateGroupScreen() {
         )
       );
 
+      hapticSuccess();
       toast.success(`"${groupName}" created!`);
       router.replace(`/group/${group.id}`);
     } catch {
+      hapticError();
       toast.error("Something went wrong. Try again later.");
     } finally {
       setSubmitting(false);
@@ -220,6 +224,7 @@ export default function CreateGroupScreen() {
           contentContainerClassName="px-5 py-6 gap-6"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior="automatic"
         >
           {/* Group Avatar + Name */}
           <View className="items-center gap-4">
@@ -250,6 +255,7 @@ export default function CreateGroupScreen() {
                     <Pressable
                       key={emoji}
                       onPress={() => {
+                        hapticLight();
                         setSelectedEmoji(emoji);
                         setShowEmojiPicker(false);
                       }}
@@ -336,7 +342,7 @@ export default function CreateGroupScreen() {
                 return (
                   <Pressable
                     key={curr.code}
-                    onPress={() => setSelectedCurrency(curr.code)}
+                    onPress={() => { hapticSelection(); setSelectedCurrency(curr.code); }}
                     className={cn(
                       "flex-row items-center gap-2 px-4 py-2.5 rounded-xl border",
                       isActive

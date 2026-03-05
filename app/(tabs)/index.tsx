@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
+import { hapticLight, hapticSelection } from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth, useUser } from "@clerk/clerk-expo";
@@ -130,6 +132,7 @@ export default function HomeScreen() {
         className="flex-1"
         contentContainerClassName="pb-8"
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       >
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-3 pb-4">
@@ -187,7 +190,7 @@ export default function HomeScreen() {
             <Text className="text-sm text-primary-foreground/70 font-sans-medium mb-1">
               Net Balance
             </Text>
-            <Text className="text-3xl font-sans-bold text-primary-foreground mb-4">
+            <Text selectable className="text-3xl font-sans-bold text-primary-foreground mb-4" style={{ fontVariant: ["tabular-nums"] }}>
               {formatCents(totalOwedCents - totalOwesCents)}
             </Text>
             <View className="flex-row gap-6">
@@ -197,7 +200,7 @@ export default function HomeScreen() {
                 </View>
                 <View>
                   <Text className="text-xs text-primary-foreground/60 font-sans">You are owed</Text>
-                  <Text className="text-sm font-sans-semibold text-primary-foreground">
+                  <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
                     {formatCents(totalOwedCents)}
                   </Text>
                 </View>
@@ -208,7 +211,7 @@ export default function HomeScreen() {
                 </View>
                 <View>
                   <Text className="text-xs text-primary-foreground/60 font-sans">You owe</Text>
-                  <Text className="text-sm font-sans-semibold text-primary-foreground">
+                  <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
                     {formatCents(totalOwesCents)}
                   </Text>
                 </View>
@@ -228,7 +231,7 @@ export default function HomeScreen() {
               return (
                 <Pressable
                   key={cat.key}
-                  onPress={() => setSelectedCategory(cat.key)}
+                  onPress={() => { hapticSelection(); setSelectedCategory(cat.key); }}
                   className={`items-center py-2 px-3 rounded-xl border ${
                     isActive
                       ? "bg-foreground border-foreground"
@@ -285,7 +288,7 @@ export default function HomeScreen() {
                 </Card>
               ) : (
               <View className="gap-2">
-                {filtered.map((item) => {
+                {filtered.map((item, idx) => {
                   const actorName = item.actorUserName ?? item.actorGuestName ?? "?";
                   const description = item.activityType
                     .replace(/_/g, " ")
@@ -319,9 +322,12 @@ export default function HomeScreen() {
                     "📋";
 
                   return (
-                    <Pressable
+                    <Animated.View
                       key={item.id}
-                      onPress={() => destination && router.push(destination as any)}
+                      entering={FadeInDown.delay(idx * 50).duration(300).springify()}
+                    >
+                    <Pressable
+                      onPress={() => { hapticLight(); destination && router.push(destination as any); }}
                       disabled={!destination}
                       className="active:opacity-70"
                     >
@@ -377,6 +383,7 @@ export default function HomeScreen() {
                         </View>
                       </Card>
                     </Pressable>
+                    </Animated.View>
                   );
                 })}
               </View>
