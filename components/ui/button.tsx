@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, Text, type PressableProps, ActivityIndicator } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { clsx } from "clsx";
 
 type ButtonVariant = "default" | "outline" | "ghost" | "destructive" | "accent";
@@ -54,39 +55,54 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable
-      className={clsx(
-        "flex-row items-center justify-center",
-        variantStyles[variant],
-        sizeStyles[size],
-        disabled && "opacity-50",
-        className
-      )}
-      disabled={disabled || loading}
-      {...props}
-    >
-      {loading && (
-        <ActivityIndicator
-          size="small"
-          color={variant === "outline" || variant === "ghost" ? "#0d9488" : "#ffffff"}
-          className="mr-2"
-        />
-      )}
-      {typeof children === "string" ? (
-        <Text
-          className={clsx(
-            "font-sans-semibold",
-            variantTextStyles[variant],
-            sizeTextStyles[size],
-            textClassName
-          )}
-        >
-          {children}
-        </Text>
-      ) : (
-        children
-      )}
-    </Pressable>
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        className={clsx(
+          "flex-row items-center justify-center",
+          variantStyles[variant],
+          sizeStyles[size],
+          disabled && "opacity-50",
+          className
+        )}
+        disabled={disabled || loading}
+        onPressIn={(e) => {
+          scale.value = withSpring(0.97, { damping: 10, stiffness: 200 });
+          props.onPressIn?.(e);
+        }}
+        onPressOut={(e) => {
+          scale.value = withSpring(1, { damping: 8, stiffness: 150 });
+          props.onPressOut?.(e);
+        }}
+        {...props}
+      >
+        {loading && (
+          <ActivityIndicator
+            size="small"
+            color={variant === "outline" || variant === "ghost" ? "#0d9488" : "#ffffff"}
+            className="mr-2"
+          />
+        )}
+        {typeof children === "string" ? (
+          <Text
+            className={clsx(
+              "font-sans-semibold",
+              variantTextStyles[variant],
+              sizeTextStyles[size],
+              textClassName
+            )}
+          >
+            {children}
+          </Text>
+        ) : (
+          children
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }

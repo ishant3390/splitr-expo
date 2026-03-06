@@ -3,17 +3,18 @@ import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl }
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { Clock } from "lucide-react-native";
+import { Clock, AlertTriangle } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity } from "@/lib/hooks";
 import { formatCents, formatDate, getInitials } from "@/lib/utils";
 import type { ActivityLogDto } from "@/lib/types";
 
 export default function ActivityScreen() {
   const router = useRouter();
-  const { data: activity = [], isLoading: loading, refetch } = useUserActivity();
+  const { data: activity = [], isLoading: loading, error: activityError, refetch } = useUserActivity();
   const [refreshing, setRefreshing] = useState(false);
 
   const sections = useMemo(() => {
@@ -44,8 +45,8 @@ export default function ActivityScreen() {
         <View className="px-5 pt-3 pb-4">
           <Text className="text-2xl font-sans-bold text-foreground">Activity</Text>
         </View>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#0d9488" />
+        <View className="px-5 pt-3">
+          <SkeletonList count={6} type="activity" />
         </View>
       </SafeAreaView>
     );
@@ -57,7 +58,18 @@ export default function ActivityScreen() {
         <Text className="text-2xl font-sans-bold text-foreground">Activity</Text>
       </View>
 
-      {sections.length === 0 ? (
+      {activityError && sections.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-5">
+          <EmptyState
+            icon={AlertTriangle}
+            iconColor="#ef4444"
+            title="Couldn't load activity"
+            subtitle="Check your connection and try again."
+            actionLabel="Retry"
+            onAction={() => refetch()}
+          />
+        </View>
+      ) : sections.length === 0 ? (
         <View className="flex-1 items-center justify-center px-5">
           <EmptyState
             icon={Clock}

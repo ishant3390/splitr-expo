@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -62,6 +63,7 @@ type SplitType = "equal" | "percentage" | "fixed";
 
 export default function EditExpenseScreen() {
   const router = useRouter();
+  const isDark = useColorScheme() === "dark";
   const params = useLocalSearchParams<{ id: string; groupId: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const groupId = Array.isArray(params.groupId) ? params.groupId[0] : params.groupId;
@@ -110,7 +112,7 @@ export default function EditExpenseScreen() {
   useEffect(() => {
     if (!groupId || !id) {
       toast.error("Missing expense or group information.");
-      router.back();
+      router.replace("/(tabs)");
       return;
     }
 
@@ -128,7 +130,7 @@ export default function EditExpenseScreen() {
         const expenseData = expensesResponse.data?.find((e) => e.id === id);
         if (!expenseData) {
           toast.error("Expense not found.");
-          router.back();
+          router.replace("/(tabs)");
           return;
         }
 
@@ -211,8 +213,8 @@ export default function EditExpenseScreen() {
         }
       } catch (err) {
         console.error("Edit expense load error:", err);
-        toast.error("Failed to load expense.");
-        router.back();
+        toast.error("This expense or group is no longer available.");
+        router.replace("/(tabs)");
       } finally {
         setLoading(false);
       }
@@ -382,7 +384,7 @@ export default function EditExpenseScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
           <Button variant="ghost" size="icon" onPress={() => router.back()}>
-            <ArrowLeft size={24} color="#0f172a" />
+            <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
           </Button>
           <Text className="text-lg font-sans-semibold text-foreground">Edit Expense</Text>
           <Pressable onPress={handleSave} disabled={submitting}>

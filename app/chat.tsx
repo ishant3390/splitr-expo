@@ -8,6 +8,7 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -42,6 +43,7 @@ const suggestedPrompts = [
 export default function ChatScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
+  const isDark = useColorScheme() === "dark";
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)"));
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -290,7 +292,7 @@ export default function ChatScreen() {
       {/* Header */}
       <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border">
         <Button variant="ghost" size="icon" onPress={goBack}>
-          <ArrowLeft size={24} color="#0f172a" />
+          <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
         </Button>
         <View className="w-9 h-9 rounded-full bg-primary/10 items-center justify-center">
           <Bot size={20} color="#0d9488" />

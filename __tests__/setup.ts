@@ -103,12 +103,19 @@ jest.mock("react-native-reanimated", () => {
       ScrollView: RN.ScrollView,
       createAnimatedComponent: (comp: any) => comp,
     },
-    FadeInDown: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }) },
+    FadeIn: { duration: () => ({}) },
+    FadeInDown: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }), duration: () => ({ springify: () => ({}) }) },
     FadeInRight: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }) },
-    useAnimatedStyle: () => ({}),
+    useAnimatedStyle: (fn: any) => (typeof fn === "function" ? fn() : {}),
     useSharedValue: (v: any) => ({ value: v }),
+    useDerivedValue: (fn: any) => ({ value: typeof fn === "function" ? fn() : fn }),
     withTiming: (v: any) => v,
     withSpring: (v: any) => v,
+    withRepeat: (v: any) => v,
+    withSequence: (...args: any[]) => args[0],
+    interpolateColor: () => "#000000",
+    Easing: { out: () => ({}), cubic: {}, in: () => ({}), inOut: () => ({}) },
+    createAnimatedComponent: (comp: any) => comp,
   };
 });
 

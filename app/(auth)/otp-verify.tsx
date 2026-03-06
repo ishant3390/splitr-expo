@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Platform } from "react-native";
+import { View, Text, Platform, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSignUp, useSignIn } from "@clerk/clerk-expo";
@@ -10,6 +10,7 @@ import { ArrowLeft, Mail, Phone as PhoneIcon, CheckCircle2 } from "lucide-react-
 
 export default function OTPVerifyScreen() {
   const router = useRouter();
+  const isDark = useColorScheme() === "dark";
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(auth)"));
   const params = useLocalSearchParams<{ contact: string; phone?: string; mode: string; method?: string }>();
   const { signUp, setActive: setActiveSignUp } = useSignUp();
@@ -151,7 +152,7 @@ export default function OTPVerifyScreen() {
       {/* Header */}
       <View className="flex-row items-center px-4 py-3">
         <Button variant="ghost" size="icon" onPress={goBack}>
-          <ArrowLeft size={24} color="#0f172a" />
+          <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
         </Button>
         <Text className="flex-1 text-lg font-sans-semibold text-foreground text-center mr-10">
           Verify Account
@@ -203,15 +204,25 @@ export default function OTPVerifyScreen() {
         {/* Resend */}
         <View className="items-center gap-3">
           {countdown > 0 ? (
-            <Text className="text-sm text-muted-foreground font-sans">
-              Resend code in {countdown}s
-            </Text>
-          ) : (
-            <Button variant="ghost" onPress={handleResend}>
-              <Text className="text-sm font-sans-semibold text-primary">
-                Resend Code
+            <View className="flex-row items-center gap-2">
+              <Text className="text-sm text-muted-foreground font-sans">
+                Didn't receive a code?
               </Text>
-            </Button>
+              <Text className="text-sm font-sans-semibold text-muted-foreground">
+                Resend in {countdown}s
+              </Text>
+            </View>
+          ) : (
+            <View className="items-center gap-1">
+              <Text className="text-sm text-muted-foreground font-sans">
+                Didn't receive a code?
+              </Text>
+              <Button variant="ghost" onPress={handleResend}>
+                <Text className="text-sm font-sans-semibold text-primary">
+                  Resend Code
+                </Text>
+              </Button>
+            </View>
           )}
 
           {/* Toggle verification method */}
@@ -230,6 +241,15 @@ export default function OTPVerifyScreen() {
             </Button>
           )}
         </View>
+
+        {/* Dev mode hint */}
+        {__DEV__ && (
+          <View className="mt-6 p-3 rounded-lg bg-muted">
+            <Text className="text-xs text-muted-foreground font-sans text-center">
+              Dev mode: Use code 424242 to verify
+            </Text>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );

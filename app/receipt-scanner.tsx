@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/toast";
 
 export default function ReceiptScannerScreen() {
   const router = useRouter();
+  const isDark = useColorScheme() === "dark";
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)"));
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -99,7 +100,7 @@ export default function ReceiptScannerScreen() {
       {/* Header */}
       <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border">
         <Button variant="ghost" size="icon" onPress={goBack}>
-          <ArrowLeft size={24} color="#0f172a" />
+          <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
         </Button>
         <Text className="flex-1 text-lg font-sans-semibold text-foreground">
           Scan Receipt
@@ -133,7 +134,7 @@ export default function ReceiptScannerScreen() {
               </Button>
               <Button variant="outline" size="lg" onPress={pickImage} className="w-full">
                 <View className="flex-row items-center gap-2">
-                  <ImageIcon size={20} color="#0f172a" />
+                  <ImageIcon size={20} color={isDark ? "#f1f5f9" : "#0f172a"} />
                   <Text className="text-base font-sans-semibold text-foreground">
                     Choose from Gallery
                   </Text>
@@ -214,7 +215,7 @@ export default function ReceiptScannerScreen() {
                     className="w-full"
                   >
                     <View className="flex-row items-center gap-2">
-                      <RotateCcw size={18} color="#0f172a" />
+                      <RotateCcw size={18} color={isDark ? "#f1f5f9" : "#0f172a"} />
                       <Text className="text-base font-sans-medium text-foreground">
                         Scan Another
                       </Text>

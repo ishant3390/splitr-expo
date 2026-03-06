@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Modal, Platform } from "react-native";
+import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Modal, Platform, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { hapticLight, hapticWarning, hapticSuccess, hapticSelection } from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw } from "lucide-react-native";
+import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw, AlertTriangle } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -13,13 +13,16 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useGroups, useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { SkeletonList } from "@/components/ui/skeleton";
 import { GroupDto } from "@/lib/types";
 
 export default function GroupsScreen() {
   const router = useRouter();
   const toast = useToast();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
   const [filter, setFilter] = useState<"active" | "archived">("active");
-  const { data: groups = [], isLoading: loading, refetch } = useGroups(filter);
+  const { data: groups = [], isLoading: loading, error: groupsError, refetch } = useGroups(filter);
   const [refreshing, setRefreshing] = useState(false);
 
   // Long-press action sheet
@@ -100,8 +103,11 @@ export default function GroupsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
       {/* Header */}
-      <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
-        <Text className="text-2xl font-sans-bold text-foreground">Groups</Text>
+      <View className="flex-row items-center justify-between px-5 pt-3 pb-1">
+        <View>
+          <Text className="text-2xl font-sans-bold text-foreground">Groups</Text>
+          <Text className="text-xs text-muted-foreground font-sans">Long press to archive or delete</Text>
+        </View>
         <Button
           variant="default"
           size="sm"
@@ -117,7 +123,7 @@ export default function GroupsScreen() {
       {/* Active / Archived filter */}
       <View className="flex-row mx-5 mb-3 rounded-xl bg-muted p-1">
         <Pressable
-          onPress={() => { hapticSelection(); setFilter("active"); setLoading(true); }}
+          onPress={() => { hapticSelection(); setFilter("active"); }}
           className={cn(
             "flex-1 items-center py-2 rounded-lg",
             filter === "active" ? "bg-card" : "bg-transparent"
@@ -131,7 +137,7 @@ export default function GroupsScreen() {
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => { hapticSelection(); setFilter("archived"); setLoading(true); }}
+          onPress={() => { hapticSelection(); setFilter("archived"); }}
           className={cn(
             "flex-1 items-center py-2 rounded-lg",
             filter === "archived" ? "bg-card" : "bg-transparent"
@@ -147,8 +153,19 @@ export default function GroupsScreen() {
       </View>
 
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#0d9488" />
+        <View className="flex-1 px-5 pt-3">
+          <SkeletonList count={5} type="group" />
+        </View>
+      ) : groupsError && groups.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-5">
+          <EmptyState
+            icon={AlertTriangle}
+            iconColor="#ef4444"
+            title="Couldn't load groups"
+            subtitle="Check your connection and try again."
+            actionLabel="Retry"
+            onAction={() => refetch()}
+          />
         </View>
       ) : (
         <FlatList
@@ -227,7 +244,7 @@ export default function GroupsScreen() {
           <Pressable
             onPress={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: "#ffffff",
+              backgroundColor: isDark ? "#1e293b" : "#ffffff",
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               padding: 24,
@@ -236,7 +253,7 @@ export default function GroupsScreen() {
             }}
           >
             <View className="flex-row items-center justify-between mb-3">
-              <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#0f172a" }}>
+              <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
                 {selectedGroup?.name}
               </Text>
               <Pressable onPress={() => setShowActions(false)}>
@@ -258,7 +275,7 @@ export default function GroupsScreen() {
                 }}
               >
                 <Archive size={20} color="#f59e0b" />
-                <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: "#0f172a" }}>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
                   Archive Group
                 </Text>
               </Pressable>
@@ -276,7 +293,7 @@ export default function GroupsScreen() {
                 }}
               >
                 <RotateCcw size={20} color="#0d9488" />
-                <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: "#0f172a" }}>
+                <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
                   Restore Group
                 </Text>
               </Pressable>

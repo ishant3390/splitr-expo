@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -26,6 +27,7 @@ const CURRENCIES = ["USD", "EUR", "GBP", "INR", "CAD", "AUD", "JPY"];
 export default function EditProfileScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
+  const isDark = useColorScheme() === "dark";
   const { user: clerkUser } = useUser();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,7 @@ export default function EditProfileScreen() {
         {/* Header */}
         <View className="flex-row items-center px-5 py-3 gap-3">
           <Pressable onPress={goBack} className="p-2 -ml-2">
-            <ArrowLeft size={24} color="#0f172a" />
+            <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
           </Pressable>
           <Text className="text-xl font-sans-bold text-foreground flex-1">
             Edit Profile

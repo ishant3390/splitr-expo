@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, SectionList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, SectionList, Pressable, ActivityIndicator, RefreshControl, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
@@ -87,6 +87,7 @@ function groupByDay(items: ActivityLogDto[]): { title: string; data: ActivityLog
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const isDark = useColorScheme() === "dark";
   const { data: activity = [], isLoading: loading, refetch } = useUserActivity();
   const [refreshing, setRefreshing] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -187,7 +188,7 @@ export default function NotificationsScreen() {
                 </View>
 
                 {/* Avatar */}
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#f1f5f9", alignItems: "center", justifyContent: "center" }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? "#334155" : "#f1f5f9", alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ fontSize: 18 }}>{emoji}</Text>
                 </View>
 
@@ -197,7 +198,7 @@ export default function NotificationsScreen() {
                     style={{
                       fontSize: 13,
                       fontFamily: isRead ? "Inter_400Regular" : "Inter_600SemiBold",
-                      color: "#0f172a",
+                      color: isDark ? "#f1f5f9" : "#0f172a",
                       lineHeight: 18,
                     }}
                   >

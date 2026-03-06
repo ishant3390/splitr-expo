@@ -63,7 +63,8 @@ lib/
 - `GET /v1/categories` — returns categories with `id`, `name`, `icon` (icon name string)
 - `GET /v1/users/me/activity` — user activity feed (details may include categoryName)
 - `GET /v1/users/me/balance` — aggregate balance (totalOwedCents, totalOwesCents, netBalanceCents); home screen falls back to N+1 if unavailable
-- `POST /v1/users/sync` — syncs Clerk user with backend on sign-in
+- `GET /v1/users/me` — returns current user (auto-creates from JWT claims if user doesn't exist); call on app startup after login
+- `POST /v1/users/sync` — **admin-only** bulk endpoint that syncs ALL users from Clerk API; do NOT call from frontend
 - `GET /v1/groups/{groupId}/settlements/suggestions` — debt simplification suggestions
 - `POST /v1/groups/{groupId}/settlements` — record a settlement payment
 - `GET /v1/groups/{groupId}/settlements` — list settlement history

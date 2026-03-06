@@ -11,6 +11,7 @@ import {
   Share,
   RefreshControl,
   TextInput,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -52,6 +53,7 @@ import { useToast } from "@/components/ui/toast";
 import { hapticLight, hapticSuccess, hapticWarning, hapticSelection } from "@/lib/haptics";
 import { dedupeMembers, aggregateByPerson, aggregateByCategory, filterExpenses, sortExpenses, resolvePayerName } from "@/lib/screen-helpers";
 import * as Clipboard from "expo-clipboard";
+import { SkeletonList } from "@/components/ui/skeleton";
 import type { GroupDto, GroupMemberDto, ExpenseDto, ExpenseCategory, ContactDto } from "@/lib/types";
 
 const iconMap: Record<ExpenseCategory, typeof Utensils> = {
@@ -73,6 +75,8 @@ export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getToken } = useAuth();
   const toast = useToast();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const [group, setGroup] = useState<GroupDto | null>(null);
   const [members, setMembers] = useState<GroupMemberDto[]>([]);
@@ -266,16 +270,32 @@ export default function GroupDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center" edges={["top"]}>
-        <ActivityIndicator color="#0d9488" />
+      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+        <View className="px-5 pt-6">
+          <SkeletonList count={5} type="activity" />
+        </View>
       </SafeAreaView>
     );
   }
 
   if (!group) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center" edges={["top"]}>
-        <Text className="text-lg text-muted-foreground font-sans">Group not found</Text>
+      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+        <View className="flex-row items-center px-4 py-3 border-b border-border">
+          <Button variant="ghost" size="icon" onPress={goBack}>
+            <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
+          </Button>
+        </View>
+        <View className="flex-1 items-center justify-center px-5">
+          <EmptyState
+            icon={Receipt}
+            iconColor="#94a3b8"
+            title="Group not found"
+            subtitle="This group may have been deleted or is no longer available."
+            actionLabel="Go Home"
+            onAction={() => router.replace("/(tabs)")}
+          />
+        </View>
       </SafeAreaView>
     );
   }
@@ -287,7 +307,7 @@ export default function GroupDetailScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
         <Button variant="ghost" size="icon" onPress={goBack}>
-          <ArrowLeft size={24} color="#0f172a" />
+          <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
         </Button>
         <Text className="text-lg font-sans-semibold text-foreground">
           {group.emoji ? `${group.emoji} ` : ""}{group.name}
@@ -524,7 +544,7 @@ export default function GroupDetailScreen() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
-              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#0f172a" }}
+              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#f1f5f9" : "#0f172a" }}
               placeholderTextColor="#94a3b8"
             />
             {searchQuery.length > 0 && (
@@ -647,7 +667,7 @@ export default function GroupDetailScreen() {
             <Pressable
               onPress={(e) => e.stopPropagation()}
               style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: isDark ? "#1e293b" : "#ffffff",
                 borderTopLeftRadius: 20,
                 borderTopRightRadius: 20,
                 padding: 24,
@@ -657,7 +677,7 @@ export default function GroupDetailScreen() {
             >
               {/* Modal header */}
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#0f172a" }}>
+                <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
                   Add Member
                 </Text>
                 <Pressable onPress={() => setShowAddMember(false)}>
@@ -687,8 +707,8 @@ export default function GroupDetailScreen() {
                             padding: 10,
                             borderRadius: 10,
                             borderWidth: 1,
-                            borderColor: "#e2e8f0",
-                            backgroundColor: "#f8fafc",
+                            borderColor: isDark ? "#334155" : "#e2e8f0",
+                            backgroundColor: isDark ? "#0f172a" : "#f8fafc",
                           }}
                         >
                           <Avatar
@@ -697,7 +717,7 @@ export default function GroupDetailScreen() {
                             size="sm"
                           />
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#0f172a" }}>
+                            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
                               {contact.name}
                               {contact.isGuest ? (
                                 <Text style={{ fontFamily: "Inter_400Regular", color: "#94a3b8" }}> {"\u00B7"} Guest</Text>
@@ -717,9 +737,9 @@ export default function GroupDetailScreen() {
                     </View>
                   </ScrollView>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
-                    <View style={{ flex: 1, height: 1, backgroundColor: "#e2e8f0" }} />
+                    <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
                     <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#94a3b8" }}>OR ADD SOMEONE NEW</Text>
-                    <View style={{ flex: 1, height: 1, backgroundColor: "#e2e8f0" }} />
+                    <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
                   </View>
                 </View>
               ) : null}
@@ -793,7 +813,7 @@ export default function GroupDetailScreen() {
           <Pressable
             onPress={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: "#ffffff",
+              backgroundColor: isDark ? "#1e293b" : "#ffffff",
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 24,
@@ -804,7 +824,7 @@ export default function GroupDetailScreen() {
           >
             {/* Header */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#0f172a" }}>
+              <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
                 Invite to {group.name}
               </Text>
               <Pressable onPress={() => { setShowShareModal(false); setShowQR(false); }}>
@@ -820,10 +840,10 @@ export default function GroupDetailScreen() {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 10,
-                  backgroundColor: "#f8fafc",
+                  backgroundColor: isDark ? "#0f172a" : "#f8fafc",
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: "#e2e8f0",
+                  borderColor: isDark ? "#334155" : "#e2e8f0",
                   paddingHorizontal: 16,
                   paddingVertical: 12,
                   width: "100%",
@@ -849,18 +869,18 @@ export default function GroupDetailScreen() {
                 <View
                   style={{
                     padding: 16,
-                    backgroundColor: "#ffffff",
+                    backgroundColor: isDark ? "#0f172a" : "#ffffff",
                     borderRadius: 16,
                     borderWidth: 1,
-                    borderColor: "#e2e8f0",
+                    borderColor: isDark ? "#334155" : "#e2e8f0",
                     alignItems: "center",
                   }}
                 >
                   <QRCode
                     value={getInviteUrl(group.inviteCode)}
                     size={180}
-                    color="#0f172a"
-                    backgroundColor="#ffffff"
+                    color={isDark ? "#f1f5f9" : "#0f172a"}
+                    backgroundColor={isDark ? "#0f172a" : "#ffffff"}
                   />
                 </View>
               ) : (
@@ -875,7 +895,7 @@ export default function GroupDetailScreen() {
                     paddingHorizontal: 16,
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: "#e2e8f0",
+                    borderColor: isDark ? "#334155" : "#e2e8f0",
                     width: "100%",
                   }}
                 >

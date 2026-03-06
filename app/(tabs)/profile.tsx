@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, Platform } from "react-native";
+import { View, Text, ScrollView, Pressable, Platform, Appearance, useColorScheme as useSystemColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useColorScheme } from "nativewind";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   User,
   CreditCard,
@@ -22,6 +22,8 @@ import { useUserProfile } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, formatDate } from "@/lib/utils";
 
+const DARK_MODE_KEY = "@splitr/dark_mode";
+
 const menuItems = [
   { icon: User, label: "Edit Profile", id: "profile" },
   { icon: CreditCard, label: "Payment Methods", id: "payment" },
@@ -34,10 +36,16 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { user } = useUser();
   const router = useRouter();
-  const { colorScheme, toggleColorScheme } = useColorScheme();
+  const colorScheme = useSystemColorScheme();
   const { data: apiUser = null } = useUserProfile();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const toast = useToast();
+
+  const handleToggleDarkMode = () => {
+    const next = colorScheme === "dark" ? "light" : "dark";
+    Appearance.setColorScheme(next);
+    AsyncStorage.setItem(DARK_MODE_KEY, next);
+  };
 
   const handleSignOut = () => {
     setShowSignOutModal(true);
@@ -49,16 +57,16 @@ export default function ProfileScreen() {
         router.push("/edit-profile");
         break;
       case "payment":
-        toast.info("Payment methods will be available in a future update.");
+        router.push("/payment-methods" as any);
         break;
       case "notifications":
         router.push("/notifications" as any);
         break;
       case "privacy":
-        toast.info("Privacy & security settings coming soon.");
+        router.push("/privacy-security" as any);
         break;
       case "help":
-        toast.info("Help & support coming soon.");
+        router.push("/help-support" as any);
         break;
     }
   };
@@ -112,7 +120,11 @@ export default function ProfileScreen() {
               <View className="w-px bg-border" />
               <View className="flex-1 items-center">
                 <Text className="text-xl font-sans-bold text-primary">
-                  {apiUser?.createdAt ? formatDate(apiUser.createdAt) : "—"}
+                  {apiUser?.createdAt
+                    ? formatDate(apiUser.createdAt)
+                    : user?.createdAt
+                    ? formatDate(new Date(user.createdAt).toISOString())
+                    : "—"}
                 </Text>
                 <Text className="text-xs text-muted-foreground font-sans">Member since</Text>
               </View>
@@ -129,7 +141,7 @@ export default function ProfileScreen() {
                 </View>
                 <Text className="text-sm font-sans-medium text-card-foreground">Dark Mode</Text>
               </View>
-              <ThemedSwitch checked={colorScheme === "dark"} onCheckedChange={() => toggleColorScheme()} />
+              <ThemedSwitch checked={colorScheme === "dark"} onCheckedChange={handleToggleDarkMode} />
             </View>
 
             {menuItems.map((item, index) => {

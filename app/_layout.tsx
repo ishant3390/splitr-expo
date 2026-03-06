@@ -4,7 +4,8 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
-import { useColorScheme } from "nativewind";
+import { Appearance } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { usersApi } from "@/lib/api";
 import { queryClient } from "@/lib/query";
@@ -60,15 +61,17 @@ function AuthGate() {
 
   useEffect(() => {
     if (!isSignedIn) return;
-    const sync = async () => {
+    const ensureUser = async () => {
       try {
         const token = await getToken();
-        if (token) await usersApi.sync(token);
+        if (token) {
+          await usersApi.me(token);
+        }
       } catch {
-        // sync failures are non-fatal
+        // user creation/fetch is non-fatal on startup
       }
     };
-    sync();
+    ensureUser();
   }, [isSignedIn]);
 
   return (
@@ -89,6 +92,9 @@ function AuthGate() {
       <Stack.Screen name="group/[id]" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="edit-profile" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="pending-expenses" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="help-support" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="privacy-security" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="payment-methods" options={{ animation: "slide_from_right" }} />
       <Stack.Screen
         name="settle-up"
         options={{
@@ -110,6 +116,15 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
+  // Restore persisted dark mode preference on app start
+  useEffect(() => {
+    AsyncStorage.getItem("@splitr/dark_mode").then((value) => {
+      if (value === "dark" || value === "light") {
+        Appearance.setColorScheme(value);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
@@ -125,7 +140,7 @@ export default function RootLayout() {
           <SafeAreaProvider>
             <ToastProvider>
               <NetworkProvider>
-                <StatusBar style="auto" />
+                <StatusBar style={Appearance.getColorScheme() === "dark" ? "light" : "dark"} />
                 <AuthGate />
               </NetworkProvider>
             </ToastProvider>

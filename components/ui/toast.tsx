@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
-import { View, Text, Pressable, Animated } from "react-native";
+import { View, Text, Pressable, Animated, useColorScheme } from "react-native";
 import { X, CheckCircle2, AlertTriangle, Info } from "lucide-react-native";
 
 type ToastType = "success" | "error" | "info";
@@ -30,16 +30,25 @@ const ICON_MAP = {
   info: { Icon: Info, color: "#0d9488" },
 };
 
-const BG_MAP = {
+const BG_MAP_LIGHT = {
   success: "#ecfdf5",
   error: "#fef2f2",
   info: "#f0fdfa",
 };
 
+const BG_MAP_DARK = {
+  success: "#064e3b",
+  error: "#450a0a",
+  info: "#042f2e",
+};
+
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
   const { Icon, color } = ICON_MAP[toast.type];
+  const bgMap = isDark ? BG_MAP_DARK : BG_MAP_LIGHT;
 
   React.useEffect(() => {
     Animated.parallel([
@@ -62,7 +71,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       style={{
         opacity,
         transform: [{ translateY }],
-        backgroundColor: BG_MAP[toast.type],
+        backgroundColor: bgMap[toast.type],
         borderWidth: 1,
         borderColor: color + "30",
         borderRadius: 12,
@@ -84,7 +93,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
           flex: 1,
           marginLeft: 10,
           fontSize: 14,
-          color: "#1e293b",
+          color: isDark ? "#f1f5f9" : "#1e293b",
           fontFamily: "Inter_500Medium",
         }}
         numberOfLines={3}

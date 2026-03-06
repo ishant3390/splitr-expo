@@ -82,7 +82,7 @@ export const usersApi = {
     request<void>("/v1/users/sync", { method: "POST" }, token),
 
   balance: (token: string) =>
-    request<import("./types").UserBalanceDto>("/v1/users/me/balance", undefined, token),
+    request<import("./types").UserBalanceRawDto>("/v1/users/me/balance", undefined, token),
 };
 
 // ---- Groups ----

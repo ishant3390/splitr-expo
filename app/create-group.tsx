@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Share,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -84,6 +85,7 @@ export default function CreateGroupScreen() {
   const goBack = () =>
     router.canGoBack() ? router.back() : router.replace("/(tabs)/groups");
   const { getToken } = useAuth();
+  const isDark = useColorScheme() === "dark";
   const toast = useToast();
 
   const [groupName, setGroupName] = useState("");
@@ -233,7 +235,7 @@ export default function CreateGroupScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
           <Button variant="ghost" size="icon" onPress={goBack}>
-            <ArrowLeft size={24} color="#0f172a" />
+            <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
           </Button>
           <Text className="text-lg font-sans-semibold text-foreground">
             New Group
@@ -521,7 +523,7 @@ export default function CreateGroupScreen() {
           <Pressable
             onPress={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: "#ffffff",
+              backgroundColor: isDark ? "#1e293b" : "#ffffff",
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 24,
@@ -544,7 +546,7 @@ export default function CreateGroupScreen() {
               >
                 <Check size={32} color="#10b981" />
               </View>
-              <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#0f172a" }}>
+              <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
                 Group Created!
               </Text>
               <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", textAlign: "center" }}>
@@ -560,10 +562,10 @@ export default function CreateGroupScreen() {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 10,
-                  backgroundColor: "#f8fafc",
+                  backgroundColor: isDark ? "#0f172a" : "#f8fafc",
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: "#e2e8f0",
+                  borderColor: isDark ? "#334155" : "#e2e8f0",
                   paddingHorizontal: 16,
                   paddingVertical: 12,
                   width: "100%",
@@ -589,18 +591,18 @@ export default function CreateGroupScreen() {
                 <View
                   style={{
                     padding: 16,
-                    backgroundColor: "#ffffff",
+                    backgroundColor: isDark ? "#0f172a" : "#ffffff",
                     borderRadius: 16,
                     borderWidth: 1,
-                    borderColor: "#e2e8f0",
+                    borderColor: isDark ? "#334155" : "#e2e8f0",
                     alignItems: "center",
                   }}
                 >
                   <QRCode
                     value={getInviteUrl(createdGroup.inviteCode)}
                     size={180}
-                    color="#0f172a"
-                    backgroundColor="#ffffff"
+                    color={isDark ? "#f1f5f9" : "#0f172a"}
+                    backgroundColor={isDark ? "#0f172a" : "#ffffff"}
                   />
                 </View>
               ) : (
@@ -615,7 +617,7 @@ export default function CreateGroupScreen() {
                     paddingHorizontal: 16,
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: "#e2e8f0",
+                    borderColor: isDark ? "#334155" : "#e2e8f0",
                     width: "100%",
                   }}
                 >

@@ -25,14 +25,18 @@ import {
   Gift,
   Briefcase,
   Wifi,
+  AlertTriangle,
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useUserBalance } from "@/lib/hooks";
 import { useNetwork } from "@/components/NetworkProvider";
 import { formatCents, formatDate, getInitials } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AnimatedPressable } from "@/components/ui/animated-pressable";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { CheckCircle, Users, Clock } from "lucide-react-native";
 import type { ActivityLogDto } from "@/lib/types";
 
@@ -79,13 +83,17 @@ export default function HomeScreen() {
   const {
     data: activity = [],
     isLoading: loading,
+    error: activityError,
     refetch: refetchActivity,
   } = useUserActivity();
 
   const {
     data: balanceData,
+    error: balanceError,
     refetch: refetchBalance,
   } = useUserBalance();
+
+  const hasError = !!(activityError || balanceError) && !loading && activity.length === 0;
 
   const totalOwedCents = balanceData?.totalOwedCents ?? 0;
   const totalOwesCents = balanceData?.totalOwesCents ?? 0;
@@ -173,9 +181,13 @@ export default function HomeScreen() {
             <Text className="text-sm text-primary-foreground/70 font-sans-medium mb-1">
               Net Balance
             </Text>
-            <Text selectable className="text-3xl font-sans-bold text-primary-foreground mb-4" style={{ fontVariant: ["tabular-nums"] }}>
-              {formatCents(totalOwedCents - totalOwesCents)}
-            </Text>
+            <AnimatedNumber
+              value={(totalOwedCents - totalOwesCents) / 100}
+              formatter={(n) => formatCents(Math.round(n * 100))}
+              selectable
+              className="text-3xl font-sans-bold text-primary-foreground mb-4"
+              style={{ fontVariant: ["tabular-nums"] }}
+            />
             <View className="flex-row gap-6">
               <View className="flex-row items-center gap-2">
                 <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
@@ -271,7 +283,16 @@ export default function HomeScreen() {
               Recent Activity
             </Text>
             {loading ? (
-              <ActivityIndicator color="#0d9488" />
+              <SkeletonList count={3} type="activity" />
+            ) : hasError ? (
+              <EmptyState
+                icon={AlertTriangle}
+                iconColor="#ef4444"
+                title="Something went wrong"
+                subtitle="We couldn't load your data. Pull down to try again."
+                actionLabel="Retry"
+                onAction={() => { refetchActivity(); refetchBalance(); }}
+              />
             ) : (() => {
               // Filter activity by selected category
               const filtered = selectedCategory === "all"
@@ -348,10 +369,9 @@ export default function HomeScreen() {
                       key={item.id}
                       entering={FadeInDown.delay(idx * 50).duration(300).springify()}
                     >
-                    <Pressable
+                    <AnimatedPressable
                       onPress={() => { hapticLight(); destination && router.push(destination as any); }}
                       disabled={!destination}
-                      className="active:opacity-70"
                     >
                       <Card className="p-4">
                         <View className="flex-row items-center gap-3">
@@ -404,7 +424,7 @@ export default function HomeScreen() {
                           </View>
                         </View>
                       </Card>
-                    </Pressable>
+                    </AnimatedPressable>
                     </Animated.View>
                   );
                 })}

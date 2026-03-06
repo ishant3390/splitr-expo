@@ -25,6 +25,8 @@ import { dedupeMembers, computeBalancesFromMembers } from "./screen-helpers";
 import type {
   UserDto,
   UserBalanceDto,
+  UserBalanceRawDto,
+  CurrencyAmount,
   GroupDto,
   GroupMemberDto,
   ActivityLogDto,
@@ -75,7 +77,16 @@ export function useUserBalance() {
       const token = await fetchToken();
       try {
         // Try aggregate endpoint first
-        return await usersApi.balance(token);
+        const raw = await usersApi.balance(token);
+        // Normalize multi-currency arrays to single totals (sum all currencies)
+        const sumAmounts = (arr?: CurrencyAmount[]) =>
+          (arr ?? []).reduce((s, c) => s + (c.amount ?? 0), 0);
+        return {
+          totalOwedCents: sumAmounts(raw.totalOwed),
+          totalOwesCents: sumAmounts(raw.totalOwing),
+          netBalanceCents: sumAmounts(raw.totalOwed) - sumAmounts(raw.totalOwing),
+          groupBalances: raw.groupBalances,
+        };
       } catch {
         // Fallback: N+1
         const groups = await groupsApi.list(token);

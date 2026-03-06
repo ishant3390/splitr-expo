@@ -1,0 +1,300 @@
+import React, { useEffect } from "react";
+import { View, Text, Pressable, StyleSheet, Dimensions } from "react-native";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withSequence,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useColorScheme } from "react-native";
+import { Plus } from "lucide-react-native";
+import { hapticSelection, hapticMedium } from "@/lib/haptics";
+import { useRouter } from "expo-router";
+import {
+  HomeIcon,
+  GroupsIcon,
+  ActivityIcon,
+  ProfileIcon,
+} from "@/components/icons/tab-icons";
+
+const ICON_MAP: Record<string, typeof HomeIcon> = {
+  index: HomeIcon,
+  groups: GroupsIcon,
+  activity: ActivityIcon,
+  profile: ProfileIcon,
+};
+
+const LABEL_MAP: Record<string, string> = {
+  index: "Home",
+  groups: "Groups",
+  activity: "Activity",
+  profile: "Profile",
+};
+
+const ACTIVE_COLOR = "#0d9488";
+const INACTIVE_COLOR = "#94a3b8";
+
+const SPRING_BOUNCY = { damping: 10, stiffness: 200, mass: 0.6 };
+const SPRING_SMOOTH = { damping: 14, stiffness: 150, mass: 0.8 };
+
+/**
+ * Airbnb-style animated tab icon:
+ * - Outline when inactive, filled when active
+ * - Overshoot bounce on selection (scale 1 -> 1.3 -> 1.1)
+ * - Subtle lift (translateY) when active
+ * - Crossfade between outline/filled via opacity
+ */
+function TabIcon({ name, isFocused }: { name: string; isFocused: boolean }) {
+  const scale = useSharedValue(1);
+  const translateY = useSharedValue(0);
+  const filledOpacity = useSharedValue(isFocused ? 1 : 0);
+  const outlineOpacity = useSharedValue(isFocused ? 0 : 1);
+
+  useEffect(() => {
+    if (isFocused) {
+      // Overshoot bounce: 1 -> 1.3 -> 1.1 (Airbnb signature)
+      scale.value = withSequence(
+        withSpring(1.3, { damping: 6, stiffness: 250, mass: 0.5 }),
+        withSpring(1.1, SPRING_SMOOTH)
+      );
+      translateY.value = withSpring(-3, SPRING_SMOOTH);
+      filledOpacity.value = withTiming(1, { duration: 150 });
+      outlineOpacity.value = withTiming(0, { duration: 100 });
+    } else {
+      scale.value = withSpring(1, SPRING_SMOOTH);
+      translateY.value = withSpring(0, SPRING_SMOOTH);
+      filledOpacity.value = withTiming(0, { duration: 200 });
+      outlineOpacity.value = withTiming(1, { duration: 200 });
+    }
+  }, [isFocused]);
+
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }, { translateY: translateY.value }],
+  }));
+
+  const filledStyle = useAnimatedStyle(() => ({
+    opacity: filledOpacity.value,
+    position: "absolute" as const,
+  }));
+
+  const outlineStyle = useAnimatedStyle(() => ({
+    opacity: outlineOpacity.value,
+  }));
+
+  const IconComponent = ICON_MAP[name];
+  if (!IconComponent) return null;
+
+  return (
+    <Animated.View style={[containerStyle, { width: 24, height: 24 }]}>
+      {/* Outline (inactive) layer */}
+      <Animated.View style={outlineStyle}>
+        <IconComponent size={22} color={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR} filled={false} />
+      </Animated.View>
+      {/* Filled (active) layer - overlaid on top */}
+      <Animated.View style={filledStyle}>
+        <IconComponent size={22} color={ACTIVE_COLOR} filled={true} />
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+function TabLabel({ name, isFocused }: { name: string; isFocused: boolean }) {
+  const opacity = useSharedValue(isFocused ? 1 : 0.6);
+  const scale = useSharedValue(isFocused ? 1 : 0.95);
+
+  useEffect(() => {
+    opacity.value = withTiming(isFocused ? 1 : 0.6, { duration: 200 });
+    scale.value = withSpring(isFocused ? 1 : 0.95, SPRING_SMOOTH);
+  }, [isFocused]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.Text
+      style={[
+        styles.label,
+        {
+          color: isFocused ? ACTIVE_COLOR : INACTIVE_COLOR,
+          fontFamily: isFocused ? "Inter_600SemiBold" : "Inter_500Medium",
+        },
+        animatedStyle,
+      ]}
+    >
+      {LABEL_MAP[name] ?? name}
+    </Animated.Text>
+  );
+}
+
+function FABButton() {
+  const router = useRouter();
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    hapticMedium();
+    scale.value = withSequence(
+      withSpring(0.85, { damping: 6, stiffness: 200 }),
+      withSpring(1, { damping: 8, stiffness: 120 })
+    );
+    router.push("/(tabs)/add");
+  };
+
+  return (
+    <View style={styles.fabContainer}>
+      <Animated.View style={[styles.fabShadow, animatedStyle]}>
+        <Pressable onPress={handlePress} style={styles.fab}>
+          <Plus size={24} color="#ffffff" strokeWidth={2.5} />
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
+
+export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  // Sliding indicator
+  const screenWidth = Dimensions.get("window").width;
+  const realTabs = state.routes.filter((r) => r.name !== "add");
+  const tabWidth = screenWidth / (realTabs.length + 1);
+  const indicatorX = useSharedValue(0);
+  const indicatorWidth = useSharedValue(20);
+
+  useEffect(() => {
+    const activeRoute = state.routes[state.index];
+    const realIndex = realTabs.findIndex((r) => r.name === activeRoute.name);
+    if (realIndex === -1) return;
+    const posIndex = realIndex < 2 ? realIndex : realIndex + 1;
+    indicatorX.value = withSpring(posIndex * tabWidth + tabWidth / 2 - 10, SPRING_BOUNCY);
+    // Brief stretch on move
+    indicatorWidth.value = withSequence(
+      withSpring(28, { damping: 8, stiffness: 250 }),
+      withSpring(20, SPRING_SMOOTH)
+    );
+  }, [state.index]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+    width: indicatorWidth.value,
+  }));
+
+  return (
+    <View
+      style={[
+        styles.container,
+        {
+          paddingBottom: insets.bottom || 16,
+          backgroundColor: isDark ? "#0f172a" : "#ffffff",
+          borderTopColor: isDark ? "#1e293b" : "#f1f5f9",
+        },
+      ]}
+    >
+      {/* Active indicator pill */}
+      <Animated.View style={[styles.indicator, indicatorStyle]}>
+        <View style={[styles.indicatorPill, { backgroundColor: ACTIVE_COLOR }]} />
+      </Animated.View>
+
+      {/* Tab items */}
+      <View style={styles.tabRow}>
+        {state.routes.map((route, index) => {
+          if (route.name === "add") {
+            return <FABButton key="add" />;
+          }
+
+          const isFocused = state.index === index;
+
+          const onPress = () => {
+            hapticSelection();
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <Pressable
+              key={route.key}
+              onPress={onPress}
+              style={styles.tab}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={LABEL_MAP[route.name]}
+            >
+              <TabIcon name={route.name} isFocused={isFocused} />
+              <TabLabel name={route.name} isFocused={isFocused} />
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    borderTopWidth: 1,
+    paddingTop: 8,
+  },
+  tabRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  tab: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 2,
+  },
+  label: {
+    fontSize: 10,
+  },
+  fabContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: -20,
+  },
+  fabShadow: {
+    shadowColor: "#0d9488",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fab: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#0d9488",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  indicator: {
+    position: "absolute",
+    top: 0,
+    height: 3,
+    zIndex: 1,
+  },
+  indicatorPill: {
+    width: "100%",
+    height: 3,
+    borderRadius: 1.5,
+  },
+});

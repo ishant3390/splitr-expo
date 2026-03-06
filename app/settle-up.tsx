@@ -9,6 +9,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   RefreshControl,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -33,6 +34,7 @@ import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
 import { getPaymentMethodLabel, getPaymentMethodEmoji } from "@/lib/screen-helpers";
+import { SkeletonList } from "@/components/ui/skeleton";
 import type {
   SettlementDto,
   SettlementSuggestionDto,
@@ -54,6 +56,8 @@ export default function SettleUpScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const { getToken } = useAuth();
   const toast = useToast();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const [group, setGroup] = useState<GroupDto | null>(null);
   const [members, setMembers] = useState<GroupMemberDto[]>([]);
@@ -190,11 +194,10 @@ export default function SettleUpScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        className="flex-1 bg-background items-center justify-center"
-        edges={["top"]}
-      >
-        <ActivityIndicator color="#0d9488" />
+      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+        <View className="px-5 pt-6">
+          <SkeletonList count={4} type="activity" />
+        </View>
       </SafeAreaView>
     );
   }
@@ -204,7 +207,7 @@ export default function SettleUpScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
         <Button variant="ghost" size="icon" onPress={goBack}>
-          <ArrowLeft size={24} color="#0f172a" />
+          <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
         </Button>
         <Text className="text-lg font-sans-semibold text-foreground">
           Settle Up
@@ -448,7 +451,7 @@ export default function SettleUpScreen() {
             <Pressable
               onPress={(e) => e.stopPropagation()}
               style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: isDark ? "#1e293b" : "#ffffff",
                 borderTopLeftRadius: 20,
                 borderTopRightRadius: 20,
                 padding: 24,

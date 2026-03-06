@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
+import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth, useUser } from "@clerk/clerk-expo";
@@ -21,6 +22,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SkeletonList } from "@/components/ui/skeleton";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { groupsApi, categoriesApi } from "@/lib/api";
@@ -305,8 +307,10 @@ export default function AddExpenseScreen() {
 
   if (groupsLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center" edges={["top"]}>
-        <ActivityIndicator color="#0d9488" />
+      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+        <View className="px-5 pt-6">
+          <SkeletonList count={4} type="activity" />
+        </View>
       </SafeAreaView>
     );
   }
@@ -318,17 +322,19 @@ export default function AddExpenseScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         {/* Header */}
-        <View className="flex-row items-center justify-between px-5 py-3 border-b border-border">
-          <Pressable onPress={goBack}>
-            <Text className="text-base font-sans-medium text-muted-foreground">Cancel</Text>
-          </Pressable>
-          <Text className="text-lg font-sans-semibold text-foreground">Add Expense</Text>
-          <Pressable onPress={handleSubmit} disabled={submitting}>
-            <Text className="text-base font-sans-semibold text-primary">
-              {submitting ? "Saving..." : "Save"}
-            </Text>
-          </Pressable>
-        </View>
+        <Animated.View entering={FadeIn.duration(300)} className="border-b border-border">
+          <View className="flex-row items-center justify-between px-5 py-3">
+            <Pressable onPress={goBack} hitSlop={12}>
+              <Text className="text-base font-sans-medium text-muted-foreground">Cancel</Text>
+            </Pressable>
+            <Text className="text-lg font-sans-semibold text-foreground">Add Expense</Text>
+            <Pressable onPress={handleSubmit} disabled={submitting} hitSlop={12}>
+              <Text className="text-base font-sans-semibold text-primary">
+                {submitting ? "Saving..." : "Save"}
+              </Text>
+            </Pressable>
+          </View>
+        </Animated.View>
 
         <ScrollView
           className="flex-1"
@@ -337,42 +343,53 @@ export default function AddExpenseScreen() {
           keyboardShouldPersistTaps="handled"
           contentInsetAdjustmentBehavior="automatic"
         >
-          {/* Amount */}
-          <View className="items-center py-8">
-            <TextInput
-              ref={amountInputRef}
-              value={amount ? `$${amount}` : ""}
-              onChangeText={(val) => {
-                // Strip the $ prefix before processing
-                const raw = val.startsWith("$") ? val.slice(1) : val;
-                if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) {
-                  setAmount(raw);
-                }
-              }}
-              keyboardType="decimal-pad"
-              placeholder="$0"
-              placeholderTextColor="#94a3b8"
-              className="text-foreground"
-              style={{
-                fontSize: 56,
-                fontWeight: "700",
-                padding: 0,
-                textAlign: "center",
-                fontVariant: ["tabular-nums"],
-              }}
-            />
-          </View>
+          {/* Amount — hero section */}
+          <Animated.View entering={FadeInDown.duration(500).springify()}>
+            <View className="items-center py-6 mx-[-20] px-5 bg-primary/[0.03] dark:bg-primary/[0.08] rounded-3xl">
+              <Text className="text-xs font-sans-medium text-muted-foreground mb-2 uppercase tracking-wider">
+                Amount
+              </Text>
+              <TextInput
+                ref={amountInputRef}
+                value={amount ? `$${amount}` : ""}
+                onChangeText={(val) => {
+                  const raw = val.startsWith("$") ? val.slice(1) : val;
+                  if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) {
+                    setAmount(raw);
+                  }
+                }}
+                keyboardType="decimal-pad"
+                placeholder="$0"
+                placeholderTextColor="#94a3b8"
+                className="text-foreground"
+                style={{
+                  fontSize: 56,
+                  fontWeight: "700",
+                  padding: 0,
+                  textAlign: "center",
+                  fontVariant: ["tabular-nums"],
+                }}
+              />
+              {selectedGroup && (
+                <Text className="text-xs font-sans text-muted-foreground mt-2">
+                  in {selectedGroup.name}
+                </Text>
+              )}
+            </View>
+          </Animated.View>
 
           {/* Description */}
+          <Animated.View entering={FadeInDown.delay(100).duration(400).springify()}>
           <Input
             label="Description"
             placeholder="What was this for?"
             value={description}
             onChangeText={setDescription}
           />
+          </Animated.View>
 
           {/* Category */}
-          <View>
+          <Animated.View entering={FadeInDown.delay(200).duration(400).springify()}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Category</Text>
             {categories.length === 0 ? (
               <ActivityIndicator color="#0d9488" />
@@ -403,10 +420,10 @@ export default function AddExpenseScreen() {
                 })}
               </View>
             )}
-          </View>
+          </Animated.View>
 
           {/* Group selector — compact chip style, auto-selects first group */}
-          <View>
+          <Animated.View entering={FadeInDown.delay(300).duration(400).springify()}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Group</Text>
             <Pressable onPress={() => setShowGroupPicker(!showGroupPicker)}>
               <Card className="p-3.5 flex-row items-center justify-between">
@@ -454,7 +471,7 @@ export default function AddExpenseScreen() {
                 </Pressable>
               </Card>
             )}
-          </View>
+          </Animated.View>
 
           {/* Paid by */}
           {selectedGroup && members.length > 0 && (
@@ -602,7 +619,8 @@ export default function AddExpenseScreen() {
                                   keyboardType="decimal-pad"
                                   placeholder="0"
                                   placeholderTextColor="#94a3b8"
-                                  style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: "#0f172a", fontFamily: "Inter_400Regular" }}
+                                  style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", fontFamily: "Inter_400Regular" }}
+                                  className="text-foreground"
                                 />
                                 <Text className="text-sm text-muted-foreground font-sans pr-2">%</Text>
                               </View>
@@ -620,7 +638,8 @@ export default function AddExpenseScreen() {
                                   keyboardType="decimal-pad"
                                   placeholder="0.00"
                                   placeholderTextColor="#94a3b8"
-                                  style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: "#0f172a", fontFamily: "Inter_400Regular" }}
+                                  style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", fontFamily: "Inter_400Regular" }}
+                                  className="text-foreground"
                                 />
                               </View>
                             </Pressable>

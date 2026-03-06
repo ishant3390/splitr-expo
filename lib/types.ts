@@ -28,6 +28,23 @@ export interface UpdateUserRequest {
   preferences?: UserPreferences;
 }
 
+export interface CurrencyAmount {
+  currency: string;
+  amount: number;
+}
+
+/** Raw shape from GET /v1/users/me/balance (multi-currency) */
+export interface UserBalanceRawDto {
+  totalOwed: CurrencyAmount[];
+  totalOwing: CurrencyAmount[];
+  groupBalances?: Array<{
+    groupId: string;
+    groupName: string;
+    balanceCents: number;
+  }>;
+}
+
+/** Normalized single-currency balance used by the UI */
 export interface UserBalanceDto {
   totalOwedCents: number;
   totalOwesCents: number;
@@ -223,7 +240,10 @@ export interface Pagination {
 
 export interface ExpenseSummary {
   totalCount?: number;
+  totals?: CurrencyAmount[];
+  /** @deprecated Use totals[] instead */
   totalAmount?: number;
+  /** @deprecated Use totals[] instead */
   currency?: string;
 }
 
