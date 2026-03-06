@@ -46,7 +46,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { groupsApi, contactsApi, inviteApi } from "@/lib/api";
+import { groupsApi, contactsApi, inviteApi, expensesApi } from "@/lib/api";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -54,6 +54,7 @@ import { hapticLight, hapticSuccess, hapticWarning, hapticSelection } from "@/li
 import { dedupeMembers, aggregateByPerson, aggregateByCategory, filterExpenses, sortExpenses, resolvePayerName } from "@/lib/screen-helpers";
 import * as Clipboard from "expo-clipboard";
 import { SkeletonList } from "@/components/ui/skeleton";
+import { SwipeableRow } from "@/components/ui/swipeable-row";
 import type { GroupDto, GroupMemberDto, ExpenseDto, ExpenseCategory, ContactDto } from "@/lib/types";
 
 const iconMap: Record<ExpenseCategory, typeof Utensils> = {
@@ -110,6 +111,10 @@ export default function GroupDetailScreen() {
   // Remove member state
   const [memberToRemove, setMemberToRemove] = useState<GroupMemberDto | null>(null);
   const [removingMember, setRemovingMember] = useState(false);
+
+  // Delete expense state
+  const [expenseToDelete, setExpenseToDelete] = useState<ExpenseDto | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState(false);
 
   const loadData = async () => {
     try {
@@ -230,6 +235,23 @@ export default function GroupDetailScreen() {
     } finally {
       setRemovingMember(false);
       setMemberToRemove(null);
+    }
+  };
+
+  const handleDeleteExpense = async () => {
+    if (!expenseToDelete) return;
+    setDeletingExpense(true);
+    try {
+      const token = await getToken();
+      await expensesApi.delete(expenseToDelete.id, token!);
+      hapticSuccess();
+      toast.success("Expense deleted.");
+      setExpenses((prev) => prev.filter((e) => e.id !== expenseToDelete.id));
+      setExpenseToDelete(null);
+    } catch {
+      toast.error("Failed to delete expense.");
+    } finally {
+      setDeletingExpense(false);
     }
   };
 
@@ -598,6 +620,19 @@ export default function GroupDetailScreen() {
                     key={expense.id}
                     entering={FadeInDown.delay(idx * 50).duration(300).springify()}
                   >
+                  <SwipeableRow
+                    onEdit={() => {
+                      hapticLight();
+                      router.push({
+                        pathname: "/edit-expense/[id]",
+                        params: { id: expense.id, groupId: id },
+                      });
+                    }}
+                    onDelete={() => {
+                      hapticWarning();
+                      setExpenseToDelete(expense);
+                    }}
+                  >
                   <Pressable
                     onPress={() => {
                       hapticLight();
@@ -632,6 +667,7 @@ export default function GroupDetailScreen() {
                       </View>
                     </Card>
                   </Pressable>
+                  </SwipeableRow>
                   </Animated.View>
                 );
               })}
@@ -650,6 +686,18 @@ export default function GroupDetailScreen() {
         destructive
         onConfirm={handleRemoveMember}
         onCancel={() => setMemberToRemove(null)}
+      />
+
+      {/* Delete Expense Confirmation */}
+      <ConfirmModal
+        visible={!!expenseToDelete}
+        title="Delete Expense"
+        message={`Delete "${expenseToDelete?.description ?? "this expense"}"? This will update all balances.`}
+        confirmLabel={deletingExpense ? "Deleting..." : "Delete"}
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={handleDeleteExpense}
+        onCancel={() => setExpenseToDelete(null)}
       />
 
       {/* Add Member Modal */}

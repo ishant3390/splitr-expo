@@ -25,6 +25,14 @@
 | 19 | TextInput text invisible in dark mode | Medium | Fixed | 2026-03-06 | Fixed hardcoded `color: "#0f172a"` in add.tsx split inputs, group/[id].tsx search, notifications.tsx |
 | 20 | No error states when API calls fail | High | Fixed | 2026-03-06 | Added error EmptyState with retry button to Home, Groups, and Activity screens |
 
+## Recently Fixed
+
+| # | Issue | Severity | Status | Fixed Date | Details |
+|---|-------|----------|--------|------------|---------|
+| 28 | Swipe-to-delete on expenses | Medium | Fixed | 2026-03-06 | iOS-style SwipeableRow with Edit/Delete actions on expense cards in group detail; ConfirmModal for delete confirmation |
+| 29 | AnimatedNumber always animates from 0 | Medium | Fixed | 2026-03-06 | Rewritten to track previous value via useRef and animate between old→new with cubic ease-out |
+| 30 | Airbnb-style animated tab bar icons | Medium | Fixed | 2026-03-06 | Custom SVG icons with outline/filled variants, overshoot bounce, crossfade, indicator pill stretch |
+
 ## Open Issues
 
 | # | Issue | Severity | Status | Reported | Details |
@@ -36,6 +44,19 @@
 | 25 | Spring-based modal animations | Low | Open | 2026-03-06 | All modals use basic `animationType="slide"`; spring physics would feel more premium |
 | 26 | Real-time split validation | Low | Open | 2026-03-06 | Percentage/fixed splits only validate on submit; inline feedback would prevent errors |
 | 27 | Some remaining hardcoded colors in edge cases | Low | Open | 2026-03-06 | Contact item "Add" button, helper text in modals still have some hardcoded colors |
+
+## Backlog
+
+| # | Feature | Priority | Details |
+|---|---------|----------|---------|
+| B1 | Onboarding walkthrough | Medium | First-time user tour highlighting key features (add expense, create group, settle up) |
+| B2 | Smart expense suggestions | Low | AI-powered auto-fill based on past expenses (description, category, split) |
+| B3 | Group avatars with gradients | Low | Auto-generated gradient avatars based on group name/type instead of plain initials |
+| B4 | Real receipt scanning (OCR) | Medium | Replace mock with actual OCR endpoint; extract amount, description, date from photo |
+| B5 | Push notifications | Medium | Expo Notifications setup, token registration, expense/settlement/invite alerts |
+| B6 | Activity feed for group deletions | Low | Backend: log group_deleted events so they appear in activity feed |
+| B7 | Expense attachments/photos | Low | Attach receipt photos to expenses for record-keeping |
+| B8 | Recurring expenses | Low | Auto-create monthly/weekly expenses (rent, subscriptions) |
 
 ## Notes
 

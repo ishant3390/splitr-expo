@@ -171,6 +171,11 @@ export default function AddExpenseScreen() {
       toast.error("Please enter a valid amount.");
       return;
     }
+    if (amountToCents(parsedAmount) < 1) {
+      hapticError();
+      toast.error("Amount must be at least $0.01.");
+      return;
+    }
 
     // Use category name as fallback description
     const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
@@ -178,6 +183,11 @@ export default function AddExpenseScreen() {
     if (!finalDescription) {
       hapticError();
       toast.error("Please enter a description or select a category.");
+      return;
+    }
+    if (finalDescription.length > 255) {
+      hapticError();
+      toast.error("Description must be 255 characters or less.");
       return;
     }
 
@@ -385,6 +395,7 @@ export default function AddExpenseScreen() {
             placeholder="What was this for?"
             value={description}
             onChangeText={setDescription}
+            maxLength={255}
           />
           </Animated.View>
 

@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { Appearance } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -134,19 +135,21 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-        <ClerkLoaded>
-          <SafeAreaProvider>
-            <ToastProvider>
-              <NetworkProvider>
-                <StatusBar style={Appearance.getColorScheme() === "dark" ? "light" : "dark"} />
-                <AuthGate />
-              </NetworkProvider>
-            </ToastProvider>
-          </SafeAreaProvider>
-        </ClerkLoaded>
-      </ClerkProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+          <ClerkLoaded>
+            <SafeAreaProvider>
+              <ToastProvider>
+                <NetworkProvider>
+                  <StatusBar style={Appearance.getColorScheme() === "dark" ? "light" : "dark"} />
+                  <AuthGate />
+                </NetworkProvider>
+              </ToastProvider>
+            </SafeAreaProvider>
+          </ClerkLoaded>
+        </ClerkProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
