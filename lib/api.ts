@@ -25,6 +25,9 @@ import type {
   SettlementSuggestionDto,
   CreateSettlementRequest,
   UpdateSettlementRequest,
+  GroupInvitePreviewDto,
+  JoinGroupRequest,
+  ContactDto,
 } from "./types";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8085/api";
@@ -164,6 +167,44 @@ export const groupsApi = {
       token
     );
     return flattenMap(data);
+  },
+};
+
+// ---- Invite / Join ----
+
+export const inviteApi = {
+  /** Get group preview by invite code (no auth required) */
+  preview: (inviteCode: string) =>
+    request<GroupInvitePreviewDto>(`/v1/groups/invite/${inviteCode}`),
+
+  /** Join a group using an invite code */
+  join: (data: JoinGroupRequest, token: string) =>
+    request<GroupMemberDto>(
+      `/v1/groups/join`,
+      { method: "POST", body: JSON.stringify(data) },
+      token
+    ),
+
+  /** Regenerate invite code for a group */
+  regenerate: (groupId: string, token: string) =>
+    request<GroupDto>(
+      `/v1/groups/${groupId}/invite/regenerate`,
+      { method: "POST" },
+      token
+    ),
+};
+
+// ---- Contacts ----
+
+export const contactsApi = {
+  /** Get deduplicated contacts from all user's groups */
+  list: async (token: string): Promise<ContactDto[]> => {
+    const data = await request<ContactDto[] | Record<string, ContactDto[]>>(
+      "/v1/users/me/contacts",
+      undefined,
+      token
+    );
+    return flattenMap(data as Record<string, ContactDto[]>);
   },
 };
 

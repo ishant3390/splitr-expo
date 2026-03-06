@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.splitr.app",
+      "associatedDomains": ["applinks:splitr.app"],
       "infoPlist": {
         "NSCameraUsageDescription": "Splitr needs camera access to scan receipts.",
         "NSPhotoLibraryUsageDescription": "Splitr needs photo library access to select receipt images."
@@ -27,7 +28,21 @@
         "backgroundColor": "#0d9488"
       },
       "package": "com.splitr.app",
-      "permissions": ["CAMERA"]
+      "permissions": ["CAMERA"],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "splitr.app",
+              "pathPrefix": "/invite"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

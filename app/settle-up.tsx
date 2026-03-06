@@ -8,6 +8,7 @@ import {
   Modal,
   Platform,
   KeyboardAvoidingView,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -31,6 +32,7 @@ import { settlementsApi, groupsApi } from "@/lib/api";
 import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
+import { getPaymentMethodLabel, getPaymentMethodEmoji } from "@/lib/screen-helpers";
 import type {
   SettlementDto,
   SettlementSuggestionDto,
@@ -71,6 +73,9 @@ export default function SettleUpScreen() {
   // Delete state
   const [settlementToDelete, setSettlementToDelete] = useState<SettlementDto | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Refresh
+  const [refreshing, setRefreshing] = useState(false);
 
   // Tab
   const [activeTab, setActiveTab] = useState<"suggestions" | "history">("suggestions");
@@ -267,6 +272,7 @@ export default function SettleUpScreen() {
         contentContainerClassName="px-5 pb-8"
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await loadData(); setRefreshing(false); }} tintColor="#0d9488" />}
       >
         {activeTab === "suggestions" ? (
           <>

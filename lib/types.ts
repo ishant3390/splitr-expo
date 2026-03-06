@@ -70,6 +70,7 @@ export interface UpdateGroupRequest {
   description?: string;
   defaultCurrency?: string;
   simplifyDebts?: boolean;
+  isArchived?: boolean;
   version?: number;
 }
 
@@ -287,6 +288,32 @@ export interface UpdateSettlementRequest {
   settlementDate?: string;
   notes?: string;
   version?: number;
+}
+
+// ---- Invite / Join ----
+
+export interface GroupInvitePreviewDto {
+  groupId: string;
+  name: string;
+  emoji?: string;
+  groupType?: string;
+  memberCount: number;
+  isArchived?: boolean;
+}
+
+export interface JoinGroupRequest {
+  inviteCode: string;
+}
+
+// ---- Contacts ----
+
+export interface ContactDto {
+  userId?: string;
+  guestUserId?: string;
+  name: string;
+  email?: string;
+  avatarUrl?: string;
+  isGuest: boolean;
 }
 
 // ---- Legacy aliases for backward compat ----

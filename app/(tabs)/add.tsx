@@ -27,61 +27,8 @@ import { groupsApi, categoriesApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
+import { getCategoryEmoji, initSplitValues as computeSplitValues, dedupeMembers } from "@/lib/screen-helpers";
 import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
-
-// Map backend icon names to emojis
-const ICON_TO_EMOJI: Record<string, string> = {
-  restaurant: "🍕",
-  "food_and_drink": "🍔",
-  food: "🍕",
-  fastfood: "🍔",
-  local_cafe: "☕",
-  coffee: "☕",
-  local_bar: "🍺",
-  directions_car: "🚗",
-  transport: "🚗",
-  car: "🚗",
-  flight: "✈️",
-  travel: "✈️",
-  hotel: "🏨",
-  accommodation: "🏠",
-  home: "🏠",
-  house: "🏠",
-  sports_esports: "🎮",
-  entertainment: "🎮",
-  movie: "🎬",
-  theaters: "🎭",
-  shopping_bag: "🛍️",
-  shopping: "🛍️",
-  shopping_cart: "🛒",
-  groceries: "🛒",
-  local_grocery_store: "🛒",
-  receipt: "🧾",
-  payments: "💳",
-  health: "❤️",
-  local_hospital: "🏥",
-  fitness_center: "💪",
-  card_giftcard: "🎁",
-  gifts: "🎁",
-  work: "💼",
-  business: "💼",
-  wifi: "📡",
-  utilities: "📡",
-  electric_bolt: "⚡",
-  water_drop: "💧",
-  pets: "🐾",
-  school: "📚",
-  education: "📚",
-  other: "📋",
-  more_horiz: "📋",
-};
-
-function getCategoryEmoji(icon?: string): string {
-  if (!icon) return "📋";
-  // If it's already an emoji (starts with non-ASCII), return as-is
-  if (/^\p{Emoji}/u.test(icon)) return icon;
-  return ICON_TO_EMOJI[icon.toLowerCase()] ?? ICON_TO_EMOJI[icon] ?? "📋";
-}
 
 type SplitType = "equal" | "percentage" | "fixed";
 
@@ -171,12 +118,7 @@ export default function AddExpenseScreen() {
         const token = await getToken();
         const data = await groupsApi.listMembers(selectedGroup.id, token!);
         const raw: GroupMemberDto[] = Array.isArray(data) ? data : [];
-        const seen = new Set<string>();
-        const list = raw.filter((m) => {
-          if (seen.has(m.id)) return false;
-          seen.add(m.id);
-          return true;
-        });
+        const list = dedupeMembers(raw);
         setMembers(list);
         const ids = list.map((m) => m.id);
         setSplitWith(ids);
@@ -195,18 +137,9 @@ export default function AddExpenseScreen() {
   }, [selectedGroup?.id]);
 
   const initSplitValues = (memberIds: string[], type: SplitType, totalStr: string) => {
-    if (type === "percentage" && memberIds.length > 0) {
-      const even = (100 / memberIds.length).toFixed(2);
-      const map: Record<string, string> = {};
-      memberIds.forEach((id) => { map[id] = even; });
-      setSplitPercentages(map);
-    } else if (type === "fixed" && memberIds.length > 0) {
-      const total = parseFloat(totalStr) || 0;
-      const even = (total / memberIds.length).toFixed(2);
-      const map: Record<string, string> = {};
-      memberIds.forEach((id) => { map[id] = even; });
-      setSplitFixedAmounts(map);
-    }
+    const values = computeSplitValues(memberIds, type, totalStr);
+    if (type === "percentage") setSplitPercentages(values);
+    else if (type === "fixed") setSplitFixedAmounts(values);
   };
 
   const handleSplitTypeChange = (type: SplitType) => {

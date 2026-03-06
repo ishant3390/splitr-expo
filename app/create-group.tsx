@@ -7,17 +7,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
+  Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
-import { usersApi } from "@/lib/api";
+import { usersApi, groupsApi } from "@/lib/api";
 import {
   ArrowLeft,
   X,
   UserPlus,
   Users,
-  Mail,
+  User,
   Plane,
   Home,
   Heart,
@@ -28,48 +30,54 @@ import {
   Car,
   Music,
   Dumbbell,
+  Share2,
+  Copy,
+  Check,
+  QrCode,
   type LucideIcon,
 } from "lucide-react-native";
+import QRCode from "react-native-qrcode-svg";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { groupsApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
-import type { CreateGroupRequest, AddGuestMemberRequest } from "@/lib/types";
+import type { GroupDto } from "@/lib/types";
+import * as Clipboard from "expo-clipboard";
 
-// Group types — much richer than Splitwise's 4 icons
 const GROUP_TYPES = [
-  { key: "trip", label: "Trip", emoji: "✈️", icon: Plane, color: "#0ea5e9", bg: "#e0f2fe" },
-  { key: "home", label: "Home", emoji: "🏠", icon: Home, color: "#8b5cf6", bg: "#ede9fe" },
-  { key: "couple", label: "Couple", emoji: "❤️", icon: Heart, color: "#ef4444", bg: "#fee2e2" },
-  { key: "food", label: "Dinners", emoji: "🍕", icon: Utensils, color: "#f59e0b", bg: "#fef3c7" },
-  { key: "work", label: "Work", emoji: "💼", icon: Briefcase, color: "#64748b", bg: "#f1f5f9" },
-  { key: "school", label: "School", emoji: "🎓", icon: GraduationCap, color: "#06b6d4", bg: "#cffafe" },
-  { key: "party", label: "Party", emoji: "🎉", icon: PartyPopper, color: "#d946ef", bg: "#fae8ff" },
-  { key: "roadtrip", label: "Road Trip", emoji: "🚗", icon: Car, color: "#10b981", bg: "#d1fae5" },
-  { key: "event", label: "Event", emoji: "🎵", icon: Music, color: "#ec4899", bg: "#fce7f3" },
-  { key: "fitness", label: "Fitness", emoji: "💪", icon: Dumbbell, color: "#f97316", bg: "#ffedd5" },
+  { key: "trip", label: "Trip", emoji: "\u2708\uFE0F", icon: Plane, color: "#0ea5e9", bg: "#e0f2fe" },
+  { key: "home", label: "Home", emoji: "\uD83C\uDFE0", icon: Home, color: "#8b5cf6", bg: "#ede9fe" },
+  { key: "couple", label: "Couple", emoji: "\u2764\uFE0F", icon: Heart, color: "#ef4444", bg: "#fee2e2" },
+  { key: "food", label: "Dinners", emoji: "\uD83C\uDF55", icon: Utensils, color: "#f59e0b", bg: "#fef3c7" },
+  { key: "work", label: "Work", emoji: "\uD83D\uDCBC", icon: Briefcase, color: "#64748b", bg: "#f1f5f9" },
+  { key: "school", label: "School", emoji: "\uD83C\uDF93", icon: GraduationCap, color: "#06b6d4", bg: "#cffafe" },
+  { key: "party", label: "Party", emoji: "\uD83C\uDF89", icon: PartyPopper, color: "#d946ef", bg: "#fae8ff" },
+  { key: "roadtrip", label: "Road Trip", emoji: "\uD83D\uDE97", icon: Car, color: "#10b981", bg: "#d1fae5" },
+  { key: "event", label: "Event", emoji: "\uD83C\uDFB5", icon: Music, color: "#ec4899", bg: "#fce7f3" },
+  { key: "fitness", label: "Fitness", emoji: "\uD83D\uDCAA", icon: Dumbbell, color: "#f97316", bg: "#ffedd5" },
 ] as const;
 
-// Group emoji picker — user picks a fun avatar for the group
 const GROUP_EMOJIS = [
-  "✈️", "🏠", "❤️", "🍕", "🎉", "🚗", "⛷️", "🏖️", "🎮", "🍺",
-  "☕", "🎵", "🏕️", "🛒", "💼", "🎓", "🏋️", "🎭", "🎪", "⚽",
-  "🎂", "🌮", "🍣", "🎯", "🏄", "⛺", "🎬", "🧑‍🍳", "🎸", "🏡",
+  "\u2708\uFE0F", "\uD83C\uDFE0", "\u2764\uFE0F", "\uD83C\uDF55", "\uD83C\uDF89", "\uD83D\uDE97", "\u26F7\uFE0F", "\uD83C\uDFD6\uFE0F", "\uD83C\uDFAE", "\uD83C\uDF7A",
+  "\u2615", "\uD83C\uDFB5", "\uD83C\uDFD5\uFE0F", "\uD83D\uDED2", "\uD83D\uDCBC", "\uD83C\uDF93", "\uD83C\uDFCB\uFE0F", "\uD83C\uDFAD", "\uD83C\uDFAA", "\u26BD",
+  "\uD83C\uDF82", "\uD83C\uDF2E", "\uD83C\uDF63", "\uD83C\uDFAF", "\uD83C\uDFC4", "\u26FA", "\uD83C\uDFAC", "\uD83E\uDDD1\u200D\uD83C\uDF73", "\uD83C\uDFB8", "\uD83C\uDFE1",
 ];
 
-// Currency options
 const CURRENCIES = [
-  { code: "USD", symbol: "$", flag: "🇺🇸" },
-  { code: "EUR", symbol: "€", flag: "🇪🇺" },
-  { code: "GBP", symbol: "£", flag: "🇬🇧" },
-  { code: "INR", symbol: "₹", flag: "🇮🇳" },
-  { code: "CAD", symbol: "C$", flag: "🇨🇦" },
-  { code: "AUD", symbol: "A$", flag: "🇦🇺" },
-  { code: "JPY", symbol: "¥", flag: "🇯🇵" },
+  { code: "USD", symbol: "$", flag: "\uD83C\uDDFA\uD83C\uDDF8" },
+  { code: "EUR", symbol: "\u20AC", flag: "\uD83C\uDDEA\uD83C\uDDFA" },
+  { code: "GBP", symbol: "\u00A3", flag: "\uD83C\uDDEC\uD83C\uDDE7" },
+  { code: "INR", symbol: "\u20B9", flag: "\uD83C\uDDEE\uD83C\uDDF3" },
+  { code: "CAD", symbol: "C$", flag: "\uD83C\uDDE8\uD83C\uDDE6" },
+  { code: "AUD", symbol: "A$", flag: "\uD83C\uDDE6\uD83C\uDDFA" },
+  { code: "JPY", symbol: "\u00A5", flag: "\uD83C\uDDEF\uD83C\uDDF5" },
 ];
+
+function getInviteUrl(inviteCode: string) {
+  return `https://splitr.app/invite/${inviteCode}`;
+}
 
 export default function CreateGroupScreen() {
   const router = useRouter();
@@ -80,14 +88,19 @@ export default function CreateGroupScreen() {
 
   const [groupName, setGroupName] = useState("");
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [selectedEmoji, setSelectedEmoji] = useState("✈️");
+  const [selectedEmoji, setSelectedEmoji] = useState("\u2708\uFE0F");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [invitedEmails, setInvitedEmails] = useState<string[]>([]);
+  const [memberName, setMemberName] = useState("");
+  const [members, setMembers] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Load user's default currency
+  // Post-creation share sheet state
+  const [createdGroup, setCreatedGroup] = useState<GroupDto | null>(null);
+  const [showShareSheet, setShowShareSheet] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     const loadUserCurrency = async () => {
       try {
@@ -103,12 +116,11 @@ export default function CreateGroupScreen() {
     loadUserCurrency();
   }, []);
 
-  // Auto-suggest name placeholders based on type
   const namePlaceholder = (() => {
     switch (selectedType) {
       case "trip": return "e.g., Bali Trip 2026";
       case "home": return "e.g., Apartment 4B";
-      case "couple": return "e.g., Us ❤️";
+      case "couple": return "e.g., Us \u2764\uFE0F";
       case "food": return "e.g., Friday Dinners";
       case "work": return "e.g., Team Lunch Fund";
       case "school": return "e.g., Study Group";
@@ -127,17 +139,19 @@ export default function CreateGroupScreen() {
     if (type) setSelectedEmoji(type.emoji);
   };
 
-  const handleInviteByEmail = () => {
-    if (!inviteEmail.trim() || !/\S+@\S+\.\S+/.test(inviteEmail)) {
-      toast.error("Please enter a valid email address.");
+  const handleAddMember = () => {
+    const name = memberName.trim();
+    if (!name) {
+      toast.error("Please enter a name.");
       return;
     }
-    if (invitedEmails.includes(inviteEmail.trim())) {
-      toast.error("This email has already been added.");
+    if (members.includes(name)) {
+      toast.error("This person has already been added.");
       return;
     }
-    setInvitedEmails((prev) => [...prev, inviteEmail.trim()]);
-    setInviteEmail("");
+    hapticLight();
+    setMembers((prev) => [...prev, name]);
+    setMemberName("");
   };
 
   const handleCreate = async () => {
@@ -160,25 +174,51 @@ export default function CreateGroupScreen() {
         token!
       );
 
-      // Invite members by email as guests
+      // Add members by name as guests (no email required)
       await Promise.all(
-        invitedEmails.map((email) =>
-          groupsApi.addGuestMember(
-            group.id,
-            { name: email, email } as AddGuestMemberRequest,
-            token!
-          )
+        members.map((name) =>
+          groupsApi.addGuestMember(group.id, { name }, token!)
         )
       );
 
       hapticSuccess();
       toast.success(`"${groupName}" created!`);
-      router.replace(`/group/${group.id}`);
+      setCreatedGroup(group);
+      setShowShareSheet(true);
     } catch {
       hapticError();
       toast.error("Something went wrong. Try again later.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!createdGroup?.inviteCode) return;
+    const url = getInviteUrl(createdGroup.inviteCode);
+    await Clipboard.setStringAsync(url);
+    setCopied(true);
+    hapticSuccess();
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    if (!createdGroup?.inviteCode) return;
+    const url = getInviteUrl(createdGroup.inviteCode);
+    try {
+      await Share.share({
+        message: `Join my group "${createdGroup.name}" on Splitr!\n${url}`,
+        url: Platform.OS === "ios" ? url : undefined,
+      });
+    } catch {
+      // User cancelled
+    }
+  };
+
+  const handleDismissShare = () => {
+    setShowShareSheet(false);
+    if (createdGroup) {
+      router.replace(`/group/${createdGroup.id}`);
     }
   };
 
@@ -247,7 +287,6 @@ export default function CreateGroupScreen() {
               Tap to change icon
             </Text>
 
-            {/* Emoji picker */}
             {showEmojiPicker && (
               <Card className="p-3 w-full">
                 <View className="flex-row flex-wrap gap-2 justify-center">
@@ -375,7 +414,7 @@ export default function CreateGroupScreen() {
             </ScrollView>
           </View>
 
-          {/* Invite Members */}
+          {/* Add People (by name) */}
           <View>
             <View className="flex-row items-center gap-2 mb-3">
               <UserPlus size={18} color="#0d9488" />
@@ -387,31 +426,29 @@ export default function CreateGroupScreen() {
               </Text>
             </View>
 
-            {/* Invited list */}
-            {invitedEmails.length > 0 && (
+            {/* Added members list */}
+            {members.length > 0 && (
               <View className="gap-2 mb-3">
-                {invitedEmails.map((email, idx) => (
+                {members.map((name, idx) => (
                   <View
-                    key={`inv-${idx}`}
+                    key={`member-${idx}`}
                     className="flex-row items-center gap-3 bg-card rounded-xl border border-border px-3 py-2.5"
                   >
                     <View
                       className="w-8 h-8 rounded-full items-center justify-center"
                       style={{ backgroundColor: "#0d948815" }}
                     >
-                      <Mail size={14} color="#0d9488" />
+                      <User size={14} color="#0d9488" />
                     </View>
                     <Text
                       className="flex-1 text-sm font-sans-medium text-foreground"
                       numberOfLines={1}
                     >
-                      {email}
+                      {name}
                     </Text>
                     <Pressable
                       onPress={() =>
-                        setInvitedEmails((prev) =>
-                          prev.filter((_, i) => i !== idx)
-                        )
+                        setMembers((prev) => prev.filter((_, i) => i !== idx))
                       }
                       hitSlop={8}
                     >
@@ -422,21 +459,22 @@ export default function CreateGroupScreen() {
               </View>
             )}
 
-            {/* Email input */}
+            {/* Name input */}
             <View className="flex-row gap-2">
               <Input
-                placeholder="friend@example.com"
-                value={inviteEmail}
-                onChangeText={setInviteEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
+                placeholder="e.g., Alex, Sarah, Mike"
+                value={memberName}
+                onChangeText={setMemberName}
+                autoCapitalize="words"
                 containerClassName="flex-1"
+                onSubmitEditing={handleAddMember}
+                returnKeyType="done"
               />
               <Button
                 variant="default"
                 size="md"
-                onPress={handleInviteByEmail}
-                disabled={!inviteEmail.trim()}
+                onPress={handleAddMember}
+                disabled={!memberName.trim()}
               >
                 <Text className="text-sm font-sans-semibold text-primary-foreground">
                   Add
@@ -444,11 +482,11 @@ export default function CreateGroupScreen() {
               </Button>
             </View>
             <Text className="text-xs text-muted-foreground font-sans mt-2 leading-5">
-              They'll get added as guests. They can claim their account later.
+              Just add names for now. Share the group link after to let them join.
             </Text>
           </View>
 
-          {/* Create button (bottom CTA for easy thumb reach) */}
+          {/* Create button */}
           <Button
             variant="default"
             onPress={handleCreate}
@@ -468,6 +506,147 @@ export default function CreateGroupScreen() {
           </Button>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Post-Creation Share Sheet */}
+      <Modal
+        transparent
+        visible={showShareSheet}
+        animationType="slide"
+        onRequestClose={handleDismissShare}
+      >
+        <Pressable
+          onPress={handleDismissShare}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#ffffff",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 24,
+              paddingBottom: Platform.OS === "ios" ? 40 : 24,
+              alignItems: "center",
+              gap: 20,
+            }}
+          >
+            {/* Success header */}
+            <View className="items-center gap-2">
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
+                  backgroundColor: "#10b98120",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Check size={32} color="#10b981" />
+              </View>
+              <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#0f172a" }}>
+                Group Created!
+              </Text>
+              <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", textAlign: "center" }}>
+                Share the link so others can join
+              </Text>
+            </View>
+
+            {/* Invite link */}
+            {createdGroup?.inviteCode && (
+              <Pressable
+                onPress={handleCopyLink}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  backgroundColor: "#f8fafc",
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: "#e2e8f0",
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  width: "100%",
+                }}
+              >
+                <Text
+                  style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748b" }}
+                  numberOfLines={1}
+                >
+                  {getInviteUrl(createdGroup.inviteCode)}
+                </Text>
+                {copied ? (
+                  <Check size={18} color="#10b981" />
+                ) : (
+                  <Copy size={18} color="#0d9488" />
+                )}
+              </Pressable>
+            )}
+
+            {/* QR Code — hidden by default */}
+            {createdGroup?.inviteCode && (
+              showQR ? (
+                <View
+                  style={{
+                    padding: 16,
+                    backgroundColor: "#ffffff",
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: "#e2e8f0",
+                    alignItems: "center",
+                  }}
+                >
+                  <QRCode
+                    value={getInviteUrl(createdGroup.inviteCode)}
+                    size={180}
+                    color="#0f172a"
+                    backgroundColor="#ffffff"
+                  />
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => { hapticLight(); setShowQR(true); }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    paddingVertical: 10,
+                    paddingHorizontal: 16,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: "#e2e8f0",
+                    width: "100%",
+                  }}
+                >
+                  <QrCode size={18} color="#64748b" />
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#64748b" }}>
+                    Show QR Code
+                  </Text>
+                </Pressable>
+              )
+            )}
+
+            {/* Action buttons */}
+            <View style={{ width: "100%", gap: 10 }}>
+              <Button variant="default" onPress={handleShare}>
+                <View className="flex-row items-center gap-2">
+                  <Share2 size={18} color="#ffffff" />
+                  <Text className="text-base font-sans-semibold text-primary-foreground">
+                    Share Invite Link
+                  </Text>
+                </View>
+              </Button>
+
+              <Button variant="outline" onPress={handleDismissShare}>
+                <Text className="text-base font-sans-semibold text-foreground">
+                  Go to Group
+                </Text>
+              </Button>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

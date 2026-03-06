@@ -8,6 +8,9 @@ import {
   Platform,
   Modal,
   KeyboardAvoidingView,
+  Share,
+  RefreshControl,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -24,18 +27,32 @@ import {
   UserPlus,
   HandCoins,
   X,
+  Share2,
+  Copy,
+  Check,
+  QrCode,
+  RefreshCw,
+  User,
+  Search,
+  ArrowUpDown,
+  PlusCircle,
+  Receipt,
 } from "lucide-react-native";
+import QRCode from "react-native-qrcode-svg";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { groupsApi } from "@/lib/api";
+import { groupsApi, contactsApi, inviteApi } from "@/lib/api";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
-import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
-import type { GroupDto, GroupMemberDto, ExpenseDto, ExpenseCategory } from "@/lib/types";
+import { hapticLight, hapticSuccess, hapticWarning, hapticSelection } from "@/lib/haptics";
+import { dedupeMembers, aggregateByPerson, aggregateByCategory, filterExpenses, sortExpenses, resolvePayerName } from "@/lib/screen-helpers";
+import * as Clipboard from "expo-clipboard";
+import type { GroupDto, GroupMemberDto, ExpenseDto, ExpenseCategory, ContactDto } from "@/lib/types";
 
 const iconMap: Record<ExpenseCategory, typeof Utensils> = {
   food: Utensils,
@@ -45,6 +62,10 @@ const iconMap: Record<ExpenseCategory, typeof Utensils> = {
   shopping: ShoppingBag,
   other: MoreHorizontal,
 };
+
+function getInviteUrl(inviteCode: string) {
+  return `https://splitr.app/invite/${inviteCode}`;
+}
 
 export default function GroupDetailScreen() {
   const router = useRouter();
@@ -58,13 +79,29 @@ export default function GroupDetailScreen() {
   const [expenses, setExpenses] = useState<ExpenseDto[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Search & sort
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [sortBy, setSortBy] = useState<"date" | "amount">("date");
+
+  // Insights
+  const [showInsights, setShowInsights] = useState(false);
+
   // Add member state
   const [showAddMember, setShowAddMember] = useState(false);
-  const [addMemberEmail, setAddMemberEmail] = useState("");
   const [addMemberName, setAddMemberName] = useState("");
   const [addingMember, setAddingMember] = useState(false);
-  const [contacts, setContacts] = useState<GroupMemberDto[]>([]);
+  const [contacts, setContacts] = useState<ContactDto[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
+
+  // Share / QR state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   // Remove member state
   const [memberToRemove, setMemberToRemove] = useState<GroupMemberDto | null>(null);
@@ -79,14 +116,7 @@ export default function GroupDetailScreen() {
         groupsApi.listExpenses(id, token!),
       ]);
       setGroup(groupData);
-      const rawMembers = Array.isArray(membersData) ? membersData : [];
-
-      const seenIds = new Set<string>();
-      setMembers(rawMembers.filter((m) => {
-        if (seenIds.has(m.id)) return false;
-        seenIds.add(m.id);
-        return true;
-      }));
+      setMembers(dedupeMembers(membersData));
       setExpenses(expensesResponse.data ?? []);
     } catch {
       setGroup(null);
@@ -101,73 +131,31 @@ export default function GroupDetailScreen() {
     }, [id])
   );
 
-  const handleAddMember = async () => {
-    if (!addMemberEmail.trim() || !/\S+@\S+\.\S+/.test(addMemberEmail)) {
-      toast.error("Please enter a valid email address.");
-      return;
-    }
-    setAddingMember(true);
-    try {
-      const token = await getToken();
-      await groupsApi.addGuestMember(
-        id,
-        {
-          name: addMemberName.trim() || addMemberEmail.trim(),
-          email: addMemberEmail.trim(),
-        },
-        token!
-      );
-      hapticSuccess();
-      toast.success("Member added successfully.");
-      setAddMemberEmail("");
-      setAddMemberName("");
-      setShowAddMember(false);
-      // Refresh members list (deduplicated)
-      const updatedRaw = await groupsApi.listMembers(id, token!);
-      const updatedList = Array.isArray(updatedRaw) ? updatedRaw : [];
-      const seen = new Set<string>();
-      setMembers(updatedList.filter((m) => {
-        if (seen.has(m.id)) return false;
-        seen.add(m.id);
-        return true;
-      }));
-    } catch {
-      toast.error("Failed to add member. They may already be in the group.");
-    } finally {
-      setAddingMember(false);
-    }
-  };
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
 
-  // Load known contacts from other groups when the modal opens
+  // Load contacts when add member modal opens
   useEffect(() => {
     if (!showAddMember) return;
     const load = async () => {
       setContactsLoading(true);
       try {
         const token = await getToken();
-        const allGroups = await groupsApi.list(token!);
-        const otherGroups = (Array.isArray(allGroups) ? allGroups : []).filter((g) => g.id !== id);
-        const perGroup = await Promise.all(otherGroups.map((g) => groupsApi.listMembers(g.id, token!)));
-
-        const currentEmails = new Set(
-          members.map((m) => m.user?.email ?? m.guestUser?.email).filter(Boolean)
+        const allContacts = await contactsApi.list(token!);
+        // Filter out people already in this group
+        const currentIds = new Set(
+          members.map((m) => m.user?.id ?? m.guestUser?.id).filter(Boolean)
         );
-        const seen = new Set<string>();
-        const result: GroupMemberDto[] = [];
-        perGroup.flat().forEach((m) => {
-          const email = m.user?.email ?? m.guestUser?.email;
-          if (!email || seen.has(email) || currentEmails.has(email)) return;
-          seen.add(email);
-          result.push(m);
-        });
-        console.log("[AddMember] allGroups:", JSON.stringify(allGroups, null, 2));
-        console.log("[AddMember] otherGroups count:", otherGroups.length);
-        console.log("[AddMember] perGroup (raw):", JSON.stringify(perGroup, null, 2));
-        console.log("[AddMember] currentEmails:", [...currentEmails]);
-        console.log("[AddMember] contacts result:", JSON.stringify(result, null, 2));
-        setContacts(result);
-      } catch (err) {
-        console.log("[AddMember] contacts load error:", err);
+        setContacts(
+          allContacts.filter((c) => {
+            const cId = c.userId ?? c.guestUserId;
+            return cId && !currentIds.has(cId);
+          })
+        );
+      } catch {
         setContacts([]);
       } finally {
         setContactsLoading(false);
@@ -176,29 +164,47 @@ export default function GroupDetailScreen() {
     load();
   }, [showAddMember]);
 
-  const handleAddContact = async (contact: GroupMemberDto) => {
+  const handleAddMemberByName = async () => {
+    const name = addMemberName.trim();
+    if (!name) {
+      toast.error("Please enter a name.");
+      return;
+    }
     setAddingMember(true);
     try {
       const token = await getToken();
-      if (contact.user?.email) {
-        await groupsApi.addMember(id, { email: contact.user.email }, token!);
-      } else if (contact.guestUser) {
+      await groupsApi.addGuestMember(id, { name }, token!);
+      hapticSuccess();
+      toast.success(`${name} added to group.`);
+      setAddMemberName("");
+      setShowAddMember(false);
+      const updated = await groupsApi.listMembers(id, token!);
+      setMembers(dedupeMembers(updated));
+    } catch {
+      toast.error("Failed to add member. They may already be in the group.");
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleAddContact = async (contact: ContactDto) => {
+    setAddingMember(true);
+    try {
+      const token = await getToken();
+      if (contact.userId && contact.email) {
+        await groupsApi.addMember(id, { email: contact.email }, token!);
+      } else {
         await groupsApi.addGuestMember(
           id,
-          { name: contact.guestUser.name, email: contact.guestUser.email },
+          { name: contact.name, email: contact.email },
           token!
         );
       }
-      toast.success("Member added successfully.");
+      hapticSuccess();
+      toast.success(`${contact.name} added to group.`);
       setShowAddMember(false);
-      const updatedRaw = await groupsApi.listMembers(id, token!);
-      const updatedList = Array.isArray(updatedRaw) ? updatedRaw : [];
-      const seen = new Set<string>();
-      setMembers(updatedList.filter((m) => {
-        if (seen.has(m.id)) return false;
-        seen.add(m.id);
-        return true;
-      }));
+      const updated = await groupsApi.listMembers(id, token!);
+      setMembers(dedupeMembers(updated));
     } catch {
       toast.error("Failed to add member. They may already be in the group.");
     } finally {
@@ -213,20 +219,48 @@ export default function GroupDetailScreen() {
       const token = await getToken();
       await groupsApi.removeMember(id, memberToRemove.id, token!);
       toast.success("Member removed from group.");
-      // Refresh members list
-      const updatedRaw = await groupsApi.listMembers(id, token!);
-      const updatedList = Array.isArray(updatedRaw) ? updatedRaw : [];
-      const seen = new Set<string>();
-      setMembers(updatedList.filter((m) => {
-        if (seen.has(m.id)) return false;
-        seen.add(m.id);
-        return true;
-      }));
+      const updated = await groupsApi.listMembers(id, token!);
+      setMembers(dedupeMembers(updated));
     } catch {
       toast.error("Failed to remove member. Try again.");
     } finally {
       setRemovingMember(false);
       setMemberToRemove(null);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!group?.inviteCode) return;
+    await Clipboard.setStringAsync(getInviteUrl(group.inviteCode));
+    setCopied(true);
+    hapticSuccess();
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    if (!group?.inviteCode) return;
+    try {
+      await Share.share({
+        message: `Join "${group.name}" on Splitr!\n${getInviteUrl(group.inviteCode)}`,
+        url: Platform.OS === "ios" ? getInviteUrl(group.inviteCode) : undefined,
+      });
+    } catch {
+      // User cancelled
+    }
+  };
+
+  const handleRegenerateLink = async () => {
+    setRegenerating(true);
+    try {
+      const token = await getToken();
+      const updated = await inviteApi.regenerate(id, token!);
+      setGroup(updated);
+      hapticSuccess();
+      toast.success("Invite link regenerated.");
+    } catch {
+      toast.error("Failed to regenerate link.");
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -258,13 +292,22 @@ export default function GroupDetailScreen() {
         <Text className="text-lg font-sans-semibold text-foreground">
           {group.emoji ? `${group.emoji} ` : ""}{group.name}
         </Text>
-        <Button
-          variant="ghost"
-          size="icon"
-          onPress={() => router.push({ pathname: "/(tabs)/add", params: { returnGroupId: id } })}
-        >
-          <Plus size={24} color="#0d9488" />
-        </Button>
+        <View className="flex-row items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onPress={() => setShowShareModal(true)}
+          >
+            <Share2 size={22} color="#0d9488" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onPress={() => router.push({ pathname: "/(tabs)/add", params: { returnGroupId: id } })}
+          >
+            <Plus size={24} color="#0d9488" />
+          </Button>
+        </View>
       </View>
 
       <ScrollView
@@ -272,6 +315,7 @@ export default function GroupDetailScreen() {
         contentContainerClassName="px-5 pb-8"
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
       >
         {/* Members */}
         <View className="py-4">
@@ -369,47 +413,163 @@ export default function GroupDetailScreen() {
           </Card>
         </Pressable>
 
-        {/* Expenses list */}
-        <Text className="text-sm font-sans-semibold text-muted-foreground mb-3">
-          EXPENSES ({expenses.length})
-        </Text>
+        {/* Insights */}
+        {expenses.length > 0 && (
+          <View className="mb-4">
+            <Pressable
+              onPress={() => { hapticLight(); setShowInsights(!showInsights); }}
+              className="flex-row items-center justify-between mb-2"
+            >
+              <Text className="text-sm font-sans-semibold text-muted-foreground">
+                INSIGHTS
+              </Text>
+              <Text className="text-xs font-sans-medium text-primary">
+                {showInsights ? "Hide" : "Show"}
+              </Text>
+            </Pressable>
+            {showInsights && (() => {
+              const personList = aggregateByPerson(expenses);
+              const maxSpent = personList[0]?.total || 1;
+
+              const catList = aggregateByCategory(expenses, 5);
+              const catTotal = catList.reduce((s, [, v]) => s + v, 0) || 1;
+              const catColors = ["#0d9488", "#0ea5e9", "#8b5cf6", "#f59e0b", "#ef4444"];
+
+              return (
+                <Card className="p-4 gap-4">
+                  {/* By Person */}
+                  <View>
+                    <Text className="text-xs font-sans-semibold text-muted-foreground mb-2">BY PERSON</Text>
+                    <View className="gap-2">
+                      {personList.map((p) => (
+                        <View key={p.name} className="gap-1">
+                          <View className="flex-row items-center justify-between">
+                            <Text className="text-xs font-sans-medium text-foreground">{p.name}</Text>
+                            <Text className="text-xs font-sans-semibold text-foreground">{formatCents(p.total)}</Text>
+                          </View>
+                          <View className="h-2 rounded-full bg-muted overflow-hidden">
+                            <View
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${(p.total / maxSpent) * 100}%` }}
+                            />
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* By Category */}
+                  {catList.length > 0 && (
+                    <View>
+                      <Text className="text-xs font-sans-semibold text-muted-foreground mb-2">BY CATEGORY</Text>
+                      <View className="flex-row h-3 rounded-full overflow-hidden mb-2">
+                        {catList.map(([cat, amount], i) => (
+                          <View
+                            key={cat}
+                            style={{
+                              width: `${(amount / catTotal) * 100}%`,
+                              backgroundColor: catColors[i % catColors.length],
+                              height: "100%",
+                            }}
+                          />
+                        ))}
+                      </View>
+                      <View className="flex-row flex-wrap gap-3">
+                        {catList.map(([cat, amount], i) => (
+                          <View key={cat} className="flex-row items-center gap-1.5">
+                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: catColors[i % catColors.length] }} />
+                            <Text className="text-xs font-sans text-muted-foreground">
+                              {cat} ({formatCents(amount)})
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </Card>
+              );
+            })()}
+          </View>
+        )}
+
+        {/* Expenses header with search & sort */}
+        <View className="flex-row items-center justify-between mb-3">
+          <Text className="text-sm font-sans-semibold text-muted-foreground">
+            EXPENSES ({expenses.length})
+          </Text>
+          <View className="flex-row items-center gap-2">
+            <Pressable onPress={() => { hapticLight(); setShowSearch(!showSearch); }}>
+              <Search size={16} color={showSearch ? "#0d9488" : "#94a3b8"} />
+            </Pressable>
+            <Pressable onPress={() => {
+              hapticSelection();
+              setSortBy(sortBy === "date" ? "amount" : "date");
+            }}>
+              <View className="flex-row items-center gap-1">
+                <ArrowUpDown size={14} color="#94a3b8" />
+                <Text className="text-xs font-sans text-muted-foreground">
+                  {sortBy === "date" ? "Date" : "Amount"}
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Search input */}
+        {showSearch && (
+          <View className="mb-3 flex-row items-center bg-muted rounded-xl px-3 py-2 gap-2">
+            <Search size={16} color="#94a3b8" />
+            <TextInput
+              placeholder="Search expenses..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#0f172a" }}
+              placeholderTextColor="#94a3b8"
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <X size={16} color="#94a3b8" />
+              </Pressable>
+            )}
+          </View>
+        )}
 
         {expenses.length === 0 ? (
-          <Card className="p-6 items-center">
-            <Text className="text-sm text-muted-foreground font-sans">
-              No expenses yet. Add one!
-            </Text>
-          </Card>
-        ) : (
+          <EmptyState
+            icon={Receipt}
+            iconColor="#0d9488"
+            title="No expenses yet"
+            subtitle="Add your first expense to start tracking"
+            actionLabel="Add Expense"
+            onAction={() => router.push({ pathname: "/(tabs)/add", params: { returnGroupId: id } })}
+          />
+        ) : (() => {
+          const filtered = filterExpenses(expenses, searchQuery) as ExpenseDto[];
+
+          if (filtered.length === 0) {
+            return (
+              <EmptyState
+                icon={Search}
+                iconColor="#64748b"
+                title={`No results for "${searchQuery}"`}
+                subtitle="Try a different search term"
+              />
+            );
+          }
+
+          const sorted = sortExpenses(filtered, sortBy) as ExpenseDto[];
+
+          return (
           <View className="gap-2">
-            {[...expenses]
-              .sort((a, b) => {
-                const dateA = a.date || a.createdAt || "";
-                const dateB = b.date || b.createdAt || "";
-                return new Date(dateB).getTime() - new Date(dateA).getTime();
-              })
+            {sorted
               .map((expense, idx) => {
                 const categoryKey = (expense.category?.icon ??
                   expense.category?.name ??
                   "other") as ExpenseCategory;
                 const Icon = iconMap[categoryKey] ?? MoreHorizontal;
                 const payer = expense.payers?.[0];
-                const payerName = (() => {
-                  // Direct name if API expands payer objects
-                  if (payer?.user?.name) return payer.user.name;
-                  if (payer?.guestUser?.name) return payer.guestUser.name;
-                  // Cross-reference with the loaded members list
-                  if (payer?.user?.id) {
-                    const m = members.find((m) => m.user?.id === payer.user!.id);
-                    if (m) return m.user?.name ?? m.displayName ?? "Member";
-                  }
-                  if (payer?.guestUser?.id) {
-                    const m = members.find((m) => m.guestUser?.id === payer.guestUser!.id);
-                    if (m) return m.guestUser?.name ?? m.displayName ?? "Member";
-                  }
-                  // Fall back to whoever created the expense
-                  return expense.createdBy?.name ?? "Someone";
-                })();
+                const payerName = resolvePayerName(payer, members, expense.createdBy);
                 const splitCount = expense.splits?.length ?? 1;
                 const expenseDate = expense.date || expense.createdAt;
 
@@ -438,7 +598,7 @@ export default function GroupDetailScreen() {
                           </Text>
                           <Text className="text-xs text-muted-foreground font-sans">
                             {payerName} paid
-                            {expenseDate ? ` · ${formatDate(expenseDate)}` : ""}
+                            {expenseDate ? ` \u00B7 ${formatDate(expenseDate)}` : ""}
                           </Text>
                         </View>
                         <View className="items-end">
@@ -456,7 +616,8 @@ export default function GroupDetailScreen() {
                 );
               })}
           </View>
-        )}
+          );
+        })()}
       </ScrollView>
 
       {/* Remove Member Confirmation */}
@@ -504,7 +665,7 @@ export default function GroupDetailScreen() {
                 </Pressable>
               </View>
 
-              {/* Existing contacts from other groups */}
+              {/* Contacts from other groups */}
               {contactsLoading ? (
                 <ActivityIndicator color="#0d9488" />
               ) : contacts.length > 0 ? (
@@ -514,50 +675,45 @@ export default function GroupDetailScreen() {
                   </Text>
                   <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
                     <View style={{ gap: 8 }}>
-                      {contacts.map((contact) => {
-                        const name = contact.user?.name ?? contact.guestUser?.name ?? "Unknown";
-                        const email = contact.user?.email ?? contact.guestUser?.email ?? "";
-                        const isGuest = !contact.user;
-                        return (
-                          <Pressable
-                            key={contact.id}
-                            onPress={() => handleAddContact(contact)}
-                            disabled={addingMember}
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 10,
-                              padding: 10,
-                              borderRadius: 10,
-                              borderWidth: 1,
-                              borderColor: "#e2e8f0",
-                              backgroundColor: "#f8fafc",
-                            }}
-                          >
-                            <Avatar
-                              src={contact.user?.avatarUrl}
-                              fallback={getInitials(name)}
-                              size="sm"
-                            />
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#0f172a" }}>
-                                {name}
-                                {isGuest ? (
-                                  <Text style={{ fontFamily: "Inter_400Regular", color: "#94a3b8" }}> · Guest</Text>
-                                ) : null}
-                              </Text>
-                              {email ? (
-                                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#64748b" }}>
-                                  {email}
-                                </Text>
+                      {contacts.map((contact, idx) => (
+                        <Pressable
+                          key={`contact-${contact.userId ?? contact.guestUserId ?? idx}`}
+                          onPress={() => handleAddContact(contact)}
+                          disabled={addingMember}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: 10,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: "#e2e8f0",
+                            backgroundColor: "#f8fafc",
+                          }}
+                        >
+                          <Avatar
+                            src={contact.avatarUrl}
+                            fallback={getInitials(contact.name)}
+                            size="sm"
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#0f172a" }}>
+                              {contact.name}
+                              {contact.isGuest ? (
+                                <Text style={{ fontFamily: "Inter_400Regular", color: "#94a3b8" }}> {"\u00B7"} Guest</Text>
                               ) : null}
-                            </View>
-                            <View style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#0d9488", borderRadius: 6 }}>
-                              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>Add</Text>
-                            </View>
-                          </Pressable>
-                        );
-                      })}
+                            </Text>
+                            {contact.email ? (
+                              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#64748b" }}>
+                                {contact.email}
+                              </Text>
+                            ) : null}
+                          </View>
+                          <View style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#0d9488", borderRadius: 6 }}>
+                            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>Add</Text>
+                          </View>
+                        </Pressable>
+                      ))}
                     </View>
                   </ScrollView>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
@@ -568,36 +724,28 @@ export default function GroupDetailScreen() {
                 </View>
               ) : null}
 
-              {/* Name input */}
+              {/* Name input (primary) */}
               <Input
-                label="Name (optional)"
+                label="Name"
                 placeholder="e.g., Alex"
                 value={addMemberName}
                 onChangeText={setAddMemberName}
                 autoCapitalize="words"
-              />
-
-              {/* Email input */}
-              <Input
-                label="Email"
-                placeholder="friend@example.com"
-                value={addMemberEmail}
-                onChangeText={setAddMemberEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
+                onSubmitEditing={handleAddMemberByName}
+                returnKeyType="done"
               />
 
               <Text
                 style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b", lineHeight: 18 }}
               >
-                They'll be added as a guest and can join with a full account later.
+                They'll be added as a guest. Share the group link so they can join with their account.
               </Text>
 
               {/* Add button */}
               <Button
                 variant="default"
-                onPress={handleAddMember}
-                disabled={addingMember || !addMemberEmail.trim()}
+                onPress={handleAddMemberByName}
+                disabled={addingMember || !addMemberName.trim()}
               >
                 {addingMember ? (
                   <ActivityIndicator size="small" color="#ffffff" />
@@ -607,8 +755,167 @@ export default function GroupDetailScreen() {
                   </Text>
                 )}
               </Button>
+
+              {/* Share link shortcut */}
+              {group?.inviteCode && (
+                <Pressable
+                  onPress={() => { setShowAddMember(false); setShowShareModal(true); }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Share2 size={16} color="#0d9488" />
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0d9488" }}>
+                    Or share invite link instead
+                  </Text>
+                </Pressable>
+              )}
             </Pressable>
           </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+
+      {/* Share / QR Modal */}
+      <Modal
+        transparent
+        visible={showShareModal}
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <Pressable
+          onPress={() => setShowShareModal(false)}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#ffffff",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 24,
+              paddingBottom: Platform.OS === "ios" ? 40 : 24,
+              alignItems: "center",
+              gap: 20,
+            }}
+          >
+            {/* Header */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+              <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#0f172a" }}>
+                Invite to {group.name}
+              </Text>
+              <Pressable onPress={() => { setShowShareModal(false); setShowQR(false); }}>
+                <X size={22} color="#64748b" />
+              </Pressable>
+            </View>
+
+            {/* Invite link */}
+            {group.inviteCode && (
+              <Pressable
+                onPress={handleCopyLink}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  backgroundColor: "#f8fafc",
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: "#e2e8f0",
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  width: "100%",
+                }}
+              >
+                <Text
+                  style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748b" }}
+                  numberOfLines={1}
+                >
+                  {getInviteUrl(group.inviteCode)}
+                </Text>
+                {copied ? (
+                  <Check size={18} color="#10b981" />
+                ) : (
+                  <Copy size={18} color="#0d9488" />
+                )}
+              </Pressable>
+            )}
+
+            {/* QR Code — hidden by default */}
+            {group.inviteCode && (
+              showQR ? (
+                <View
+                  style={{
+                    padding: 16,
+                    backgroundColor: "#ffffff",
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: "#e2e8f0",
+                    alignItems: "center",
+                  }}
+                >
+                  <QRCode
+                    value={getInviteUrl(group.inviteCode)}
+                    size={180}
+                    color="#0f172a"
+                    backgroundColor="#ffffff"
+                  />
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => { hapticLight(); setShowQR(true); }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    paddingVertical: 10,
+                    paddingHorizontal: 16,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: "#e2e8f0",
+                    width: "100%",
+                  }}
+                >
+                  <QrCode size={18} color="#64748b" />
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#64748b" }}>
+                    Show QR Code
+                  </Text>
+                </Pressable>
+              )
+            )}
+
+            {/* Buttons */}
+            <View style={{ width: "100%", gap: 10 }}>
+              <Button variant="default" onPress={handleShare}>
+                <View className="flex-row items-center gap-2">
+                  <Share2 size={18} color="#ffffff" />
+                  <Text className="text-base font-sans-semibold text-primary-foreground">
+                    Share Invite Link
+                  </Text>
+                </View>
+              </Button>
+
+              <Pressable
+                onPress={handleRegenerateLink}
+                disabled={regenerating}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  paddingVertical: 10,
+                }}
+              >
+                <RefreshCw size={14} color="#94a3b8" />
+                <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#94a3b8" }}>
+                  {regenerating ? "Regenerating..." : "Regenerate invite link"}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </SafeAreaView>

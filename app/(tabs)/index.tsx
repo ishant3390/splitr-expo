@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 import { hapticLight, hapticSelection } from "@/lib/haptics";
@@ -31,6 +31,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { usersApi, groupsApi } from "@/lib/api";
 import { formatCents, formatDate, getInitials } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CheckCircle, Users } from "lucide-react-native";
 import type { ActivityLogDto } from "@/lib/types";
 
 // Airbnb-style category data
@@ -76,55 +78,57 @@ export default function HomeScreen() {
   const [totalOwedCents, setTotalOwedCents] = useState(0);
   const [totalOwesCents, setTotalOwesCents] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = useCallback(async () => {
+    if (!user) return;
+    const token = await getToken();
+    const currentEmail = user.primaryEmailAddress?.emailAddress;
+
+    try {
+      const data = await usersApi.activity(token!);
+      const sliced = Array.isArray(data) ? data.slice(0, 20) : [];
+      setActivity(sliced);
+    } catch {
+      setActivity([]);
+    } finally {
+      setLoading(false);
+    }
+
+    try {
+      const groups = await groupsApi.list(token!);
+      const groupList = Array.isArray(groups) ? groups : [];
+      const memberResults = await Promise.all(
+        groupList.map((g) => groupsApi.listMembers(g.id, token!))
+      );
+      let owed = 0;
+      let owes = 0;
+      memberResults.forEach((members) => {
+        const list = Array.isArray(members) ? members : [];
+        const me = list.find((m) => m.user?.email === currentEmail);
+        if (me?.balance != null) {
+          if (me.balance > 0) owed += me.balance;
+          else if (me.balance < 0) owes += Math.abs(me.balance);
+        }
+      });
+      setTotalOwedCents(owed);
+      setTotalOwesCents(owes);
+    } catch {
+      // keep existing balances
+    }
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!user) return;
-      const load = async () => {
-        const token = await getToken();
-        const currentEmail = user.primaryEmailAddress?.emailAddress;
-
-        try {
-          console.log("[HomeScreen] Fetching activity...");
-          const data = await usersApi.activity(token!);
-          console.log("[HomeScreen] Activity response:", JSON.stringify(data, null, 2));
-          const sliced = Array.isArray(data) ? data.slice(0, 20) : [];
-          console.log(`[HomeScreen] Showing ${sliced.length} of ${Array.isArray(data) ? data.length : 0} items`);
-          setActivity(sliced);
-        } catch (err) {
-          console.error("[HomeScreen] Failed to fetch activity:", err);
-          setActivity([]);
-        } finally {
-          setLoading(false);
-        }
-
-        try {
-          console.log("[HomeScreen] Fetching balances for:", currentEmail);
-          const groups = await groupsApi.list(token!);
-          const groupList = Array.isArray(groups) ? groups : [];
-          const memberResults = await Promise.all(
-            groupList.map((g) => groupsApi.listMembers(g.id, token!))
-          );
-          let owed = 0;
-          let owes = 0;
-          memberResults.forEach((members) => {
-            const list = Array.isArray(members) ? members : [];
-            const me = list.find((m) => m.user?.email === currentEmail);
-            if (me?.balance != null) {
-              if (me.balance > 0) owed += me.balance;
-              else if (me.balance < 0) owes += Math.abs(me.balance);
-            }
-          });
-          console.log(`[HomeScreen] Balances — owed: ${owed}, owes: ${owes}`);
-          setTotalOwedCents(owed);
-          setTotalOwesCents(owes);
-        } catch (err) {
-          console.error("[HomeScreen] Failed to fetch balances:", err);
-        }
-      };
-      load();
-    }, [user])
+      loadData();
+    }, [loadData])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -133,6 +137,7 @@ export default function HomeScreen() {
         contentContainerClassName="pb-8"
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
       >
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-3 pb-4">
@@ -142,7 +147,10 @@ export default function HomeScreen() {
               Welcome back, {user?.firstName || "there"}
             </Text>
           </View>
-          <Pressable className="w-10 h-10 rounded-full bg-muted items-center justify-center">
+          <Pressable
+            onPress={() => router.push("/notifications" as any)}
+            className="w-10 h-10 rounded-full bg-muted items-center justify-center"
+          >
             <Bell size={20} color="#64748b" />
           </Pressable>
         </View>
@@ -281,11 +289,23 @@ export default function HomeScreen() {
                       desc.includes(selectedCategory);
                   });
               return filtered.length === 0 ? (
-                <Card className="p-6 items-center">
-                  <Text className="text-sm text-muted-foreground font-sans">
-                    {selectedCategory === "all" ? "No recent activity" : `No ${selectedCategory} activity`}
-                  </Text>
-                </Card>
+                selectedCategory === "all" ? (
+                  <EmptyState
+                    icon={Users}
+                    iconColor="#0d9488"
+                    title="No activity yet"
+                    subtitle="Start by creating a group and adding expenses with friends"
+                    actionLabel="Create a Group"
+                    onAction={() => router.push("/create-group")}
+                  />
+                ) : (
+                  <EmptyState
+                    icon={CATEGORIES.find(c => c.key === selectedCategory)?.icon ?? Zap}
+                    iconColor="#64748b"
+                    title={`No ${selectedCategory} activity`}
+                    subtitle="Try a different category or add an expense"
+                  />
+                )
               ) : (
               <View className="gap-2">
                 {filtered.map((item, idx) => {

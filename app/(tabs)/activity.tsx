@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, SectionList, ActivityIndicator, Pressable } from "react-native";
+import React, { useState, useCallback } from "react";
+import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
+import { Clock } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/ui/empty-state";
 import { usersApi } from "@/lib/api";
 import { formatCents, formatDate, getInitials } from "@/lib/utils";
 import type { ActivityLogDto } from "@/lib/types";
@@ -14,30 +17,40 @@ export default function ActivityScreen() {
   const router = useRouter();
   const [sections, setSections] = useState<{ title: string; data: ActivityLogDto[] }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const token = await getToken();
-        const data = await usersApi.activity(token!);
-        const list: ActivityLogDto[] = Array.isArray(data) ? data : [];
+  const loadData = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const data = await usersApi.activity(token!);
+      const list: ActivityLogDto[] = Array.isArray(data) ? data : [];
 
-        const grouped = list.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
-          const label = item.createdAt ? formatDate(item.createdAt) : "Recent";
-          if (!acc[label]) acc[label] = [];
-          acc[label].push(item);
-          return acc;
-        }, {});
+      const grouped = list.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
+        const label = item.createdAt ? formatDate(item.createdAt) : "Recent";
+        if (!acc[label]) acc[label] = [];
+        acc[label].push(item);
+        return acc;
+      }, {});
 
-        setSections(Object.entries(grouped).map(([title, data]) => ({ title, data })));
-      } catch {
-        setSections([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+      setSections(Object.entries(grouped).map(([title, data]) => ({ title, data })));
+    } catch {
+      setSections([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
 
   if (loading) {
     return (
@@ -60,9 +73,12 @@ export default function ActivityScreen() {
 
       {sections.length === 0 ? (
         <View className="flex-1 items-center justify-center px-5">
-          <Card className="p-6 items-center w-full">
-            <Text className="text-sm text-muted-foreground font-sans">No activity yet</Text>
-          </Card>
+          <EmptyState
+            icon={Clock}
+            iconColor="#94a3b8"
+            title="No activity yet"
+            subtitle="Your expense and settlement activity will appear here"
+          />
         </View>
       ) : (
         <SectionList
@@ -71,6 +87,7 @@ export default function ActivityScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
           renderSectionHeader={({ section: { title } }) => (
             <Text className="text-sm font-sans-semibold text-muted-foreground mb-2 mt-4">
               {title}
@@ -124,12 +141,12 @@ export default function ActivityScreen() {
                       ) : null}
                       {isExpenseUpdated && amountChanged ? (
                         <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                          {formatCents(oldAmount!)} → {formatCents(newAmount!)}
+                          {formatCents(oldAmount!)} {"\u2192"} {formatCents(newAmount!)}
                         </Text>
                       ) : null}
                       {isExpenseUpdated && descChanged ? (
                         <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                          "{oldDesc}" → "{newDesc}"
+                          "{oldDesc}" {"\u2192"} "{newDesc}"
                         </Text>
                       ) : null}
                       {isExpenseCreated && createdExpenseName ? (

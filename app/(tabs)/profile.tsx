@@ -66,7 +66,7 @@ export default function ProfileScreen() {
         toast.info("Payment methods will be available in a future update.");
         break;
       case "notifications":
-        toast.info("Notification settings will be available in a future update.");
+        router.push("/notifications" as any);
         break;
       case "privacy":
         toast.info("Privacy & security settings coming soon.");

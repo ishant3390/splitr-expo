@@ -31,5 +31,10 @@ ios/
 # Logs
 *.log
 
-# Playwright CLI
+# Jest coverage
+coverage/
+
+# Playwright
 .playwright-cli/
+playwright-report/
+test-results/
