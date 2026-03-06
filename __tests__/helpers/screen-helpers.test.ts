@@ -12,6 +12,7 @@ import {
   filterExpenses,
   sortExpenses,
   resolvePayerName,
+  computeBalancesFromMembers,
 } from "../../lib/screen-helpers";
 
 // ---------------------------------------------------------------------------
@@ -626,5 +627,74 @@ describe("resolvePayerName", () => {
       { guestUser: { id: "g1" }, displayName: "Guest Display" },
     ];
     expect(resolvePayerName(payer, members)).toBe("Guest Display");
+  });
+});
+
+// --- computeBalancesFromMembers ---
+
+describe("computeBalancesFromMembers", () => {
+  it("returns zero for empty array", () => {
+    expect(computeBalancesFromMembers([], "me@test.com")).toEqual({ owed: 0, owes: 0 });
+  });
+
+  it("sums positive balances as owed", () => {
+    const members = [
+      [
+        { user: { email: "me@test.com" }, balance: 5000 },
+        { user: { email: "other@test.com" }, balance: -5000 },
+      ],
+      [
+        { user: { email: "me@test.com" }, balance: 3000 },
+      ],
+    ];
+    const result = computeBalancesFromMembers(members, "me@test.com");
+    expect(result.owed).toBe(8000);
+    expect(result.owes).toBe(0);
+  });
+
+  it("sums negative balances as owes (absolute value)", () => {
+    const members = [
+      [{ user: { email: "me@test.com" }, balance: -2000 }],
+      [{ user: { email: "me@test.com" }, balance: -1500 }],
+    ];
+    const result = computeBalancesFromMembers(members, "me@test.com");
+    expect(result.owed).toBe(0);
+    expect(result.owes).toBe(3500);
+  });
+
+  it("handles mixed positive and negative", () => {
+    const members = [
+      [{ user: { email: "me@test.com" }, balance: 5000 }],
+      [{ user: { email: "me@test.com" }, balance: -3000 }],
+    ];
+    const result = computeBalancesFromMembers(members, "me@test.com");
+    expect(result.owed).toBe(5000);
+    expect(result.owes).toBe(3000);
+  });
+
+  it("skips groups where user is not found", () => {
+    const members = [
+      [{ user: { email: "other@test.com" }, balance: 9999 }],
+    ];
+    expect(computeBalancesFromMembers(members, "me@test.com")).toEqual({ owed: 0, owes: 0 });
+  });
+
+  it("skips members with null balance", () => {
+    const members = [
+      [{ user: { email: "me@test.com" }, balance: null }],
+    ];
+    expect(computeBalancesFromMembers(members, "me@test.com")).toEqual({ owed: 0, owes: 0 });
+  });
+
+  it("skips zero balance", () => {
+    const members = [
+      [{ user: { email: "me@test.com" }, balance: 0 }],
+    ];
+    expect(computeBalancesFromMembers(members, "me@test.com")).toEqual({ owed: 0, owes: 0 });
+  });
+
+  it("handles non-array member results gracefully", () => {
+    const members = [null as any, undefined as any];
+    expect(computeBalancesFromMembers(members, "me@test.com")).toEqual({ owed: 0, owes: 0 });
   });
 });

@@ -167,3 +167,27 @@ export function resolvePayerName(
   }
   return createdBy?.name ?? "Someone";
 }
+
+// --- From index.tsx (home screen balance) ---
+
+interface MemberBalanceLike {
+  user?: { email?: string } | null;
+  balance?: number | null;
+}
+
+export function computeBalancesFromMembers(
+  memberResults: MemberBalanceLike[][],
+  currentEmail: string
+): { owed: number; owes: number } {
+  let owed = 0;
+  let owes = 0;
+  memberResults.forEach((members) => {
+    const list = Array.isArray(members) ? members : [];
+    const me = list.find((m) => m.user?.email === currentEmail);
+    if (me?.balance != null) {
+      if (me.balance > 0) owed += me.balance;
+      else if (me.balance < 0) owes += Math.abs(me.balance);
+    }
+  });
+  return { owed, owes };
+}

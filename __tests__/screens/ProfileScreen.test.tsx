@@ -10,20 +10,21 @@ jest.mock("@/components/ui/toast", () => ({
   }),
 }));
 
-jest.mock("@/lib/api", () => ({
-  usersApi: {
-    me: jest.fn(() =>
-      Promise.resolve({
-        id: "u1",
-        name: "Test User",
-        email: "test@example.com",
-        defaultCurrency: "USD",
-        isPremium: false,
-        createdAt: "2025-01-01T00:00:00Z",
-        updatedAt: "2025-01-01T00:00:00Z",
-      })
-    ),
-  },
+jest.mock("@/lib/hooks", () => ({
+  useUserProfile: () => ({
+    data: {
+      id: "u1",
+      name: "Test User",
+      email: "test@example.com",
+      defaultCurrency: "USD",
+      isPremium: false,
+      createdAt: "2025-01-01T00:00:00Z",
+      updatedAt: "2025-01-01T00:00:00Z",
+    },
+    isLoading: false,
+    error: null,
+    refetch: jest.fn(),
+  }),
 }));
 
 describe("ProfileScreen", () => {

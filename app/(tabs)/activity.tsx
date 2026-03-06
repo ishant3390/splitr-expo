@@ -1,56 +1,42 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import { useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { Clock } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
-import { usersApi } from "@/lib/api";
+import { useUserActivity } from "@/lib/hooks";
 import { formatCents, formatDate, getInitials } from "@/lib/utils";
 import type { ActivityLogDto } from "@/lib/types";
 
 export default function ActivityScreen() {
-  const { getToken } = useAuth();
   const router = useRouter();
-  const [sections, setSections] = useState<{ title: string; data: ActivityLogDto[] }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: activity = [], isLoading: loading, refetch } = useUserActivity();
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = useCallback(async () => {
-    try {
-      const token = await getToken();
-      const data = await usersApi.activity(token!);
-      const list: ActivityLogDto[] = Array.isArray(data) ? data : [];
-
-      const grouped = list.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
-        const label = item.createdAt ? formatDate(item.createdAt) : "Recent";
-        if (!acc[label]) acc[label] = [];
-        acc[label].push(item);
-        return acc;
-      }, {});
-
-      setSections(Object.entries(grouped).map(([title, data]) => ({ title, data })));
-    } catch {
-      setSections([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const sections = useMemo(() => {
+    const grouped = activity.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
+      const label = item.createdAt ? formatDate(item.createdAt) : "Recent";
+      if (!acc[label]) acc[label] = [];
+      acc[label].push(item);
+      return acc;
+    }, {});
+    return Object.entries(grouped).map(([title, data]) => ({ title, data }));
+  }, [activity]);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      refetch();
+    }, [refetch])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
+    await refetch();
     setRefreshing(false);
-  }, [loadData]);
+  }, [refetch]);
 
   if (loading) {
     return (

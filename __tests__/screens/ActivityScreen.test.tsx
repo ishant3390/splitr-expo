@@ -2,11 +2,26 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react-native";
 import ActivityScreen from "@/app/(tabs)/activity";
 
-jest.mock("@/lib/api", () => ({
-  usersApi: {
-    activity: jest.fn(() => Promise.resolve([])),
-  },
+const mockRefetch = jest.fn();
+const mockUseUserActivity = jest.fn(() => ({
+  data: [],
+  isLoading: false,
+  error: null,
+  refetch: mockRefetch,
 }));
+
+jest.mock("@/lib/hooks", () => ({
+  useUserActivity: (...args: any[]) => mockUseUserActivity(...args),
+}));
+
+beforeEach(() => {
+  mockUseUserActivity.mockReturnValue({
+    data: [],
+    isLoading: false,
+    error: null,
+    refetch: mockRefetch,
+  });
+});
 
 describe("ActivityScreen", () => {
   it("renders header", () => {
@@ -22,17 +37,21 @@ describe("ActivityScreen", () => {
   });
 
   it("renders activity items when data exists", async () => {
-    const { usersApi } = require("@/lib/api");
-    usersApi.activity.mockResolvedValueOnce([
-      {
-        id: "a1",
-        activityType: "expense_created",
-        actorUserName: "Alice",
-        groupName: "Trip",
-        createdAt: "2026-03-05T10:00:00Z",
-        details: { description: "Dinner" },
-      },
-    ]);
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner" },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
 
     render(<ActivityScreen />);
     await waitFor(() => {

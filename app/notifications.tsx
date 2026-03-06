@@ -1,15 +1,14 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, SectionList, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { useAuth } from "@clerk/clerk-expo";
 import { ArrowLeft, Bell, CheckCheck } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { usersApi } from "@/lib/api";
+import { useUserActivity } from "@/lib/hooks";
 import { getInitials, cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
 import type { ActivityLogDto } from "@/lib/types";
@@ -88,36 +87,23 @@ function groupByDay(items: ActivityLogDto[]): { title: string; data: ActivityLog
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { getToken } = useAuth();
-  const [sections, setSections] = useState<{ title: string; data: ActivityLogDto[] }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: activity = [], isLoading: loading, refetch } = useUserActivity();
   const [refreshing, setRefreshing] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
-  const loadData = useCallback(async () => {
-    try {
-      const token = await getToken();
-      const data = await usersApi.activity(token!);
-      const list = Array.isArray(data) ? data : [];
-      setSections(groupByDay(list));
-    } catch {
-      setSections([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const sections = useMemo(() => groupByDay(activity), [activity]);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      refetch();
+    }, [refetch])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
+    await refetch();
     setRefreshing(false);
-  }, [loadData]);
+  }, [refetch]);
 
   const markAllRead = () => {
     const allIds = new Set<string>();

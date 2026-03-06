@@ -5,25 +5,22 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { hapticLight, hapticWarning, hapticSuccess, hapticSelection } from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { useAuth } from "@clerk/clerk-expo";
 import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { EmptyState } from "@/components/ui/empty-state";
-import { groupsApi } from "@/lib/api";
+import { useGroups, useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { GroupDto } from "@/lib/types";
 
 export default function GroupsScreen() {
   const router = useRouter();
-  const { getToken } = useAuth();
   const toast = useToast();
-  const [groups, setGroups] = useState<GroupDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<"active" | "archived">("active");
+  const { data: groups = [], isLoading: loading, refetch } = useGroups(filter);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Long-press action sheet
   const [selectedGroup, setSelectedGroup] = useState<GroupDto | null>(null);
@@ -31,46 +28,35 @@ export default function GroupsScreen() {
 
   // Delete confirmation
   const [groupToDelete, setGroupToDelete] = useState<GroupDto | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
-  const loadGroups = useCallback(async () => {
-    try {
-      const token = await getToken();
-      const data = await groupsApi.list(token!, filter);
-      setGroups(Array.isArray(data) ? data : []);
-    } catch {
-      setGroups([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [filter]);
+  const archiveMutation = useArchiveGroup();
+  const deleteMutation = useDeleteGroup();
+  const deleting = deleteMutation.isPending;
 
   useFocusEffect(
     useCallback(() => {
-      loadGroups();
-    }, [loadGroups])
+      refetch();
+    }, [refetch])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadGroups();
+    await refetch();
     setRefreshing(false);
-  }, [loadGroups]);
+  }, [refetch]);
 
   const handleArchive = async () => {
     if (!selectedGroup) return;
     try {
-      const token = await getToken();
-      await groupsApi.update(
-        selectedGroup.id,
-        { isArchived: true, version: selectedGroup.version },
-        token!
-      );
+      await archiveMutation.mutateAsync({
+        groupId: selectedGroup.id,
+        version: selectedGroup.version ?? 0,
+        archive: true,
+      });
       hapticSuccess();
       toast.success(`"${selectedGroup.name}" archived.`);
       setShowActions(false);
       setSelectedGroup(null);
-      await loadGroups();
     } catch {
       toast.error("Failed to archive group.");
     }
@@ -79,17 +65,15 @@ export default function GroupsScreen() {
   const handleUnarchive = async () => {
     if (!selectedGroup) return;
     try {
-      const token = await getToken();
-      await groupsApi.update(
-        selectedGroup.id,
-        { isArchived: false, version: selectedGroup.version },
-        token!
-      );
+      await archiveMutation.mutateAsync({
+        groupId: selectedGroup.id,
+        version: selectedGroup.version ?? 0,
+        archive: false,
+      });
       hapticSuccess();
       toast.success(`"${selectedGroup.name}" restored.`);
       setShowActions(false);
       setSelectedGroup(null);
-      await loadGroups();
     } catch {
       toast.error("Failed to restore group.");
     }
@@ -97,18 +81,13 @@ export default function GroupsScreen() {
 
   const handleDelete = async () => {
     if (!groupToDelete) return;
-    setDeleting(true);
     try {
-      const token = await getToken();
-      await groupsApi.delete(groupToDelete.id, token!);
+      await deleteMutation.mutateAsync(groupToDelete.id);
       hapticSuccess();
       toast.success(`"${groupToDelete.name}" deleted.`);
       setGroupToDelete(null);
-      await loadGroups();
     } catch {
       toast.error("Failed to delete group.");
-    } finally {
-      setDeleting(false);
     }
   };
 

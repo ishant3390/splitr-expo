@@ -9,7 +9,9 @@ Splitr is a mobile expense splitting app (Expo/React Native) competing with Spli
 - **Styling**: NativeWind v4 + Tailwind CSS v3 (class-based, `cn()` utility for merging)
 - **Icons**: `lucide-react-native` (primary), custom SVGs in `components/icons/`
 - **Fonts**: Inter (4 weights: Regular, Medium, SemiBold, Bold)
-- **State**: Local React state + `useFocusEffect` for data refresh on screen focus
+- **State**: React Query (`@tanstack/react-query`) for server state caching + `useFocusEffect` for refetch on screen focus
+- **Hooks**: `lib/hooks.ts` — custom React Query hooks for all API data (useGroups, useUserBalance, etc.)
+- **Query Config**: `lib/query.ts` — QueryClient, query keys, stale times, invalidation helpers
 - **API**: REST client at `lib/api.ts`, backend at `EXPO_PUBLIC_API_URL`
 
 ## Project Structure
@@ -51,7 +53,7 @@ lib/
 - API responses may be `{ key: T[] }` maps — use `flattenMap()` in api.ts
 - Amounts stored in cents (use `amountToCents()` / `formatCents()`)
 - Deduplicate member lists (API sometimes returns duplicates)
-- Backend category `icon` field returns icon names (e.g. "restaurant"), not emojis — use `getCategoryEmoji()` mapping in add.tsx / edit-expense to convert to emoji
+- Backend category `icon` field returns icon names (e.g. "restaurant"), not emojis — use `getCategoryEmoji()` from `lib/screen-helpers` to convert to emoji
 - Groups have `groupType` (trip/home/couple/etc.) and `emoji` fields for display
 - When no groups exist, Add Expense auto-creates a "Personal" group
 - Default currency for new groups comes from `GET /v1/users/me` → `defaultCurrency`
@@ -60,6 +62,7 @@ lib/
 - `POST /v1/groups/{groupId}/expenses` — expenses always belong to a group
 - `GET /v1/categories` — returns categories with `id`, `name`, `icon` (icon name string)
 - `GET /v1/users/me/activity` — user activity feed (details may include categoryName)
+- `GET /v1/users/me/balance` — aggregate balance (totalOwedCents, totalOwesCents, netBalanceCents); home screen falls back to N+1 if unavailable
 - `POST /v1/users/sync` — syncs Clerk user with backend on sign-in
 - `GET /v1/groups/{groupId}/settlements/suggestions` — debt simplification suggestions
 - `POST /v1/groups/{groupId}/settlements` — record a settlement payment
@@ -83,7 +86,7 @@ lib/
 ## Known Gaps (Not Yet Implemented)
 - Receipt scanning is fully mocked (no real OCR endpoint)
 - Push notifications (no token registration, no expo-notifications)
-- `GET /v1/users/me/balance` aggregate endpoint (home screen does N+1 calls)
+- `GET /v1/users/me/balance` aggregate endpoint (frontend calls it, falls back to N+1 if backend 404s)
 - Activity `details.categoryName` — confirm backend populates this for category filtering
 - Deep link testing: universal links require AASA file hosted on splitr.app domain
 

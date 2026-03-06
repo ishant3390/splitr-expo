@@ -2,15 +2,17 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react-native";
 import HomeScreen from "@/app/(tabs)/index";
 
-// Mock API
-jest.mock("@/lib/api", () => ({
-  usersApi: {
-    activity: jest.fn(() => Promise.resolve([])),
-  },
-  groupsApi: {
-    list: jest.fn(() => Promise.resolve([])),
-    listMembers: jest.fn(() => Promise.resolve([])),
-  },
+jest.mock("@/lib/hooks", () => ({
+  useUserActivity: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+    refetch: jest.fn(),
+  }),
+  useUserBalance: () => ({
+    data: { totalOwedCents: 0, totalOwesCents: 0, netBalanceCents: 0 },
+    refetch: jest.fn(),
+  }),
 }));
 
 describe("HomeScreen", () => {

@@ -5,7 +5,7 @@ import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 import { hapticLight, hapticSelection } from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/clerk-expo";
 import {
   ScanLine,
   MessageCircle,
@@ -29,10 +29,11 @@ import {
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { usersApi, groupsApi } from "@/lib/api";
+import { useUserActivity, useUserBalance } from "@/lib/hooks";
+import { useNetwork } from "@/components/NetworkProvider";
 import { formatCents, formatDate, getInitials } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
-import { CheckCircle, Users } from "lucide-react-native";
+import { CheckCircle, Users, Clock } from "lucide-react-native";
 import type { ActivityLogDto } from "@/lib/types";
 
 // Airbnb-style category data
@@ -71,64 +72,38 @@ const ACTIVITY_EMOJI_MAP: Record<string, string> = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { getToken } = useAuth();
   const { user } = useUser();
-  const [activity, setActivity] = useState<ActivityLogDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalOwedCents, setTotalOwedCents] = useState(0);
-  const [totalOwesCents, setTotalOwesCents] = useState(0);
+  const { pendingCount } = useNetwork();
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = useCallback(async () => {
-    if (!user) return;
-    const token = await getToken();
-    const currentEmail = user.primaryEmailAddress?.emailAddress;
+  const {
+    data: activity = [],
+    isLoading: loading,
+    refetch: refetchActivity,
+  } = useUserActivity();
 
-    try {
-      const data = await usersApi.activity(token!);
-      const sliced = Array.isArray(data) ? data.slice(0, 20) : [];
-      setActivity(sliced);
-    } catch {
-      setActivity([]);
-    } finally {
-      setLoading(false);
-    }
+  const {
+    data: balanceData,
+    refetch: refetchBalance,
+  } = useUserBalance();
 
-    try {
-      const groups = await groupsApi.list(token!);
-      const groupList = Array.isArray(groups) ? groups : [];
-      const memberResults = await Promise.all(
-        groupList.map((g) => groupsApi.listMembers(g.id, token!))
-      );
-      let owed = 0;
-      let owes = 0;
-      memberResults.forEach((members) => {
-        const list = Array.isArray(members) ? members : [];
-        const me = list.find((m) => m.user?.email === currentEmail);
-        if (me?.balance != null) {
-          if (me.balance > 0) owed += me.balance;
-          else if (me.balance < 0) owes += Math.abs(me.balance);
-        }
-      });
-      setTotalOwedCents(owed);
-      setTotalOwesCents(owes);
-    } catch {
-      // keep existing balances
-    }
-  }, [user]);
+  const totalOwedCents = balanceData?.totalOwedCents ?? 0;
+  const totalOwesCents = balanceData?.totalOwesCents ?? 0;
 
+  // Refetch on screen focus
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      refetchActivity();
+      refetchBalance();
+    }, [refetchActivity, refetchBalance])
   );
 
+  const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
+    await Promise.all([refetchActivity(), refetchBalance()]);
     setRefreshing(false);
-  }, [loadData]);
+  }, [refetchActivity, refetchBalance]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -226,6 +201,33 @@ export default function HomeScreen() {
               </View>
             </View>
           </Card>
+
+          {/* Pending Expenses Banner */}
+          {pendingCount > 0 && (
+            <Pressable
+              onPress={() => { hapticLight(); router.push("/pending-expenses" as any); }}
+              className="active:opacity-80"
+            >
+              <Card className="p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                <View className="flex-row items-center gap-3">
+                  <View className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center">
+                    <Clock size={18} color="#d97706" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-sans-semibold text-amber-900 dark:text-amber-100">
+                      {pendingCount} expense{pendingCount > 1 ? "s" : ""} pending
+                    </Text>
+                    <Text className="text-xs font-sans text-amber-700 dark:text-amber-300">
+                      Will sync when you're back online
+                    </Text>
+                  </View>
+                  <View className="w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 items-center justify-center">
+                    <Text className="text-xs font-sans-bold text-amber-800 dark:text-amber-200">{pendingCount}</Text>
+                  </View>
+                </View>
+              </Card>
+            </Pressable>
+          )}
 
           {/* Airbnb-style Category Bar */}
           <ScrollView

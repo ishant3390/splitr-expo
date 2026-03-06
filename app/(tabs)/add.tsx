@@ -28,12 +28,15 @@ import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
 import { getCategoryEmoji, initSplitValues as computeSplitValues, dedupeMembers } from "@/lib/screen-helpers";
+import { useNetwork } from "@/components/NetworkProvider";
+import { addToQueue, generateClientId } from "@/lib/offline";
 import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
 
 type SplitType = "equal" | "percentage" | "fixed";
 
 export default function AddExpenseScreen() {
   const router = useRouter();
+  const { isOnline, refreshPendingCount } = useNetwork();
   const params = useLocalSearchParams<{ returnGroupId?: string }>();
   const returnGroupId = Array.isArray(params.returnGroupId) ? params.returnGroupId[0] : params.returnGroupId;
   const goBack = () => {
@@ -264,9 +267,26 @@ export default function AddExpenseScreen() {
         splits,
       };
 
-      await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
-      hapticSuccess();
-      toast.success(`"${finalDescription}" added to ${selectedGroup.name}`);
+      if (isOnline) {
+        await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
+        hapticSuccess();
+        toast.success(`"${finalDescription}" added to ${selectedGroup.name}`);
+      } else {
+        // Offline: queue for later sync
+        await addToQueue({
+          clientId: generateClientId(),
+          groupId: selectedGroup.id,
+          groupName: selectedGroup.name,
+          request: expenseRequest,
+          description: finalDescription,
+          amountCents: totalCents,
+          queuedAt: new Date().toISOString(),
+          attempts: 0,
+        });
+        await refreshPendingCount();
+        hapticSuccess();
+        toast.info(`"${finalDescription}" saved. It will sync when you're back online.`);
+      }
       goBack();
     } catch (err: any) {
       hapticError();

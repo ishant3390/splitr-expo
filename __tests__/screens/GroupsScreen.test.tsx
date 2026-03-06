@@ -10,18 +10,27 @@ jest.mock("@/components/ui/toast", () => ({
   }),
 }));
 
-const mockList = jest.fn(() => Promise.resolve([]));
+const mockRefetch = jest.fn();
+const mockUseGroups = jest.fn(() => ({
+  data: [],
+  isLoading: false,
+  error: null,
+  refetch: mockRefetch,
+}));
 
-jest.mock("@/lib/api", () => ({
-  groupsApi: {
-    list: (...args: any[]) => mockList(...args),
-    update: jest.fn(() => Promise.resolve({})),
-    delete: jest.fn(() => Promise.resolve()),
-  },
+jest.mock("@/lib/hooks", () => ({
+  useGroups: (...args: any[]) => mockUseGroups(...args),
+  useArchiveGroup: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useDeleteGroup: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
 beforeEach(() => {
-  mockList.mockReset().mockResolvedValue([]);
+  mockUseGroups.mockReturnValue({
+    data: [],
+    isLoading: false,
+    error: null,
+    refetch: mockRefetch,
+  });
 });
 
 describe("GroupsScreen", () => {
@@ -54,18 +63,23 @@ describe("GroupsScreen", () => {
     });
   });
 
-  it("renders groups when API returns data", async () => {
-    mockList.mockResolvedValue([
-      {
-        id: "g1",
-        name: "Trip to Paris",
-        emoji: "plane",
-        memberCount: 4,
-        defaultCurrency: "EUR",
-        createdAt: "2026-01-01",
-        updatedAt: "2026-01-01",
-      },
-    ]);
+  it("renders groups when data exists", async () => {
+    mockUseGroups.mockReturnValue({
+      data: [
+        {
+          id: "g1",
+          name: "Trip to Paris",
+          emoji: "plane",
+          memberCount: 4,
+          defaultCurrency: "EUR",
+          createdAt: "2026-01-01",
+          updatedAt: "2026-01-01",
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
 
     render(<GroupsScreen />);
     await waitFor(() => {

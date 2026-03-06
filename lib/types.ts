@@ -28,6 +28,17 @@ export interface UpdateUserRequest {
   preferences?: UserPreferences;
 }
 
+export interface UserBalanceDto {
+  totalOwedCents: number;
+  totalOwesCents: number;
+  netBalanceCents: number;
+  groupBalances?: Array<{
+    groupId: string;
+    groupName: string;
+    balanceCents: number;
+  }>;
+}
+
 export interface UserSummaryDto {
   id: string;
   name: string;

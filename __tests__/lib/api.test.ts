@@ -113,6 +113,29 @@ describe("usersApi", () => {
       );
     });
   });
+
+  describe("balance", () => {
+    it("fetches aggregate balance", async () => {
+      const balanceData = {
+        totalOwedCents: 5000,
+        totalOwesCents: 3000,
+        netBalanceCents: 2000,
+      };
+      mockFetch.mockResolvedValue(mockResponse(balanceData));
+
+      const result = await usersApi.balance("token");
+
+      expect(result).toEqual(balanceData);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/v1/users/me/balance"),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer token",
+          }),
+        })
+      );
+    });
+  });
 });
 
 describe("groupsApi", () => {

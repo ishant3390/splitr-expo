@@ -18,10 +18,9 @@ import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemedSwitch } from "@/components/ui/themed-switch";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { usersApi } from "@/lib/api";
+import { useUserProfile } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, formatDate } from "@/lib/utils";
-import { UserDto } from "@/lib/types";
 
 const menuItems = [
   { icon: User, label: "Edit Profile", id: "profile" },
@@ -32,26 +31,13 @@ const menuItems = [
 ];
 
 export default function ProfileScreen() {
-  const { signOut, getToken } = useAuth();
+  const { signOut } = useAuth();
   const { user } = useUser();
   const router = useRouter();
   const { colorScheme, toggleColorScheme } = useColorScheme();
-  const [apiUser, setApiUser] = useState<UserDto | null>(null);
+  const { data: apiUser = null } = useUserProfile();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const toast = useToast();
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const token = await getToken();
-        const me = await usersApi.me(token!);
-        setApiUser(me);
-      } catch {
-        // keep null
-      }
-    };
-    load();
-  }, []);
 
   const handleSignOut = () => {
     setShowSignOutModal(true);

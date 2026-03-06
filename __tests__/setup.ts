@@ -126,3 +126,31 @@ jest.mock("react-native-safe-area-context", () => {
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: (cb: () => void) => cb(),
 }));
+
+// Mock @react-native-community/netinfo
+jest.mock("@react-native-community/netinfo", () => ({
+  addEventListener: jest.fn(() => jest.fn()),
+  fetch: jest.fn(() => Promise.resolve({ isConnected: true, isInternetReachable: true })),
+}));
+
+// Mock @react-native-async-storage/async-storage
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  getItem: jest.fn(() => Promise.resolve(null)),
+  setItem: jest.fn(() => Promise.resolve()),
+  removeItem: jest.fn(() => Promise.resolve()),
+}));
+
+// Mock @/components/NetworkProvider
+jest.mock("@/components/NetworkProvider", () => ({
+  useNetwork: () => ({ isOnline: true, pendingCount: 0, refreshPendingCount: jest.fn() }),
+  NetworkProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// Mock @tanstack/react-query
+jest.mock("@tanstack/react-query", () => ({
+  useQuery: jest.fn(() => ({ data: undefined, isLoading: false, error: null, refetch: jest.fn() })),
+  useMutation: jest.fn(() => ({ mutateAsync: jest.fn(), isPending: false })),
+  useQueryClient: jest.fn(() => ({ setQueryData: jest.fn(), invalidateQueries: jest.fn() })),
+  QueryClientProvider: ({ children }: { children: React.ReactNode }) => children,
+  QueryClient: jest.fn(),
+}));

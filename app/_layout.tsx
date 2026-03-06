@@ -5,8 +5,11 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { useColorScheme } from "nativewind";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { usersApi } from "@/lib/api";
+import { queryClient } from "@/lib/query";
 import { ToastProvider } from "@/components/ui/toast";
+import { NetworkProvider } from "@/components/NetworkProvider";
 import * as SecureStore from "expo-secure-store";
 import {
   useFonts,
@@ -85,6 +88,7 @@ function AuthGate() {
       />
       <Stack.Screen name="group/[id]" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="edit-profile" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="pending-expenses" options={{ animation: "slide_from_right" }} />
       <Stack.Screen
         name="settle-up"
         options={{
@@ -115,15 +119,19 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-      <ClerkLoaded>
-        <SafeAreaProvider>
-          <ToastProvider>
-            <StatusBar style="auto" />
-            <AuthGate />
-          </ToastProvider>
-        </SafeAreaProvider>
-      </ClerkLoaded>
-    </ClerkProvider>
+    <QueryClientProvider client={queryClient}>
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+        <ClerkLoaded>
+          <SafeAreaProvider>
+            <ToastProvider>
+              <NetworkProvider>
+                <StatusBar style="auto" />
+                <AuthGate />
+              </NetworkProvider>
+            </ToastProvider>
+          </SafeAreaProvider>
+        </ClerkLoaded>
+      </ClerkProvider>
+    </QueryClientProvider>
   );
 }
