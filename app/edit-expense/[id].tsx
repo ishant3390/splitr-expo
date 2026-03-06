@@ -521,7 +521,7 @@ export default function EditExpenseScreen() {
           {/* Split with */}
           <View>
             {/* Header row */}
-            <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center justify-between mb-1">
               <Text className="text-sm font-sans-medium text-foreground">
                 Split with ({splitWith.length})
               </Text>
@@ -547,6 +547,19 @@ export default function EditExpenseScreen() {
                 </Text>
               )}
             </View>
+            {/* Inline validation hint */}
+            {splitType === "percentage" && splitWith.length > 0 && Math.abs(totalPct - 100) >= 0.5 && (
+              <Text className="text-xs text-destructive font-sans mb-1">
+                {totalPct < 100 ? `${(100 - totalPct).toFixed(1)}% remaining` : `${(totalPct - 100).toFixed(1)}% over — reduce to 100%`}
+              </Text>
+            )}
+            {splitType === "fixed" && splitWith.length > 0 && Math.abs(totalFixed - (parseFloat(amount) || 0)) >= 0.01 && (
+              <Text className="text-xs text-destructive font-sans mb-1">
+                {totalFixed < (parseFloat(amount) || 0)
+                  ? `$${((parseFloat(amount) || 0) - totalFixed).toFixed(2)} remaining`
+                  : `$${(totalFixed - (parseFloat(amount) || 0)).toFixed(2)} over — reduce to match total`}
+              </Text>
+            )}
 
             {/* Split type selector */}
             <View className="flex-row gap-2 mb-3">
@@ -610,7 +623,7 @@ export default function EditExpenseScreen() {
                               keyboardType="decimal-pad"
                               placeholder="0"
                               placeholderTextColor="#94a3b8"
-                              style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: "#0f172a", fontFamily: "Inter_400Regular" }}
+                              style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: isDark ? "#f1f5f9" : "#0f172a", fontFamily: "Inter_400Regular" }}
                             />
                             <Text className="text-sm text-muted-foreground font-sans pr-2">%</Text>
                           </View>
@@ -628,7 +641,7 @@ export default function EditExpenseScreen() {
                               keyboardType="decimal-pad"
                               placeholder="0.00"
                               placeholderTextColor="#94a3b8"
-                              style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: "#0f172a", fontFamily: "Inter_400Regular" }}
+                              style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: isDark ? "#f1f5f9" : "#0f172a", fontFamily: "Inter_400Regular" }}
                             />
                           </View>
                         </Pressable>

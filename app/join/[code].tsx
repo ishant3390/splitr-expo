@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import { Users, Check, AlertCircle, Archive } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { GroupAvatar } from "@/components/ui/group-avatar";
 import { inviteApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
@@ -147,7 +148,8 @@ export default function JoinGroupScreen() {
         </View>
 
         {/* Group info */}
-        <View className="items-center gap-1">
+        <View className="items-center gap-3">
+          <GroupAvatar name={preview.name} groupType={preview.groupType} size="lg" />
           <Text className="text-sm text-muted-foreground font-sans">
             You've been invited to join
           </Text>

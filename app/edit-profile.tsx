@@ -64,12 +64,18 @@ export default function EditProfileScreen() {
       return;
     }
 
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone && !/^\+?[\d\s\-()]{7,20}$/.test(trimmedPhone)) {
+      toast.error("Please enter a valid phone number.");
+      return;
+    }
+
     setSaving(true);
     try {
       const token = await getToken();
       const data: UpdateUserRequest = {
         name: name.trim(),
-        phone: phone.trim() || undefined,
+        phone: trimmedPhone || undefined,
         defaultCurrency: currency,
       };
       await usersApi.updateMe(data, token!);

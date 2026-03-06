@@ -12,6 +12,7 @@ import { usersApi } from "@/lib/api";
 import { queryClient } from "@/lib/query";
 import { ToastProvider } from "@/components/ui/toast";
 import { NetworkProvider } from "@/components/NetworkProvider";
+import { NotificationProvider } from "@/components/NotificationProvider";
 import * as SecureStore from "expo-secure-store";
 import {
   useFonts,
@@ -96,6 +97,7 @@ function AuthGate() {
       <Stack.Screen name="help-support" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="privacy-security" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="payment-methods" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="notification-settings" options={{ animation: "slide_from_right" }} />
       <Stack.Screen
         name="settle-up"
         options={{
@@ -142,8 +144,10 @@ export default function RootLayout() {
             <SafeAreaProvider>
               <ToastProvider>
                 <NetworkProvider>
-                  <StatusBar style={Appearance.getColorScheme() === "dark" ? "light" : "dark"} />
-                  <AuthGate />
+                  <NotificationProvider>
+                    <StatusBar style={Appearance.getColorScheme() === "dark" ? "light" : "dark"} />
+                    <AuthGate />
+                  </NotificationProvider>
                 </NetworkProvider>
               </ToastProvider>
             </SafeAreaProvider>

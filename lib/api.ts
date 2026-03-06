@@ -69,17 +69,26 @@ export const usersApi = {
   updateMe: (data: UpdateUserRequest, token: string) =>
     request<UserDto>("/v1/users/me", { method: "PATCH", body: JSON.stringify(data) }, token),
 
-  activity: async (token: string): Promise<ActivityLogDto[]> => {
-    const data = await request<Record<string, ActivityLogDto[]>>(
-      "/v1/users/me/activity",
+  activity: async (token: string, params?: { page?: number; limit?: number }): Promise<ActivityLogDto[]> => {
+    const qs = params ? `?page=${params.page ?? 0}&limit=${params.limit ?? 20}` : "";
+    const data = await request<any>(
+      `/v1/users/me/activity${qs}`,
       undefined,
       token
     );
+    // Handle Spring Boot Page response (content array) or legacy flat/map response
+    if (data?.content && Array.isArray(data.content)) return data.content;
     return flattenMap(data);
   },
 
   sync: (token: string) =>
     request<void>("/v1/users/sync", { method: "POST" }, token),
+
+  registerPushToken: (data: { token: string; platform: string; deviceId?: string }, authToken: string) =>
+    request<void>("/v1/users/me/push-tokens", { method: "POST", body: JSON.stringify(data) }, authToken),
+
+  unregisterPushToken: (pushToken: string, authToken: string) =>
+    request<void>(`/v1/users/me/push-tokens/${encodeURIComponent(pushToken)}`, { method: "DELETE" }, authToken),
 
   balance: (token: string) =>
     request<import("./types").UserBalanceRawDto>("/v1/users/me/balance", undefined, token),
@@ -163,12 +172,14 @@ export const groupsApi = {
     ),
 
   // Activity
-  activity: async (groupId: string, token: string): Promise<ActivityLogDto[]> => {
-    const data = await request<Record<string, ActivityLogDto[]>>(
-      `/v1/groups/${groupId}/activity`,
+  activity: async (groupId: string, token: string, params?: { page?: number; limit?: number }): Promise<ActivityLogDto[]> => {
+    const qs = params ? `?page=${params.page ?? 0}&limit=${params.limit ?? 20}` : "";
+    const data = await request<any>(
+      `/v1/groups/${groupId}/activity${qs}`,
       undefined,
       token
     );
+    if (data?.content && Array.isArray(data.content)) return data.content;
     return flattenMap(data);
   },
 };
@@ -255,8 +266,13 @@ export const expensesApi = {
 // ---- Settlements ----
 
 export const settlementsApi = {
-  list: (groupId: string, token: string) =>
-    request<SettlementDto[]>(`/v1/groups/${groupId}/settlements`, undefined, token),
+  list: async (groupId: string, token: string, params?: { page?: number; limit?: number }): Promise<SettlementDto[]> => {
+    const qs = params ? `?page=${params.page ?? 0}&limit=${params.limit ?? 20}` : "";
+    const data = await request<any>(`/v1/groups/${groupId}/settlements${qs}`, undefined, token);
+    // Handle Spring Boot Page response or plain array
+    if (data?.content && Array.isArray(data.content)) return data.content;
+    return Array.isArray(data) ? data : [];
+  },
 
   suggestions: (groupId: string, token: string) =>
     request<SettlementSuggestionDto[]>(

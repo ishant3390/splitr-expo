@@ -106,6 +106,8 @@ jest.mock("react-native-reanimated", () => {
     FadeIn: { duration: () => ({}) },
     FadeInDown: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }), duration: () => ({ springify: () => ({}) }) },
     FadeInRight: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }) },
+    SlideInDown: { springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) },
+    SlideOutDown: { springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) },
     useAnimatedStyle: (fn: any) => (typeof fn === "function" ? fn() : {}),
     useSharedValue: (v: any) => ({ value: v }),
     useDerivedValue: (fn: any) => ({ value: typeof fn === "function" ? fn() : fn }),
@@ -129,9 +131,88 @@ jest.mock("react-native-safe-area-context", () => {
   };
 });
 
+// Mock expo-linear-gradient
+jest.mock("expo-linear-gradient", () => {
+  const RN = require("react-native");
+  return {
+    LinearGradient: RN.View,
+  };
+});
+
 // Mock @react-navigation/native
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: (cb: () => void) => cb(),
+}));
+
+// Mock expo-notifications
+jest.mock("expo-notifications", () => ({
+  setNotificationHandler: jest.fn(),
+  getPermissionsAsync: jest.fn(() => Promise.resolve({ status: "granted" })),
+  requestPermissionsAsync: jest.fn(() => Promise.resolve({ status: "granted" })),
+  getExpoPushTokenAsync: jest.fn(() => Promise.resolve({ data: "ExponentPushToken[test-token]" })),
+  setBadgeCountAsync: jest.fn(),
+  getBadgeCountAsync: jest.fn(() => Promise.resolve(0)),
+  setNotificationChannelAsync: jest.fn(),
+  setNotificationCategoryAsync: jest.fn(),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  removeNotificationSubscription: jest.fn(),
+  useLastNotificationResponse: jest.fn(() => null),
+  AndroidImportance: { MAX: 5, HIGH: 4, DEFAULT: 3, LOW: 2, MIN: 1 },
+}));
+
+// Mock expo-device
+jest.mock("expo-device", () => ({
+  isDevice: true,
+  modelName: "Test Device",
+}));
+
+// Mock expo-constants
+jest.mock("expo-constants", () => ({
+  expoConfig: { extra: { eas: { projectId: "test-project-id" } } },
+}));
+
+// Mock @/lib/notifications
+jest.mock("@/lib/notifications", () => ({
+  configureForegroundHandler: jest.fn(),
+  setupAndroidChannels: jest.fn(),
+  registerPushToken: jest.fn(() => Promise.resolve(null)),
+  unregisterPushToken: jest.fn(() => Promise.resolve()),
+  clearBadge: jest.fn(),
+  getNotificationUrl: jest.fn(() => null),
+  setupNotificationCategories: jest.fn(),
+  getNotificationPermissionStatus: jest.fn(() => Promise.resolve(true)),
+  requestNotificationPermission: jest.fn(() => Promise.resolve(true)),
+  getNotificationPreferences: jest.fn(() => Promise.resolve({
+    enabled: true,
+    detailLevel: "privacy",
+    expenses: true,
+    settlements: true,
+    groups: true,
+    reminders: true,
+  })),
+  saveNotificationPreferences: jest.fn(() => Promise.resolve()),
+  getExpoPushToken: jest.fn(() => Promise.resolve("ExponentPushToken[test-token]")),
+  NOTIFICATION_CHANNELS: {
+    expenses: { id: "expenses", name: "Expenses", importance: 5 },
+    settlements: { id: "settlements", name: "Settlements", importance: 4 },
+    groups: { id: "groups", name: "Groups", importance: 3 },
+    reminders: { id: "reminders", name: "Reminders", importance: 3 },
+  },
+  NOTIFICATION_PREFS_KEY: "@splitr/notification_prefs",
+  DEFAULT_NOTIFICATION_PREFS: {
+    enabled: true,
+    detailLevel: "privacy",
+    expenses: true,
+    settlements: true,
+    groups: true,
+    reminders: true,
+  },
+}));
+
+// Mock @/components/NotificationProvider
+jest.mock("@/components/NotificationProvider", () => ({
+  NotificationProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 // Mock @react-native-community/netinfo
@@ -139,6 +220,15 @@ jest.mock("@react-native-community/netinfo", () => ({
   addEventListener: jest.fn(() => jest.fn()),
   fetch: jest.fn(() => Promise.resolve({ isConnected: true, isInternetReachable: true })),
 }));
+
+// Mock @react-native-community/datetimepicker
+jest.mock("@react-native-community/datetimepicker", () => {
+  const RN = require("react-native");
+  return {
+    __esModule: true,
+    default: RN.View,
+  };
+});
 
 // Mock @react-native-async-storage/async-storage
 jest.mock("@react-native-async-storage/async-storage", () => ({
@@ -156,6 +246,15 @@ jest.mock("@/components/NetworkProvider", () => ({
 // Mock @tanstack/react-query
 jest.mock("@tanstack/react-query", () => ({
   useQuery: jest.fn(() => ({ data: undefined, isLoading: false, error: null, refetch: jest.fn() })),
+  useInfiniteQuery: jest.fn(() => ({
+    data: { pages: [], pageParams: [] },
+    isLoading: false,
+    error: null,
+    refetch: jest.fn(),
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+  })),
   useMutation: jest.fn(() => ({ mutateAsync: jest.fn(), isPending: false })),
   useQueryClient: jest.fn(() => ({ setQueryData: jest.fn(), invalidateQueries: jest.fn() })),
   QueryClientProvider: ({ children }: { children: React.ReactNode }) => children,

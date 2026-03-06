@@ -4,16 +4,23 @@ import { X, CheckCircle2, AlertTriangle, Info } from "lucide-react-native";
 
 type ToastType = "success" | "error" | "info";
 
+interface ToastAction {
+  label: string;
+  onPress: () => void;
+}
+
 interface Toast {
   id: number;
   message: string;
   type: ToastType;
+  action?: ToastAction;
+  duration?: number;
 }
 
 interface ToastContextValue {
-  success: (message: string) => void;
-  error: (message: string) => void;
-  info: (message: string) => void;
+  success: (message: string, options?: { action?: ToastAction; duration?: number }) => void;
+  error: (message: string, options?: { action?: ToastAction; duration?: number }) => void;
+  info: (message: string, options?: { action?: ToastAction; duration?: number }) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -49,6 +56,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   const translateY = useRef(new Animated.Value(-20)).current;
   const { Icon, color } = ICON_MAP[toast.type];
   const bgMap = isDark ? BG_MAP_DARK : BG_MAP_LIGHT;
+  const duration = toast.duration ?? 3500;
 
   React.useEffect(() => {
     Animated.parallel([
@@ -61,7 +69,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
         Animated.timing(translateY, { toValue: -20, duration: 200, useNativeDriver: true }),
       ]).start(onDismiss);
-    }, 3500);
+    }, duration);
 
     return () => clearTimeout(timer);
   }, []);
@@ -100,7 +108,22 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       >
         {toast.message}
       </Text>
-      <Pressable onPress={onDismiss} hitSlop={8}>
+      {toast.action && (
+        <Pressable
+          onPress={() => { toast.action!.onPress(); onDismiss(); }}
+          hitSlop={8}
+          style={{
+            marginLeft: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 6,
+            backgroundColor: color + "20",
+          }}
+        >
+          <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color }}>{toast.action.label}</Text>
+        </Pressable>
+      )}
+      <Pressable onPress={onDismiss} hitSlop={8} style={{ marginLeft: toast.action ? 4 : 0 }}>
         <X size={16} color="#94a3b8" />
       </Pressable>
     </Animated.View>
@@ -111,9 +134,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(0);
 
-  const show = useCallback((message: string, type: ToastType) => {
+  const show = useCallback((message: string, type: ToastType, options?: { action?: ToastAction; duration?: number }) => {
     const id = nextId.current++;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type, action: options?.action, duration: options?.duration }]);
   }, []);
 
   const dismiss = useCallback((id: number) => {
@@ -121,9 +144,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const ctx: ToastContextValue = {
-    success: useCallback((msg) => show(msg, "success"), [show]),
-    error: useCallback((msg) => show(msg, "error"), [show]),
-    info: useCallback((msg) => show(msg, "info"), [show]),
+    success: useCallback((msg, opts) => show(msg, "success", opts), [show]),
+    error: useCallback((msg, opts) => show(msg, "error", opts), [show]),
+    info: useCallback((msg, opts) => show(msg, "info", opts), [show]),
   };
 
   return (

@@ -1,15 +1,17 @@
-import React, { useState, useCallback } from "react";
-import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Modal, Platform, useColorScheme } from "react-native";
+import React, { useState, useCallback, useMemo } from "react";
+import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Platform, useColorScheme, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { hapticLight, hapticWarning, hapticSuccess, hapticSelection } from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw, AlertTriangle } from "lucide-react-native";
+import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw, AlertTriangle, Search } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { EmptyState } from "@/components/ui/empty-state";
+import { GroupAvatar } from "@/components/ui/group-avatar";
 import { useGroups, useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,17 @@ export default function GroupsScreen() {
   const [filter, setFilter] = useState<"active" | "archived">("active");
   const { data: groups = [], isLoading: loading, error: groupsError, refetch } = useGroups(filter);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return groups;
+    const q = searchQuery.toLowerCase();
+    return groups.filter((g) =>
+      g.name.toLowerCase().includes(q) ||
+      (g.description ?? "").toLowerCase().includes(q)
+    );
+  }, [groups, searchQuery]);
 
   // Long-press action sheet
   const [selectedGroup, setSelectedGroup] = useState<GroupDto | null>(null);
@@ -108,17 +121,44 @@ export default function GroupsScreen() {
           <Text className="text-2xl font-sans-bold text-foreground">Groups</Text>
           <Text className="text-xs text-muted-foreground font-sans">Long press to archive or delete</Text>
         </View>
-        <Button
-          variant="default"
-          size="sm"
-          onPress={() => router.push("/create-group")}
-        >
-          <View className="flex-row items-center gap-1.5">
-            <Plus size={16} color="#ffffff" />
-            <Text className="text-sm font-sans-semibold text-primary-foreground">New</Text>
-          </View>
-        </Button>
+        <View className="flex-row items-center gap-2">
+          <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
+            <View className="w-9 h-9 rounded-full bg-muted items-center justify-center">
+              <Search size={18} color={showSearch ? "#0d9488" : "#64748b"} />
+            </View>
+          </Pressable>
+          <Button
+            variant="default"
+            size="sm"
+            onPress={() => router.push("/create-group")}
+          >
+            <View className="flex-row items-center gap-1.5">
+              <Plus size={16} color="#ffffff" />
+              <Text className="text-sm font-sans-semibold text-primary-foreground">New</Text>
+            </View>
+          </Button>
+        </View>
       </View>
+
+      {/* Search bar */}
+      {showSearch && (
+        <View className="mx-5 mb-2 flex-row items-center bg-muted rounded-xl px-3 py-2 gap-2">
+          <Search size={16} color="#94a3b8" />
+          <TextInput
+            placeholder="Search groups..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+            style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#f1f5f9" : "#0f172a" }}
+            placeholderTextColor="#94a3b8"
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery("")}>
+              <X size={16} color="#94a3b8" />
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {/* Active / Archived filter */}
       <View className="flex-row mx-5 mb-3 rounded-xl bg-muted p-1">
@@ -169,7 +209,7 @@ export default function GroupsScreen() {
         </View>
       ) : (
         <FlatList
-          data={groups}
+          data={filteredGroups}
           keyExtractor={(item) => item.id}
           contentContainerClassName="px-5 pb-6 gap-3"
           showsVerticalScrollIndicator={false}
@@ -195,7 +235,6 @@ export default function GroupsScreen() {
             )
           }
           renderItem={({ item: group, index }: { item: GroupDto; index: number }) => {
-            const emoji = group.emoji ?? "\uD83D\uDC65";
             return (
               <Animated.View entering={FadeInDown.delay(index * 60).duration(300).springify()}>
               <Pressable
@@ -205,12 +244,11 @@ export default function GroupsScreen() {
               >
                 <Card className="p-4">
                   <View className="flex-row items-center gap-3">
-                    <View className={cn(
-                      "w-11 h-11 rounded-2xl items-center justify-center",
-                      filter === "archived" ? "bg-muted" : "bg-primary/10"
-                    )}>
-                      <Text style={{ fontSize: 22 }}>{emoji}</Text>
-                    </View>
+                    <GroupAvatar
+                      name={group.name}
+                      emoji={group.emoji}
+                      groupType={group.groupType}
+                    />
                     <View className="flex-1">
                       <Text className="text-base font-sans-semibold text-card-foreground">
                         {group.name}
@@ -231,95 +269,73 @@ export default function GroupsScreen() {
       )}
 
       {/* Action Sheet Modal */}
-      <Modal
-        transparent
-        visible={showActions}
-        animationType="slide"
-        onRequestClose={() => setShowActions(false)}
-      >
-        <Pressable
-          onPress={() => setShowActions(false)}
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
-        >
+      <BottomSheetModal visible={showActions} onClose={() => setShowActions(false)}>
+        <View className="flex-row items-center justify-between mb-3">
+          <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+            {selectedGroup?.name}
+          </Text>
+          <Pressable onPress={() => setShowActions(false)}>
+            <X size={22} color="#64748b" />
+          </Pressable>
+        </View>
+
+        {filter === "active" ? (
           <Pressable
-            onPress={(e) => e.stopPropagation()}
+            onPress={handleArchive}
             style={{
-              backgroundColor: isDark ? "#1e293b" : "#ffffff",
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              padding: 24,
-              paddingBottom: Platform.OS === "ios" ? 40 : 24,
-              gap: 4,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 4,
+              borderBottomWidth: 1,
+              borderBottomColor: isDark ? "#334155" : "#f1f5f9",
             }}
           >
-            <View className="flex-row items-center justify-between mb-3">
-              <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
-                {selectedGroup?.name}
-              </Text>
-              <Pressable onPress={() => setShowActions(false)}>
-                <X size={22} color="#64748b" />
-              </Pressable>
-            </View>
-
-            {filter === "active" ? (
-              <Pressable
-                onPress={handleArchive}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                  paddingVertical: 14,
-                  paddingHorizontal: 4,
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#f1f5f9",
-                }}
-              >
-                <Archive size={20} color="#f59e0b" />
-                <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
-                  Archive Group
-                </Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={handleUnarchive}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                  paddingVertical: 14,
-                  paddingHorizontal: 4,
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#f1f5f9",
-                }}
-              >
-                <RotateCcw size={20} color="#0d9488" />
-                <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
-                  Restore Group
-                </Text>
-              </Pressable>
-            )}
-
-            <Pressable
-              onPress={() => {
-                setShowActions(false);
-                setGroupToDelete(selectedGroup);
-              }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingVertical: 14,
-                paddingHorizontal: 4,
-              }}
-            >
-              <Trash2 size={20} color="#ef4444" />
-              <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: "#ef4444" }}>
-                Delete Group
-              </Text>
-            </Pressable>
+            <Archive size={20} color="#f59e0b" />
+            <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+              Archive Group
+            </Text>
           </Pressable>
+        ) : (
+          <Pressable
+            onPress={handleUnarchive}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 4,
+              borderBottomWidth: 1,
+              borderBottomColor: isDark ? "#334155" : "#f1f5f9",
+            }}
+          >
+            <RotateCcw size={20} color="#0d9488" />
+            <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+              Restore Group
+            </Text>
+          </Pressable>
+        )}
+
+        <Pressable
+          onPress={() => {
+            setShowActions(false);
+            setGroupToDelete(selectedGroup);
+          }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            paddingVertical: 14,
+            paddingHorizontal: 4,
+          }}
+        >
+          <Trash2 size={20} color="#ef4444" />
+          <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: "#ef4444" }}>
+            Delete Group
+          </Text>
         </Pressable>
-      </Modal>
+      </BottomSheetModal>
 
       {/* Delete Confirmation */}
       <ConfirmModal

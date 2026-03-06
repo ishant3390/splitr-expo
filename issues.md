@@ -29,21 +29,24 @@
 
 | # | Issue | Severity | Status | Fixed Date | Details |
 |---|-------|----------|--------|------------|---------|
+| 21 | Group deletion not appearing in activity feed | Medium | Fixed | 2026-03-06 | Backend now logs `group_deleted` activity type |
+| 25 | Spring-based modal animations | Low | Fixed | 2026-03-06 | Created `BottomSheetModal` component with Reanimated `SlideInDown`/`SlideOutDown` spring physics; replaced all 5 Modal instances |
+| 26 | Real-time split validation | Low | Fixed | 2026-03-06 | Inline hints below split header show remaining/over amounts in red as users type |
+| 27 | Remaining hardcoded dark mode colors | Low | Fixed | 2026-03-06 | Fixed notifications ArrowLeft, edit-expense split input text colors |
 | 28 | Swipe-to-delete on expenses | Medium | Fixed | 2026-03-06 | iOS-style SwipeableRow with Edit/Delete actions on expense cards in group detail; ConfirmModal for delete confirmation |
 | 29 | AnimatedNumber always animates from 0 | Medium | Fixed | 2026-03-06 | Rewritten to track previous value via useRef and animate between old→new with cubic ease-out |
 | 30 | Airbnb-style animated tab bar icons | Medium | Fixed | 2026-03-06 | Custom SVG icons with outline/filled variants, overshoot bounce, crossfade, indicator pill stretch |
+| 31 | BE WARN-14: Edit profile validation | Medium | Fixed | 2026-03-06 | Added phone format regex validation in edit-profile.tsx; name/currency already validated |
+| 32 | BE ERR-3: Expense request validation | Medium | Fixed | 2026-03-06 | Added description maxLength=255, totalAmount min 1 cent validation to add + edit expense screens |
+| 33 | Group avatars with gradients | Medium | Fixed | 2026-03-06 | `GroupAvatar` component with deterministic gradient from group name; integrated in groups list, group detail hero, join preview |
 
 ## Open Issues
 
 | # | Issue | Severity | Status | Reported | Details |
 |---|-------|----------|--------|----------|---------|
-| 21 | Group deletion not appearing in activity feed | Medium | Open - Backend | 2026-03-06 | Backend needs to log `group_deleted` activity type in `GET /v1/users/me/activity` |
 | 22 | Receipt scanning is fully mocked | Low | Open | 2026-03-06 | No real OCR endpoint; receipt-scanner.tsx uses mock data |
-| 23 | Push notifications not implemented | Medium | Open | 2026-03-06 | No token registration, no expo-notifications setup |
+| 23 | Push notifications — Phase 2 (Backend) pending | Medium | Open - Backend | 2026-03-06 | Phase 1 (frontend) done: `lib/notifications.ts`, `NotificationProvider`, notification-settings screen, tests (24). Awaiting BE: push_tokens table, EPNS integration, domain event listeners, rate limiting, receipt polling |
 | 24 | Deep link universal links not tested | Low | Open | 2026-03-06 | Requires AASA file hosted on splitr.app domain |
-| 25 | Spring-based modal animations | Low | Open | 2026-03-06 | All modals use basic `animationType="slide"`; spring physics would feel more premium |
-| 26 | Real-time split validation | Low | Open | 2026-03-06 | Percentage/fixed splits only validate on submit; inline feedback would prevent errors |
-| 27 | Some remaining hardcoded colors in edge cases | Low | Open | 2026-03-06 | Contact item "Add" button, helper text in modals still have some hardcoded colors |
 
 ## Backlog
 
@@ -53,10 +56,26 @@
 | B2 | Smart expense suggestions | Low | AI-powered auto-fill based on past expenses (description, category, split) |
 | B3 | Group avatars with gradients | Low | Auto-generated gradient avatars based on group name/type instead of plain initials |
 | B4 | Real receipt scanning (OCR) | Medium | Replace mock with actual OCR endpoint; extract amount, description, date from photo |
-| B5 | Push notifications | Medium | Expo Notifications setup, token registration, expense/settlement/invite alerts |
+| B5 | ~~Push notifications~~ | ~~Medium~~ | **Phase 1 Done**: `lib/notifications.ts` (foreground handler, permissions, token registration, preferences), `NotificationProvider` (token lifecycle, badge clear, tap handling, cold start), `notification-settings.tsx` (privacy/detailed toggle, per-category toggles), 24 tests. **Phase 2 (BE) pending**: push_tokens table, EPNS, domain events, rate limiting, coalescing. |
 | B6 | Activity feed for group deletions | Low | Backend: log group_deleted events so they appear in activity feed |
 | B7 | Expense attachments/photos | Low | Attach receipt photos to expenses for record-keeping |
 | B8 | Recurring expenses | Low | Auto-create monthly/weekly expenses (rent, subscriptions) |
+| B9 | ~~Pagination support~~ | ~~Medium~~ | **Done**: Infinite scroll on Activity (useInfiniteQuery + onEndReached), "Load More" on group expenses (cursor-based) and settlement history (page-based). API methods accept pagination params. |
+| B10 | ~~Search on Groups & Activity~~ | ~~High~~ | **Done**: Search bar with instant filtering on groups list (name/description) and activity feed (actor, group, description, type). Toggle via search icon in header. |
+| B11 | ~~Smart defaults on Add Expense~~ | ~~High~~ | **Done**: Last-used groupId and categoryId saved to AsyncStorage on successful submit. Restored on next Add Expense open. |
+| B12 | ~~Expense date picker~~ | ~~High~~ | **Done**: Date picker (`@react-native-community/datetimepicker`) on Add Expense. Shows current date with "Today" badge, max date = today. |
+| B13 | ~~Settle-up nudge on Home~~ | ~~High~~ | **Done**: "Settle up $X.XX" CTA button on balance card when `totalOwesCents > 0`, links to groups tab. |
+| B14 | ~~Undo toast for destructive actions~~ | ~~High~~ | **Done**: Toast system supports `action` button with callback + custom `duration`. Expense deletion (group detail, swipe) and settlement deletion (settle-up) use 5-second undo toast with deferred API call. |
+| B15 | Biometric app lock | Medium | `expo-local-authentication` Face ID / fingerprint on app open. Toggle in Profile > Privacy & Security. |
+| B16 | Success micro-animation | Medium | Brief checkmark animation (Reanimated) after adding expense before navigating back. |
+| B17 | Group balance visualization | Medium | Bar chart or visual breakdown of who owes whom in group detail, not just a text list. |
+| B18 | Receipt photo attachment | Medium | Attach a photo (camera/gallery) to an expense via `expo-image-picker`. Simpler than full OCR. |
+| B19 | Quick add from Home | Medium | Long-press Add button for quick-entry sheet (amount + description, auto-selects last group). |
+| B20 | Group spending insights | Low | Monthly breakdown, top categories, spending trends. Good for trip recaps. |
+| B21 | Keyboard done button | Low | Toolbar above decimal keyboard with "Done" button to dismiss. Standard iOS pattern. |
+| B22 | 3D Touch quick actions | Low | Home screen shortcuts via `expo-quick-actions`: Add Expense, Scan Receipt, View Groups. |
+| B23 | Animated tab bar transitions | Low | Subtle scale/bounce on tab switch for extra polish. |
+| B24 | Confetti on full settlement | Low | When a group reaches $0 balance (all settled), trigger brief confetti animation. |
 
 ## Notes
 

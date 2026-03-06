@@ -60,7 +60,7 @@ export default function ProfileScreen() {
         router.push("/payment-methods" as any);
         break;
       case "notifications":
-        router.push("/notifications" as any);
+        router.push("/notification-settings" as any);
         break;
       case "privacy":
         router.push("/privacy-security" as any);

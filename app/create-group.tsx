@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Modal,
   Share,
   useColorScheme,
 } from "react-native";
@@ -40,6 +39,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -510,145 +510,123 @@ export default function CreateGroupScreen() {
       </KeyboardAvoidingView>
 
       {/* Post-Creation Share Sheet */}
-      <Modal
-        transparent
-        visible={showShareSheet}
-        animationType="slide"
-        onRequestClose={handleDismissShare}
-      >
-        <Pressable
-          onPress={handleDismissShare}
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
+      <BottomSheetModal visible={showShareSheet} onClose={handleDismissShare}>
+        {/* Success header */}
+        <View className="items-center gap-2">
+          <View
             style={{
-              backgroundColor: isDark ? "#1e293b" : "#ffffff",
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 24,
-              paddingBottom: Platform.OS === "ios" ? 40 : 24,
+              width: 64,
+              height: 64,
+              borderRadius: 20,
+              backgroundColor: "#10b98120",
               alignItems: "center",
-              gap: 20,
+              justifyContent: "center",
             }}
           >
-            {/* Success header */}
-            <View className="items-center gap-2">
-              <View
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 20,
-                  backgroundColor: "#10b98120",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Check size={32} color="#10b981" />
-              </View>
-              <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
-                Group Created!
-              </Text>
-              <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", textAlign: "center" }}>
-                Share the link so others can join
-              </Text>
-            </View>
+            <Check size={32} color="#10b981" />
+          </View>
+          <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+            Group Created!
+          </Text>
+          <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", textAlign: "center" }}>
+            Share the link so others can join
+          </Text>
+        </View>
 
-            {/* Invite link */}
-            {createdGroup?.inviteCode && (
-              <Pressable
-                onPress={handleCopyLink}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                  backgroundColor: isDark ? "#0f172a" : "#f8fafc",
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: isDark ? "#334155" : "#e2e8f0",
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  width: "100%",
-                }}
-              >
-                <Text
-                  style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748b" }}
-                  numberOfLines={1}
-                >
-                  {getInviteUrl(createdGroup.inviteCode)}
-                </Text>
-                {copied ? (
-                  <Check size={18} color="#10b981" />
-                ) : (
-                  <Copy size={18} color="#0d9488" />
-                )}
-              </Pressable>
+        {/* Invite link */}
+        {createdGroup?.inviteCode && (
+          <Pressable
+            onPress={handleCopyLink}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: isDark ? "#334155" : "#e2e8f0",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              width: "100%",
+            }}
+          >
+            <Text
+              style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748b" }}
+              numberOfLines={1}
+            >
+              {getInviteUrl(createdGroup.inviteCode)}
+            </Text>
+            {copied ? (
+              <Check size={18} color="#10b981" />
+            ) : (
+              <Copy size={18} color="#0d9488" />
             )}
-
-            {/* QR Code — hidden by default */}
-            {createdGroup?.inviteCode && (
-              showQR ? (
-                <View
-                  style={{
-                    padding: 16,
-                    backgroundColor: isDark ? "#0f172a" : "#ffffff",
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: isDark ? "#334155" : "#e2e8f0",
-                    alignItems: "center",
-                  }}
-                >
-                  <QRCode
-                    value={getInviteUrl(createdGroup.inviteCode)}
-                    size={180}
-                    color={isDark ? "#f1f5f9" : "#0f172a"}
-                    backgroundColor={isDark ? "#0f172a" : "#ffffff"}
-                  />
-                </View>
-              ) : (
-                <Pressable
-                  onPress={() => { hapticLight(); setShowQR(true); }}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    paddingVertical: 10,
-                    paddingHorizontal: 16,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: isDark ? "#334155" : "#e2e8f0",
-                    width: "100%",
-                  }}
-                >
-                  <QrCode size={18} color="#64748b" />
-                  <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#64748b" }}>
-                    Show QR Code
-                  </Text>
-                </Pressable>
-              )
-            )}
-
-            {/* Action buttons */}
-            <View style={{ width: "100%", gap: 10 }}>
-              <Button variant="default" onPress={handleShare}>
-                <View className="flex-row items-center gap-2">
-                  <Share2 size={18} color="#ffffff" />
-                  <Text className="text-base font-sans-semibold text-primary-foreground">
-                    Share Invite Link
-                  </Text>
-                </View>
-              </Button>
-
-              <Button variant="outline" onPress={handleDismissShare}>
-                <Text className="text-base font-sans-semibold text-foreground">
-                  Go to Group
-                </Text>
-              </Button>
-            </View>
           </Pressable>
-        </Pressable>
-      </Modal>
+        )}
+
+        {/* QR Code — hidden by default */}
+        {createdGroup?.inviteCode && (
+          showQR ? (
+            <View
+              style={{
+                padding: 16,
+                backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: isDark ? "#334155" : "#e2e8f0",
+                alignItems: "center",
+                alignSelf: "center",
+              }}
+            >
+              <QRCode
+                value={getInviteUrl(createdGroup.inviteCode)}
+                size={180}
+                color={isDark ? "#f1f5f9" : "#0f172a"}
+                backgroundColor={isDark ? "#0f172a" : "#ffffff"}
+              />
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => { hapticLight(); setShowQR(true); }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 16,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: isDark ? "#334155" : "#e2e8f0",
+                width: "100%",
+              }}
+            >
+              <QrCode size={18} color="#64748b" />
+              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#64748b" }}>
+                Show QR Code
+              </Text>
+            </Pressable>
+          )
+        )}
+
+        {/* Action buttons */}
+        <View style={{ width: "100%", gap: 10 }}>
+          <Button variant="default" onPress={handleShare}>
+            <View className="flex-row items-center gap-2">
+              <Share2 size={18} color="#ffffff" />
+              <Text className="text-base font-sans-semibold text-primary-foreground">
+                Share Invite Link
+              </Text>
+            </View>
+          </Button>
+
+          <Button variant="outline" onPress={handleDismissShare}>
+            <Text className="text-base font-sans-semibold text-foreground">
+              Go to Group
+            </Text>
+          </Button>
+        </View>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }

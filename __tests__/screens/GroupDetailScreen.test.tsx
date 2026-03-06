@@ -85,7 +85,7 @@ describe("GroupDetailScreen", () => {
   it("renders group name", async () => {
     render(<GroupDetailScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Trip to Paris")).toBeTruthy();
+      expect(screen.getAllByText("Trip to Paris").length).toBeGreaterThanOrEqual(1);
     });
   });
 

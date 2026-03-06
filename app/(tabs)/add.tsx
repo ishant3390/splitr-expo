@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth, useUser } from "@clerk/clerk-expo";
@@ -18,6 +20,7 @@ import {
   ChevronDown,
   Plus,
   Check,
+  Calendar,
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +38,8 @@ import { addToQueue, generateClientId } from "@/lib/offline";
 import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
 
 type SplitType = "equal" | "percentage" | "fixed";
+
+const SMART_DEFAULTS_KEY = "@splitr/add_expense_defaults";
 
 export default function AddExpenseScreen() {
   const router = useRouter();
@@ -72,6 +77,8 @@ export default function AddExpenseScreen() {
   const [splitFixedAmounts, setSplitFixedAmounts] = useState<Record<string, string>>({});
   const [showGroupPicker, setShowGroupPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [expenseDate, setExpenseDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Load groups and categories on mount; auto-create "Personal" group if none exist
   useEffect(() => {
@@ -98,13 +105,33 @@ export default function AddExpenseScreen() {
         }
 
         setGroups(list);
+
+        // Load smart defaults
+        let savedGroupId: string | null = null;
+        let savedCategoryId: string | null = null;
+        try {
+          const raw = await AsyncStorage.getItem(SMART_DEFAULTS_KEY);
+          if (raw) {
+            const defaults = JSON.parse(raw);
+            savedGroupId = defaults.groupId ?? null;
+            savedCategoryId = defaults.categoryId ?? null;
+          }
+        } catch {}
+
         if (list.length > 0) {
-          const preferred = returnGroupId ? list.find((g) => g.id === returnGroupId) : null;
+          const preferred = returnGroupId
+            ? list.find((g) => g.id === returnGroupId)
+            : savedGroupId
+            ? list.find((g) => g.id === savedGroupId)
+            : null;
           setSelectedGroup(preferred ?? list[0]);
         }
         const cats = Array.isArray(categoriesData) ? categoriesData : [];
         setCategories(cats);
-        if (cats.length > 0) setSelectedCategoryId(cats[0].id);
+        if (cats.length > 0) {
+          const savedCat = savedCategoryId ? cats.find((c) => c.id === savedCategoryId) : null;
+          setSelectedCategoryId(savedCat?.id ?? cats[0].id);
+        }
       } catch {
         setGroups([]);
       } finally {
@@ -273,7 +300,7 @@ export default function AddExpenseScreen() {
         totalAmount: totalCents,
         currency: selectedGroup.defaultCurrency || "USD",
         categoryId: selectedCategoryId ?? undefined,
-        expenseDate: new Date().toISOString().split("T")[0],
+        expenseDate: expenseDate.toISOString().split("T")[0],
         splitType: splitType === "fixed" ? "exact" : splitType,
         payers: [{ userId: payerMember?.user?.id, guestUserId: payerMember?.guestUser?.id, amountPaid: totalCents }],
         splits,
@@ -283,6 +310,11 @@ export default function AddExpenseScreen() {
         await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
         hapticSuccess();
         toast.success(`"${finalDescription}" added to ${selectedGroup.name}`);
+        // Save smart defaults for next time
+        AsyncStorage.setItem(SMART_DEFAULTS_KEY, JSON.stringify({
+          groupId: selectedGroup.id,
+          categoryId: selectedCategoryId,
+        })).catch(() => {});
       } else {
         // Offline: queue for later sync
         await addToQueue({
@@ -397,6 +429,34 @@ export default function AddExpenseScreen() {
             onChangeText={setDescription}
             maxLength={255}
           />
+          </Animated.View>
+
+          {/* Date */}
+          <Animated.View entering={FadeInDown.delay(150).duration(400).springify()}>
+            <Text className="text-sm font-sans-medium text-foreground mb-2">Date</Text>
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              className="flex-row items-center gap-3 bg-muted rounded-xl px-4 py-3.5"
+            >
+              <Calendar size={18} color="#64748b" />
+              <Text className="text-base font-sans text-foreground flex-1">
+                {expenseDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+              </Text>
+              {expenseDate.toDateString() === new Date().toDateString() && (
+                <Text className="text-xs font-sans-medium text-primary">Today</Text>
+              )}
+            </Pressable>
+            {showDatePicker && (
+              <DateTimePicker
+                value={expenseDate}
+                mode="date"
+                maximumDate={new Date()}
+                onChange={(_, date) => {
+                  setShowDatePicker(Platform.OS === "ios");
+                  if (date) setExpenseDate(date);
+                }}
+              />
+            )}
           </Animated.View>
 
           {/* Category */}
@@ -536,7 +596,7 @@ export default function AddExpenseScreen() {
           {selectedGroup && (
             <View>
               {/* Header row */}
-              <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center justify-between mb-1">
                 <Text className="text-sm font-sans-medium text-foreground">
                   Split with ({splitWith.length})
                 </Text>
@@ -562,6 +622,19 @@ export default function AddExpenseScreen() {
                   </Text>
                 )}
               </View>
+              {/* Inline validation hint */}
+              {splitType === "percentage" && splitWith.length > 0 && Math.abs(totalPct - 100) >= 0.5 && (
+                <Text className="text-xs text-destructive font-sans mb-1">
+                  {totalPct < 100 ? `${(100 - totalPct).toFixed(1)}% remaining` : `${(totalPct - 100).toFixed(1)}% over — reduce to 100%`}
+                </Text>
+              )}
+              {splitType === "fixed" && splitWith.length > 0 && Math.abs(totalFixed - (parseFloat(amount) || 0)) >= 0.01 && (
+                <Text className="text-xs text-destructive font-sans mb-1">
+                  {totalFixed < (parseFloat(amount) || 0)
+                    ? `$${((parseFloat(amount) || 0) - totalFixed).toFixed(2)} remaining`
+                    : `$${(totalFixed - (parseFloat(amount) || 0)).toFixed(2)} over — reduce to match total`}
+                </Text>
+              )}
 
               {/* Split type selector */}
               <View className="flex-row gap-2 mb-3">

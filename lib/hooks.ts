@@ -8,7 +8,7 @@
  * so they ALWAYS refetch. We never show stale money data as if it were fresh.
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useCallback } from "react";
 import {
@@ -106,17 +106,28 @@ export function useUserBalance() {
   });
 }
 
+const PAGE_SIZE = 20;
+
 export function useUserActivity() {
   const fetchToken = useTokenFetcher();
-  return useQuery<ActivityLogDto[]>({
+  const query = useInfiniteQuery<ActivityLogDto[], Error>({
     queryKey: queryKeys.userActivity,
-    queryFn: async () => {
+    queryFn: async ({ pageParam }) => {
       const token = await fetchToken();
-      const data = await usersApi.activity(token);
-      return Array.isArray(data) ? data.slice(0, 20) : [];
+      const data = await usersApi.activity(token, { page: pageParam as number, limit: PAGE_SIZE });
+      return Array.isArray(data) ? data : [];
     },
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length >= PAGE_SIZE ? allPages.length : undefined,
+    initialPageParam: 0,
     staleTime: staleTimes.activity,
   });
+
+  return {
+    ...query,
+    // Flatten pages into a single array for easy consumption
+    data: query.data?.pages.flat() ?? [],
+  };
 }
 
 // ---- Group Queries ----

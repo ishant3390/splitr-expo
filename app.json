@@ -16,7 +16,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.splitr.app",
-      "associatedDomains": ["applinks:splitr.app"],
+      "associatedDomains": [
+        "applinks:splitr.app"
+      ],
       "infoPlist": {
         "NSCameraUsageDescription": "Splitr needs camera access to scan receipts.",
         "NSPhotoLibraryUsageDescription": "Splitr needs photo library access to select receipt images."
@@ -28,7 +30,9 @@
         "backgroundColor": "#0d9488"
       },
       "package": "com.splitr.app",
-      "permissions": ["CAMERA"],
+      "permissions": [
+        "CAMERA"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -40,7 +44,10 @@
               "pathPrefix": "/invite"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -64,7 +71,17 @@
         {
           "photosPermission": "Allow Splitr to access your photos to select receipt images."
         }
-      ]
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#0d9488",
+          "defaultChannel": "default",
+          "enableBackgroundRemoteNotifications": true
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

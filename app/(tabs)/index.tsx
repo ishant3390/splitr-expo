@@ -37,7 +37,7 @@ import { formatCents, formatDate, getInitials } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedPressable } from "@/components/ui/animated-pressable";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { CheckCircle, Users, Clock } from "lucide-react-native";
+import { CheckCircle, Users, Clock, HandCoins } from "lucide-react-native";
 import type { ActivityLogDto } from "@/lib/types";
 
 // Airbnb-style category data
@@ -212,6 +212,19 @@ export default function HomeScreen() {
                 </View>
               </View>
             </View>
+
+            {/* Settle-up nudge */}
+            {totalOwesCents > 0 && (
+              <Pressable
+                onPress={() => { hapticLight(); router.push("/(tabs)/groups"); }}
+                className="mt-4 flex-row items-center justify-center gap-2 bg-white/15 rounded-xl py-2.5"
+              >
+                <HandCoins size={16} color="#ffffff" />
+                <Text className="text-sm font-sans-semibold text-primary-foreground">
+                  Settle up {formatCents(totalOwesCents)}
+                </Text>
+              </Pressable>
+            )}
           </Card>
 
           {/* Pending Expenses Banner */}

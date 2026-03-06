@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl } from "react-native";
+import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl, TextInput, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { Clock, AlertTriangle } from "lucide-react-native";
+import { Clock, AlertTriangle, Search, X } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,18 +14,33 @@ import type { ActivityLogDto } from "@/lib/types";
 
 export default function ActivityScreen() {
   const router = useRouter();
-  const { data: activity = [], isLoading: loading, error: activityError, refetch } = useUserActivity();
+  const isDark = useColorScheme() === "dark";
+  const { data: activity = [], isLoading: loading, error: activityError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useUserActivity();
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return activity;
+    const q = searchQuery.toLowerCase();
+    return activity.filter((item) => {
+      const actor = (item.actorUserName ?? item.actorGuestName ?? "").toLowerCase();
+      const group = (item.groupName ?? "").toLowerCase();
+      const desc = ((item.details?.description ?? item.details?.newDescription ?? "") as string).toLowerCase();
+      const type = item.activityType.replace(/_/g, " ").toLowerCase();
+      return actor.includes(q) || group.includes(q) || desc.includes(q) || type.includes(q);
+    });
+  }, [activity, searchQuery]);
 
   const sections = useMemo(() => {
-    const grouped = activity.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
+    const grouped = filtered.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
       const label = item.createdAt ? formatDate(item.createdAt) : "Recent";
       if (!acc[label]) acc[label] = [];
       acc[label].push(item);
       return acc;
     }, {});
     return Object.entries(grouped).map(([title, data]) => ({ title, data }));
-  }, [activity]);
+  }, [filtered]);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,8 +69,33 @@ export default function ActivityScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-      <View className="px-5 pt-3 pb-4">
-        <Text className="text-2xl font-sans-bold text-foreground">Activity</Text>
+      <View className="px-5 pt-3 pb-2">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-2xl font-sans-bold text-foreground">Activity</Text>
+          <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
+            <View className="w-9 h-9 rounded-full bg-muted items-center justify-center">
+              <Search size={18} color={showSearch ? "#0d9488" : "#64748b"} />
+            </View>
+          </Pressable>
+        </View>
+        {showSearch && (
+          <View className="mt-2 flex-row items-center bg-muted rounded-xl px-3 py-2 gap-2">
+            <Search size={16} color="#94a3b8" />
+            <TextInput
+              placeholder="Search activity..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#f1f5f9" : "#0f172a" }}
+              placeholderTextColor="#94a3b8"
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <X size={16} color="#94a3b8" />
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
 
       {activityError && sections.length === 0 ? (
@@ -86,6 +126,17 @@ export default function ActivityScreen() {
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+          }}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View className="py-4 items-center">
+                <ActivityIndicator size="small" color="#0d9488" />
+              </View>
+            ) : null
+          }
           renderSectionHeader={({ section: { title } }) => (
             <Text className="text-sm font-sans-semibold text-muted-foreground mb-2 mt-4">
               {title}

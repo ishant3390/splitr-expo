@@ -119,7 +119,7 @@ export default function NotificationsScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
         <Button variant="ghost" size="icon" onPress={goBack}>
-          <ArrowLeft size={24} color="#0f172a" />
+          <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
         </Button>
         <Text className="text-lg font-sans-semibold text-foreground">Notifications</Text>
         <Pressable onPress={markAllRead} className="px-2">

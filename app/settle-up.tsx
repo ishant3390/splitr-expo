@@ -1,13 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Modal,
-  Platform,
-  KeyboardAvoidingView,
   RefreshControl,
   useColorScheme,
 } from "react-native";
@@ -29,6 +26,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { settlementsApi, groupsApi } from "@/lib/api";
 import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -77,12 +75,20 @@ export default function SettleUpScreen() {
   // Delete state
   const [settlementToDelete, setSettlementToDelete] = useState<SettlementDto | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const pendingSettlementDeleteRef = useRef<{ settlement: SettlementDto; timer: ReturnType<typeof setTimeout> } | null>(null);
 
   // Refresh
   const [refreshing, setRefreshing] = useState(false);
 
+  // Settlement pagination
+  const [settlementPage, setSettlementPage] = useState(0);
+  const [hasMoreSettlements, setHasMoreSettlements] = useState(false);
+  const [loadingMoreSettlements, setLoadingMoreSettlements] = useState(false);
+
   // Tab
   const [activeTab, setActiveTab] = useState<"suggestions" | "history">("suggestions");
+
+  const SETTLEMENT_PAGE_SIZE = 20;
 
   const loadData = useCallback(async () => {
     try {
@@ -92,7 +98,7 @@ export default function SettleUpScreen() {
           groupsApi.get(groupId, token!),
           groupsApi.listMembers(groupId, token!),
           settlementsApi.suggestions(groupId, token!),
-          settlementsApi.list(groupId, token!),
+          settlementsApi.list(groupId, token!, { page: 0, limit: SETTLEMENT_PAGE_SIZE }),
         ]);
       setGroup(groupData);
       const rawMembers = Array.isArray(membersData) ? membersData : [];
@@ -105,13 +111,34 @@ export default function SettleUpScreen() {
         })
       );
       setSuggestions(Array.isArray(suggestionsData) ? suggestionsData : []);
-      setSettlements(Array.isArray(settlementsData) ? settlementsData : []);
+      const items = Array.isArray(settlementsData) ? settlementsData : [];
+      setSettlements(items);
+      setSettlementPage(0);
+      setHasMoreSettlements(items.length >= SETTLEMENT_PAGE_SIZE);
     } catch {
       toast.error("Failed to load settlement data.");
     } finally {
       setLoading(false);
     }
   }, [groupId]);
+
+  const loadMoreSettlements = async () => {
+    if (!hasMoreSettlements || loadingMoreSettlements) return;
+    setLoadingMoreSettlements(true);
+    try {
+      const token = await getToken();
+      const nextPage = settlementPage + 1;
+      const data = await settlementsApi.list(groupId, token!, { page: nextPage, limit: SETTLEMENT_PAGE_SIZE });
+      const items = Array.isArray(data) ? data : [];
+      setSettlements((prev) => [...prev, ...items]);
+      setSettlementPage(nextPage);
+      setHasMoreSettlements(items.length >= SETTLEMENT_PAGE_SIZE);
+    } catch {
+      // Silently fail
+    } finally {
+      setLoadingMoreSettlements(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -173,20 +200,51 @@ export default function SettleUpScreen() {
     }
   };
 
+  const handleDeleteWithUndo = (settlement: SettlementDto) => {
+    if (pendingSettlementDeleteRef.current) {
+      clearTimeout(pendingSettlementDeleteRef.current.timer);
+      pendingSettlementDeleteRef.current = null;
+    }
+
+    setSettlements((prev) => prev.filter((s) => s.id !== settlement.id));
+
+    const timer = setTimeout(async () => {
+      pendingSettlementDeleteRef.current = null;
+      try {
+        const token = await getToken();
+        await settlementsApi.delete(settlement.id, token!);
+        await loadData(); // Refresh suggestions after actual delete
+      } catch {
+        setSettlements((prev) => [...prev, settlement]);
+        toast.error("Failed to delete settlement.");
+      }
+    }, 5000);
+
+    pendingSettlementDeleteRef.current = { settlement, timer };
+
+    const payerName = settlement.payerUser?.name ?? settlement.payerGuest?.name ?? "Someone";
+    toast.info(`Settlement by ${payerName} deleted`, {
+      duration: 5000,
+      action: {
+        label: "Undo",
+        onPress: () => {
+          if (pendingSettlementDeleteRef.current?.settlement.id === settlement.id) {
+            clearTimeout(pendingSettlementDeleteRef.current.timer);
+            pendingSettlementDeleteRef.current = null;
+          }
+          setSettlements((prev) => [...prev, settlement].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          ));
+        },
+      },
+    });
+  };
+
   const handleDelete = async () => {
     if (!settlementToDelete) return;
-    setDeleting(true);
-    try {
-      const token = await getToken();
-      await settlementsApi.delete(settlementToDelete.id, token!);
-      toast.success("Settlement deleted.");
-      setSettlementToDelete(null);
-      await loadData();
-    } catch {
-      toast.error("Failed to delete settlement.");
-    } finally {
-      setDeleting(false);
-    }
+    const s = settlementToDelete;
+    setSettlementToDelete(null);
+    handleDeleteWithUndo(s);
   };
 
   const goBack = () =>
@@ -414,7 +472,7 @@ export default function SettleUpScreen() {
                               {formatCents(s.amount)}
                             </Text>
                             <Pressable
-                              onPress={() => { hapticWarning(); setSettlementToDelete(s); }}
+                              onPress={() => { hapticWarning(); handleDeleteWithUndo(s); }}
                               hitSlop={8}
                             >
                               <Trash2 size={14} color="#ef4444" />
@@ -424,6 +482,23 @@ export default function SettleUpScreen() {
                       </Card>
                     );
                   })}
+
+                {/* Load More */}
+                {hasMoreSettlements && (
+                  <Pressable
+                    onPress={loadMoreSettlements}
+                    disabled={loadingMoreSettlements}
+                    className="py-3 items-center"
+                  >
+                    {loadingMoreSettlements ? (
+                      <ActivityIndicator size="small" color="#0d9488" />
+                    ) : (
+                      <Text className="text-sm font-sans-semibold text-primary">
+                        Load more settlements
+                      </Text>
+                    )}
+                  </Pressable>
+                )}
               </View>
             )}
           </>
@@ -431,179 +506,149 @@ export default function SettleUpScreen() {
       </ScrollView>
 
       {/* Create Settlement Modal */}
-      <Modal
-        transparent
-        visible={showCreate}
-        animationType="slide"
-        onRequestClose={() => setShowCreate(false)}
-      >
-        <Pressable
-          onPress={() => setShowCreate(false)}
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            justifyContent: "flex-end",
-          }}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-          >
-            <Pressable
-              onPress={(e) => e.stopPropagation()}
-              style={{
-                backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                padding: 24,
-                paddingBottom: Platform.OS === "ios" ? 36 : 24,
-                gap: 16,
-              }}
-            >
-              {/* Modal header */}
-              <View className="flex-row items-center justify-between">
-                <Text className="text-lg font-sans-bold text-foreground">
-                  Record Payment
-                </Text>
-                <Pressable onPress={() => setShowCreate(false)}>
-                  <X size={22} color="#64748b" />
-                </Pressable>
-              </View>
+      <BottomSheetModal visible={showCreate} onClose={() => setShowCreate(false)} keyboardAvoiding>
+        {/* Modal header */}
+        <View className="flex-row items-center justify-between">
+          <Text className="text-lg font-sans-bold text-foreground">
+            Record Payment
+          </Text>
+          <Pressable onPress={() => setShowCreate(false)}>
+            <X size={22} color="#64748b" />
+          </Pressable>
+        </View>
 
-              {/* Who pays whom */}
-              {createFrom && (
-                <View className="flex-row items-center justify-center gap-3 py-2">
-                  <View className="items-center gap-1">
-                    <Avatar
-                      src={createFrom.fromUser?.avatarUrl}
-                      fallback={getInitials(
-                        createFrom.fromUser?.name ??
-                          createFrom.fromGuest?.name ??
-                          "?"
-                      )}
-                      size="md"
-                    />
-                    <Text
-                      className="text-xs font-sans-medium text-foreground"
-                      numberOfLines={1}
-                    >
-                      {(
-                        createFrom.fromUser?.name ??
-                        createFrom.fromGuest?.name ??
-                        "?"
-                      )
-                        .split(" ")[0]}
-                    </Text>
-                  </View>
-                  <View className="items-center gap-0.5">
-                    <ArrowRight size={20} color="#0d9488" />
-                    <Text className="text-xs text-muted-foreground font-sans">
-                      pays
-                    </Text>
-                  </View>
-                  <View className="items-center gap-1">
-                    <Avatar
-                      src={createFrom.toUser?.avatarUrl}
-                      fallback={getInitials(
-                        createFrom.toUser?.name ??
-                          createFrom.toGuest?.name ??
-                          "?"
-                      )}
-                      size="md"
-                    />
-                    <Text
-                      className="text-xs font-sans-medium text-foreground"
-                      numberOfLines={1}
-                    >
-                      {(
-                        createFrom.toUser?.name ??
-                        createFrom.toGuest?.name ??
-                        "?"
-                      )
-                        .split(" ")[0]}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Amount */}
-              <Input
-                label="Amount"
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="decimal-pad"
-                placeholder="0.00"
-              />
-
-              {/* Payment method */}
-              <View>
-                <Text className="text-sm font-sans-medium text-foreground mb-2">
-                  Payment Method
-                </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {PAYMENT_METHODS.map((m) => {
-                    const isSelected = paymentMethod === m.key;
-                    return (
-                      <Pressable
-                        key={m.key}
-                        onPress={() => { hapticSelection(); setPaymentMethod(m.key); }}
-                        className={cn(
-                          "flex-row items-center gap-1.5 px-3 py-2 rounded-xl border",
-                          isSelected
-                            ? "bg-primary border-primary"
-                            : "bg-card border-border"
-                        )}
-                      >
-                        <Text style={{ fontSize: 14 }}>{m.emoji}</Text>
-                        <Text
-                          className={cn(
-                            "text-sm font-sans-medium",
-                            isSelected
-                              ? "text-primary-foreground"
-                              : "text-foreground"
-                          )}
-                        >
-                          {m.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Reference */}
-              <Input
-                label="Reference (optional)"
-                value={paymentReference}
-                onChangeText={setPaymentReference}
-                placeholder="e.g., @username, transaction ID"
-              />
-
-              {/* Notes */}
-              <Input
-                label="Notes (optional)"
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="e.g., Dinner split"
-              />
-
-              {/* Submit */}
-              <Button
-                variant="default"
-                onPress={handleCreate}
-                disabled={submitting || !amount}
-              >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <Text className="text-base font-sans-semibold text-primary-foreground">
-                    Record Payment
-                  </Text>
+        {/* Who pays whom */}
+        {createFrom && (
+          <View className="flex-row items-center justify-center gap-3 py-2">
+            <View className="items-center gap-1">
+              <Avatar
+                src={createFrom.fromUser?.avatarUrl}
+                fallback={getInitials(
+                  createFrom.fromUser?.name ??
+                    createFrom.fromGuest?.name ??
+                    "?"
                 )}
-              </Button>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+                size="md"
+              />
+              <Text
+                className="text-xs font-sans-medium text-foreground"
+                numberOfLines={1}
+              >
+                {(
+                  createFrom.fromUser?.name ??
+                  createFrom.fromGuest?.name ??
+                  "?"
+                )
+                  .split(" ")[0]}
+              </Text>
+            </View>
+            <View className="items-center gap-0.5">
+              <ArrowRight size={20} color="#0d9488" />
+              <Text className="text-xs text-muted-foreground font-sans">
+                pays
+              </Text>
+            </View>
+            <View className="items-center gap-1">
+              <Avatar
+                src={createFrom.toUser?.avatarUrl}
+                fallback={getInitials(
+                  createFrom.toUser?.name ??
+                    createFrom.toGuest?.name ??
+                    "?"
+                )}
+                size="md"
+              />
+              <Text
+                className="text-xs font-sans-medium text-foreground"
+                numberOfLines={1}
+              >
+                {(
+                  createFrom.toUser?.name ??
+                  createFrom.toGuest?.name ??
+                  "?"
+                )
+                  .split(" ")[0]}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Amount */}
+        <Input
+          label="Amount"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="decimal-pad"
+          placeholder="0.00"
+        />
+
+        {/* Payment method */}
+        <View>
+          <Text className="text-sm font-sans-medium text-foreground mb-2">
+            Payment Method
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {PAYMENT_METHODS.map((m) => {
+              const isSelected = paymentMethod === m.key;
+              return (
+                <Pressable
+                  key={m.key}
+                  onPress={() => { hapticSelection(); setPaymentMethod(m.key); }}
+                  className={cn(
+                    "flex-row items-center gap-1.5 px-3 py-2 rounded-xl border",
+                    isSelected
+                      ? "bg-primary border-primary"
+                      : "bg-card border-border"
+                  )}
+                >
+                  <Text style={{ fontSize: 14 }}>{m.emoji}</Text>
+                  <Text
+                    className={cn(
+                      "text-sm font-sans-medium",
+                      isSelected
+                        ? "text-primary-foreground"
+                        : "text-foreground"
+                    )}
+                  >
+                    {m.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Reference */}
+        <Input
+          label="Reference (optional)"
+          value={paymentReference}
+          onChangeText={setPaymentReference}
+          placeholder="e.g., @username, transaction ID"
+        />
+
+        {/* Notes */}
+        <Input
+          label="Notes (optional)"
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="e.g., Dinner split"
+        />
+
+        {/* Submit */}
+        <Button
+          variant="default"
+          onPress={handleCreate}
+          disabled={submitting || !amount}
+        >
+          {submitting ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Text className="text-base font-sans-semibold text-primary-foreground">
+              Record Payment
+            </Text>
+          )}
+        </Button>
+      </BottomSheetModal>
 
       {/* Delete Confirmation */}
       <ConfirmModal

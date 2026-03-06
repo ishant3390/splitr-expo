@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,8 +6,6 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
-  Modal,
-  KeyboardAvoidingView,
   Share,
   RefreshControl,
   TextInput,
@@ -43,9 +41,11 @@ import QRCode from "react-native-qrcode-svg";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
+import { GroupAvatar } from "@/components/ui/group-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { groupsApi, contactsApi, inviteApi, expensesApi } from "@/lib/api";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, getInitials, cn } from "@/lib/utils";
@@ -116,21 +116,50 @@ export default function GroupDetailScreen() {
   const [expenseToDelete, setExpenseToDelete] = useState<ExpenseDto | null>(null);
   const [deletingExpense, setDeletingExpense] = useState(false);
 
+  // Undo delete: holds the pending delete timer
+  const pendingDeleteRef = useRef<{ expense: ExpenseDto; timer: ReturnType<typeof setTimeout> } | null>(null);
+
+  // Expense pagination
+  const [expenseCursor, setExpenseCursor] = useState<string | undefined>(undefined);
+  const [hasMoreExpenses, setHasMoreExpenses] = useState(false);
+  const [loadingMoreExpenses, setLoadingMoreExpenses] = useState(false);
+
   const loadData = async () => {
     try {
       const token = await getToken();
       const [groupData, membersData, expensesResponse] = await Promise.all([
         groupsApi.get(id, token!),
         groupsApi.listMembers(id, token!),
-        groupsApi.listExpenses(id, token!),
+        groupsApi.listExpenses(id, token!, { limit: "20" }),
       ]);
       setGroup(groupData);
       setMembers(dedupeMembers(membersData));
       setExpenses(expensesResponse.data ?? []);
+      setExpenseCursor(expensesResponse.pagination?.nextCursor);
+      setHasMoreExpenses(expensesResponse.pagination?.hasMore ?? false);
     } catch {
       setGroup(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreExpenses = async () => {
+    if (!hasMoreExpenses || loadingMoreExpenses || !expenseCursor) return;
+    setLoadingMoreExpenses(true);
+    try {
+      const token = await getToken();
+      const response = await groupsApi.listExpenses(id, token!, {
+        cursor: expenseCursor,
+        limit: "20",
+      });
+      setExpenses((prev) => [...prev, ...(response.data ?? [])]);
+      setExpenseCursor(response.pagination?.nextCursor);
+      setHasMoreExpenses(response.pagination?.hasMore ?? false);
+    } catch {
+      // Silently fail — user can retry
+    } finally {
+      setLoadingMoreExpenses(false);
     }
   };
 
@@ -238,21 +267,52 @@ export default function GroupDetailScreen() {
     }
   };
 
+  const handleDeleteExpenseWithUndo = (expense: ExpenseDto) => {
+    // Cancel any previous pending delete
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timer);
+      pendingDeleteRef.current = null;
+    }
+
+    // Optimistically remove from UI
+    setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
+
+    // Set a timer to actually delete after 5 seconds
+    const timer = setTimeout(async () => {
+      pendingDeleteRef.current = null;
+      try {
+        const token = await getToken();
+        await expensesApi.delete(expense.id, token!);
+      } catch {
+        // If API fails, restore the expense
+        setExpenses((prev) => [...prev, expense]);
+        toast.error("Failed to delete expense.");
+      }
+    }, 5000);
+
+    pendingDeleteRef.current = { expense, timer };
+
+    toast.info(`"${expense.description}" deleted`, {
+      duration: 5000,
+      action: {
+        label: "Undo",
+        onPress: () => {
+          if (pendingDeleteRef.current?.expense.id === expense.id) {
+            clearTimeout(pendingDeleteRef.current.timer);
+            pendingDeleteRef.current = null;
+          }
+          setExpenses((prev) => [...prev, expense].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          ));
+        },
+      },
+    });
+  };
+
   const handleDeleteExpense = async () => {
     if (!expenseToDelete) return;
-    setDeletingExpense(true);
-    try {
-      const token = await getToken();
-      await expensesApi.delete(expenseToDelete.id, token!);
-      hapticSuccess();
-      toast.success("Expense deleted.");
-      setExpenses((prev) => prev.filter((e) => e.id !== expenseToDelete.id));
-      setExpenseToDelete(null);
-    } catch {
-      toast.error("Failed to delete expense.");
-    } finally {
-      setDeletingExpense(false);
-    }
+    setExpenseToDelete(null);
+    handleDeleteExpenseWithUndo(expenseToDelete);
   };
 
   const handleCopyLink = async () => {
@@ -359,8 +419,24 @@ export default function GroupDetailScreen() {
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
       >
+        {/* Group Info */}
+        <View className="flex-row items-center gap-3 pt-5 pb-3">
+          <GroupAvatar name={group.name} emoji={group.emoji} groupType={group.groupType} size="lg" />
+          <View className="flex-1">
+            <Text className="text-xl font-sans-bold text-foreground">{group.name}</Text>
+            {group.description ? (
+              <Text className="text-sm text-muted-foreground font-sans mt-0.5" numberOfLines={2}>
+                {group.description}
+              </Text>
+            ) : null}
+            <Text className="text-xs text-muted-foreground font-sans mt-1">
+              {members.length} {members.length === 1 ? "member" : "members"} {group.defaultCurrency ? `\u00B7 ${group.defaultCurrency}` : ""}
+            </Text>
+          </View>
+        </View>
+
         {/* Members */}
-        <View className="py-4">
+        <View className="pb-4">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-sm font-sans-semibold text-muted-foreground">
               MEMBERS ({members.length})
@@ -630,7 +706,7 @@ export default function GroupDetailScreen() {
                     }}
                     onDelete={() => {
                       hapticWarning();
-                      setExpenseToDelete(expense);
+                      handleDeleteExpenseWithUndo(expense);
                     }}
                   >
                   <Pressable
@@ -671,6 +747,23 @@ export default function GroupDetailScreen() {
                   </Animated.View>
                 );
               })}
+
+            {/* Load More */}
+            {hasMoreExpenses && !searchQuery && (
+              <Pressable
+                onPress={loadMoreExpenses}
+                disabled={loadingMoreExpenses}
+                className="py-3 items-center"
+              >
+                {loadingMoreExpenses ? (
+                  <ActivityIndicator size="small" color="#0d9488" />
+                ) : (
+                  <Text className="text-sm font-sans-semibold text-primary">
+                    Load more expenses
+                  </Text>
+                )}
+              </Pressable>
+            )}
           </View>
           );
         })()}
@@ -701,291 +794,245 @@ export default function GroupDetailScreen() {
       />
 
       {/* Add Member Modal */}
-      <Modal
-        transparent
-        visible={showAddMember}
-        animationType="slide"
-        onRequestClose={() => setShowAddMember(false)}
-      >
-        <Pressable
-          onPress={() => setShowAddMember(false)}
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
-        >
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
-            <Pressable
-              onPress={(e) => e.stopPropagation()}
-              style={{
-                backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                padding: 24,
-                paddingBottom: Platform.OS === "ios" ? 36 : 24,
-                gap: 16,
-              }}
-            >
-              {/* Modal header */}
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
-                  Add Member
-                </Text>
-                <Pressable onPress={() => setShowAddMember(false)}>
-                  <X size={22} color="#64748b" />
-                </Pressable>
-              </View>
+      <BottomSheetModal visible={showAddMember} onClose={() => setShowAddMember(false)} keyboardAvoiding>
+        {/* Modal header */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+            Add Member
+          </Text>
+          <Pressable onPress={() => setShowAddMember(false)}>
+            <X size={22} color="#64748b" />
+          </Pressable>
+        </View>
 
-              {/* Contacts from other groups */}
-              {contactsLoading ? (
-                <ActivityIndicator color="#0d9488" />
-              ) : contacts.length > 0 ? (
-                <View style={{ gap: 8 }}>
-                  <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#64748b" }}>
-                    FROM YOUR OTHER GROUPS
-                  </Text>
-                  <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
-                    <View style={{ gap: 8 }}>
-                      {contacts.map((contact, idx) => (
-                        <Pressable
-                          key={`contact-${contact.userId ?? contact.guestUserId ?? idx}`}
-                          onPress={() => handleAddContact(contact)}
-                          disabled={addingMember}
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 10,
-                            padding: 10,
-                            borderRadius: 10,
-                            borderWidth: 1,
-                            borderColor: isDark ? "#334155" : "#e2e8f0",
-                            backgroundColor: isDark ? "#0f172a" : "#f8fafc",
-                          }}
-                        >
-                          <Avatar
-                            src={contact.avatarUrl}
-                            fallback={getInitials(contact.name)}
-                            size="sm"
-                          />
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
-                              {contact.name}
-                              {contact.isGuest ? (
-                                <Text style={{ fontFamily: "Inter_400Regular", color: "#94a3b8" }}> {"\u00B7"} Guest</Text>
-                              ) : null}
-                            </Text>
-                            {contact.email ? (
-                              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#64748b" }}>
-                                {contact.email}
-                              </Text>
-                            ) : null}
-                          </View>
-                          <View style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#0d9488", borderRadius: 6 }}>
-                            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>Add</Text>
-                          </View>
-                        </Pressable>
-                      ))}
+        {/* Contacts from other groups */}
+        {contactsLoading ? (
+          <ActivityIndicator color="#0d9488" />
+        ) : contacts.length > 0 ? (
+          <View style={{ gap: 8 }}>
+            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#64748b" }}>
+              FROM YOUR OTHER GROUPS
+            </Text>
+            <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 8 }}>
+                {contacts.map((contact, idx) => (
+                  <Pressable
+                    key={`contact-${contact.userId ?? contact.guestUserId ?? idx}`}
+                    onPress={() => handleAddContact(contact)}
+                    disabled={addingMember}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: 10,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: isDark ? "#334155" : "#e2e8f0",
+                      backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+                    }}
+                  >
+                    <Avatar
+                      src={contact.avatarUrl}
+                      fallback={getInitials(contact.name)}
+                      size="sm"
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+                        {contact.name}
+                        {contact.isGuest ? (
+                          <Text style={{ fontFamily: "Inter_400Regular", color: "#94a3b8" }}> {"\u00B7"} Guest</Text>
+                        ) : null}
+                      </Text>
+                      {contact.email ? (
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#64748b" }}>
+                          {contact.email}
+                        </Text>
+                      ) : null}
                     </View>
-                  </ScrollView>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
-                    <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#94a3b8" }}>OR ADD SOMEONE NEW</Text>
-                    <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
-                  </View>
-                </View>
-              ) : null}
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#0d9488", borderRadius: 6 }}>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>Add</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
+              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#94a3b8" }}>OR ADD SOMEONE NEW</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
+            </View>
+          </View>
+        ) : null}
 
-              {/* Name input (primary) */}
-              <Input
-                label="Name"
-                placeholder="e.g., Alex"
-                value={addMemberName}
-                onChangeText={setAddMemberName}
-                autoCapitalize="words"
-                onSubmitEditing={handleAddMemberByName}
-                returnKeyType="done"
-              />
+        {/* Name input (primary) */}
+        <Input
+          label="Name"
+          placeholder="e.g., Alex"
+          value={addMemberName}
+          onChangeText={setAddMemberName}
+          autoCapitalize="words"
+          onSubmitEditing={handleAddMemberByName}
+          returnKeyType="done"
+        />
 
-              <Text
-                style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b", lineHeight: 18 }}
-              >
-                They'll be added as a guest. Share the group link so they can join with their account.
-              </Text>
-
-              {/* Add button */}
-              <Button
-                variant="default"
-                onPress={handleAddMemberByName}
-                disabled={addingMember || !addMemberName.trim()}
-              >
-                {addingMember ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>
-                    Add to Group
-                  </Text>
-                )}
-              </Button>
-
-              {/* Share link shortcut */}
-              {group?.inviteCode && (
-                <Pressable
-                  onPress={() => { setShowAddMember(false); setShowShareModal(true); }}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <Share2 size={16} color="#0d9488" />
-                  <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0d9488" }}>
-                    Or share invite link instead
-                  </Text>
-                </Pressable>
-              )}
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-
-      {/* Share / QR Modal */}
-      <Modal
-        transparent
-        visible={showShareModal}
-        animationType="slide"
-        onRequestClose={() => setShowShareModal(false)}
-      >
-        <Pressable
-          onPress={() => setShowShareModal(false)}
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+        <Text
+          style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b", lineHeight: 18 }}
         >
+          They'll be added as a guest. Share the group link so they can join with their account.
+        </Text>
+
+        {/* Add button */}
+        <Button
+          variant="default"
+          onPress={handleAddMemberByName}
+          disabled={addingMember || !addMemberName.trim()}
+        >
+          {addingMember ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>
+              Add to Group
+            </Text>
+          )}
+        </Button>
+
+        {/* Share link shortcut */}
+        {group?.inviteCode && (
           <Pressable
-            onPress={(e) => e.stopPropagation()}
+            onPress={() => { setShowAddMember(false); setShowShareModal(true); }}
             style={{
-              backgroundColor: isDark ? "#1e293b" : "#ffffff",
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 24,
-              paddingBottom: Platform.OS === "ios" ? 40 : 24,
+              flexDirection: "row",
               alignItems: "center",
-              gap: 20,
+              justifyContent: "center",
+              gap: 8,
+              paddingVertical: 10,
             }}
           >
-            {/* Header */}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
-                Invite to {group.name}
-              </Text>
-              <Pressable onPress={() => { setShowShareModal(false); setShowQR(false); }}>
-                <X size={22} color="#64748b" />
-              </Pressable>
-            </View>
-
-            {/* Invite link */}
-            {group.inviteCode && (
-              <Pressable
-                onPress={handleCopyLink}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                  backgroundColor: isDark ? "#0f172a" : "#f8fafc",
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: isDark ? "#334155" : "#e2e8f0",
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  width: "100%",
-                }}
-              >
-                <Text
-                  style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748b" }}
-                  numberOfLines={1}
-                >
-                  {getInviteUrl(group.inviteCode)}
-                </Text>
-                {copied ? (
-                  <Check size={18} color="#10b981" />
-                ) : (
-                  <Copy size={18} color="#0d9488" />
-                )}
-              </Pressable>
-            )}
-
-            {/* QR Code — hidden by default */}
-            {group.inviteCode && (
-              showQR ? (
-                <View
-                  style={{
-                    padding: 16,
-                    backgroundColor: isDark ? "#0f172a" : "#ffffff",
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: isDark ? "#334155" : "#e2e8f0",
-                    alignItems: "center",
-                  }}
-                >
-                  <QRCode
-                    value={getInviteUrl(group.inviteCode)}
-                    size={180}
-                    color={isDark ? "#f1f5f9" : "#0f172a"}
-                    backgroundColor={isDark ? "#0f172a" : "#ffffff"}
-                  />
-                </View>
-              ) : (
-                <Pressable
-                  onPress={() => { hapticLight(); setShowQR(true); }}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    paddingVertical: 10,
-                    paddingHorizontal: 16,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: isDark ? "#334155" : "#e2e8f0",
-                    width: "100%",
-                  }}
-                >
-                  <QrCode size={18} color="#64748b" />
-                  <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#64748b" }}>
-                    Show QR Code
-                  </Text>
-                </Pressable>
-              )
-            )}
-
-            {/* Buttons */}
-            <View style={{ width: "100%", gap: 10 }}>
-              <Button variant="default" onPress={handleShare}>
-                <View className="flex-row items-center gap-2">
-                  <Share2 size={18} color="#ffffff" />
-                  <Text className="text-base font-sans-semibold text-primary-foreground">
-                    Share Invite Link
-                  </Text>
-                </View>
-              </Button>
-
-              <Pressable
-                onPress={handleRegenerateLink}
-                disabled={regenerating}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  paddingVertical: 10,
-                }}
-              >
-                <RefreshCw size={14} color="#94a3b8" />
-                <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#94a3b8" }}>
-                  {regenerating ? "Regenerating..." : "Regenerate invite link"}
-                </Text>
-              </Pressable>
-            </View>
+            <Share2 size={16} color="#0d9488" />
+            <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0d9488" }}>
+              Or share invite link instead
+            </Text>
           </Pressable>
-        </Pressable>
-      </Modal>
+        )}
+      </BottomSheetModal>
+
+      {/* Share / QR Modal */}
+      <BottomSheetModal visible={showShareModal} onClose={() => { setShowShareModal(false); setShowQR(false); }}>
+        {/* Header */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+          <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+            Invite to {group.name}
+          </Text>
+          <Pressable onPress={() => { setShowShareModal(false); setShowQR(false); }}>
+            <X size={22} color="#64748b" />
+          </Pressable>
+        </View>
+
+        {/* Invite link */}
+        {group.inviteCode && (
+          <Pressable
+            onPress={handleCopyLink}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: isDark ? "#334155" : "#e2e8f0",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              width: "100%",
+            }}
+          >
+            <Text
+              style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748b" }}
+              numberOfLines={1}
+            >
+              {getInviteUrl(group.inviteCode)}
+            </Text>
+            {copied ? (
+              <Check size={18} color="#10b981" />
+            ) : (
+              <Copy size={18} color="#0d9488" />
+            )}
+          </Pressable>
+        )}
+
+        {/* QR Code — hidden by default */}
+        {group.inviteCode && (
+          showQR ? (
+            <View
+              style={{
+                padding: 16,
+                backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: isDark ? "#334155" : "#e2e8f0",
+                alignItems: "center",
+                alignSelf: "center",
+              }}
+            >
+              <QRCode
+                value={getInviteUrl(group.inviteCode)}
+                size={180}
+                color={isDark ? "#f1f5f9" : "#0f172a"}
+                backgroundColor={isDark ? "#0f172a" : "#ffffff"}
+              />
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => { hapticLight(); setShowQR(true); }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 16,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: isDark ? "#334155" : "#e2e8f0",
+                width: "100%",
+              }}
+            >
+              <QrCode size={18} color="#64748b" />
+              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#64748b" }}>
+                Show QR Code
+              </Text>
+            </Pressable>
+          )
+        )}
+
+        {/* Buttons */}
+        <View style={{ width: "100%", gap: 10 }}>
+          <Button variant="default" onPress={handleShare}>
+            <View className="flex-row items-center gap-2">
+              <Share2 size={18} color="#ffffff" />
+              <Text className="text-base font-sans-semibold text-primary-foreground">
+                Share Invite Link
+              </Text>
+            </View>
+          </Button>
+
+          <Pressable
+            onPress={handleRegenerateLink}
+            disabled={regenerating}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              paddingVertical: 10,
+            }}
+          >
+            <RefreshCw size={14} color="#94a3b8" />
+            <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#94a3b8" }}>
+              {regenerating ? "Regenerating..." : "Regenerate invite link"}
+            </Text>
+          </Pressable>
+        </View>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }
