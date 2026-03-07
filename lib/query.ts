@@ -60,6 +60,9 @@ export const queryKeys = {
   // Contacts
   contacts: ["contacts"] as const,
 
+  // Notifications
+  notifications: ["notifications"] as const,
+
   // Invite preview (public, no auth)
   invitePreview: (code: string) => ["invite", code] as const,
 } as const;
@@ -82,6 +85,8 @@ export const staleTimes = {
   user: 2 * 60_000,
   /** Categories — static reference data */
   categories: 5 * 60_000,
+  /** Notifications */
+  notifications: 30_000,
   /** Invite preview — static per code */
   invitePreview: 60_000,
 } as const;

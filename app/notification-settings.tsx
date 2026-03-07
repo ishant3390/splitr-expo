@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView, Pressable, Linking, Platform, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useAuth } from "@clerk/clerk-expo";
 import {
   ArrowLeft,
   Bell,
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ThemedSwitch } from "@/components/ui/themed-switch";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection } from "@/lib/haptics";
+import { usersApi } from "@/lib/api";
 import {
   getNotificationPermissionStatus,
   requestNotificationPermission,
@@ -31,6 +33,7 @@ export default function NotificationSettingsScreen() {
   const router = useRouter();
   const isDark = useColorScheme() === "dark";
   const toast = useToast();
+  const { getToken } = useAuth();
 
   const [systemPermission, setSystemPermission] = useState<boolean | null>(null);
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFS);
@@ -53,8 +56,20 @@ export default function NotificationSettingsScreen() {
       const updated = { ...prefs, [key]: value };
       setPrefs(updated);
       await saveNotificationPreferences(updated);
+
+      // Sync global enabled toggle to backend
+      if (key === "enabled") {
+        try {
+          const token = await getToken();
+          if (token) {
+            await usersApi.updateMe({ preferences: { notifications: value as boolean } }, token);
+          }
+        } catch {
+          // Non-fatal — local pref is saved regardless
+        }
+      }
     },
-    [prefs]
+    [prefs, getToken]
   );
 
   const handleEnableNotifications = async () => {
@@ -150,6 +165,29 @@ export default function NotificationSettingsScreen() {
                 You can opt in to detailed notifications below.
               </Text>
             </View>
+          </View>
+        </Card>
+
+        {/* Global toggle */}
+        <Card className="p-4">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-3 flex-1">
+              <View className="w-9 h-9 rounded-lg bg-primary/10 items-center justify-center">
+                <Bell size={18} color="#0d9488" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-sans-medium text-foreground">
+                  Push Notifications
+                </Text>
+                <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                  Receive alerts for expenses, settlements, and groups
+                </Text>
+              </View>
+            </View>
+            <ThemedSwitch
+              checked={prefs.enabled}
+              onCheckedChange={(val) => updatePref("enabled", val)}
+            />
           </View>
         </Card>
 

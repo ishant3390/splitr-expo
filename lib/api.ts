@@ -28,6 +28,10 @@ import type {
   GroupInvitePreviewDto,
   JoinGroupRequest,
   ContactDto,
+  PushTokenDto,
+  RegisterPushTokenRequest,
+  NotificationDto,
+  ReceiptScanResponseDto,
 } from "./types";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8085/api";
@@ -84,11 +88,22 @@ export const usersApi = {
   sync: (token: string) =>
     request<void>("/v1/users/sync", { method: "POST" }, token),
 
-  registerPushToken: (data: { token: string; platform: string; deviceId?: string }, authToken: string) =>
-    request<void>("/v1/users/me/push-tokens", { method: "POST", body: JSON.stringify(data) }, authToken),
+  registerPushToken: (data: RegisterPushTokenRequest, authToken: string) =>
+    request<PushTokenDto>("/v1/users/me/push-tokens", { method: "POST", body: JSON.stringify(data) }, authToken),
 
-  unregisterPushToken: (pushToken: string, authToken: string) =>
-    request<void>(`/v1/users/me/push-tokens/${encodeURIComponent(pushToken)}`, { method: "DELETE" }, authToken),
+  listPushTokens: (authToken: string) =>
+    request<PushTokenDto[]>("/v1/users/me/push-tokens", undefined, authToken),
+
+  unregisterPushToken: (tokenId: string, authToken: string) =>
+    request<void>(`/v1/users/me/push-tokens/${encodeURIComponent(tokenId)}`, { method: "DELETE" }, authToken),
+
+  notifications: async (authToken: string, params?: { page?: number; limit?: number }): Promise<NotificationDto[]> => {
+    const qs = `?page=${params?.page ?? 0}&limit=${params?.limit ?? 20}`;
+    const data = await request<any>(`/v1/users/me/notifications${qs}`, undefined, authToken);
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    if (data?.content && Array.isArray(data.content)) return data.content;
+    return Array.isArray(data) ? data : [];
+  },
 
   balance: (token: string) =>
     request<import("./types").UserBalanceRawDto>("/v1/users/me/balance", undefined, token),
@@ -153,6 +168,14 @@ export const groupsApi = {
 
   removeMember: (groupId: string, memberId: string, token: string) =>
     request<void>(`/v1/groups/${groupId}/members/${memberId}`, { method: "DELETE" }, token),
+
+  // Nudge
+  nudge: (groupId: string, targetUserId: string, token: string) =>
+    request<{ sent: boolean; message: string }>(
+      `/v1/groups/${groupId}/nudge`,
+      { method: "POST", body: JSON.stringify({ targetUserId }) },
+      token
+    ),
 
   // Expenses
   listExpenses: (groupId: string, token: string, params?: Record<string, string>) => {
@@ -261,6 +284,22 @@ export const expensesApi = {
       }
       return res.json() as Promise<Record<string, unknown>>;
     }),
+
+  scanReceipt: (base64Image: string, token: string) =>
+    fetch(`${BASE_URL}/v1/receipts/scan`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ image: base64Image }),
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorBody = await res.text().catch(() => "Unknown error");
+        throw new Error(`API ${res.status}: ${errorBody}`);
+      }
+      return res.json() as Promise<ReceiptScanResponseDto>;
+    }),
 };
 
 // ---- Settlements ----
@@ -302,27 +341,41 @@ export const settlementsApi = {
     request<void>(`/v1/settlements/${settlementId}`, { method: "DELETE" }, token),
 };
 
-// ---- Chat (SSE streaming) ----
+// ---- Chat ----
+
+import type { ChatSSEEvent, ChatQuotaDto } from "./types";
+
+export const chatApi = {
+  quota: (token: string) =>
+    request<ChatQuotaDto>("/v1/chat/quota", undefined, token),
+};
 
 export function chatStream(
-  messages: Array<{ role: string; content: string }>,
+  message: string,
+  conversationId: string | null,
   token: string,
-  onChunk: (chunk: any) => void,
+  onEvent: (event: ChatSSEEvent) => void,
   onDone: () => void,
-  onError: (err: Error) => void
+  onError: (err: Error) => void,
+  options?: { image?: string; deterministic?: boolean }
 ) {
   const controller = new AbortController();
 
-  fetch(`${BASE_URL}/chat`, {
+  const body: Record<string, unknown> = { conversationId, message };
+  if (options?.image) body.image = options.image;
+  if (options?.deterministic) body.deterministic = true;
+
+  fetch(`${BASE_URL}/v1/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify(body),
     signal: controller.signal,
   })
     .then(async (res) => {
+      if (__DEV__) console.log("[ChatSSE] status:", res.status);
       if (!res.ok) throw new Error(`Chat API ${res.status}`);
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response body");
@@ -334,7 +387,9 @@ export function chatStream(
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
+        if (__DEV__) console.log("[ChatSSE] raw chunk:", JSON.stringify(chunk));
+        buffer += chunk;
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
@@ -347,7 +402,9 @@ export function chatStream(
             return;
           }
           try {
-            onChunk(JSON.parse(data));
+            const parsed = JSON.parse(data);
+            if (__DEV__) console.log("[ChatSSE] event:", parsed.type);
+            onEvent(parsed as ChatSSEEvent);
           } catch {
             // skip malformed
           }

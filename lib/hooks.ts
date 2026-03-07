@@ -8,9 +8,9 @@
  * so they ALWAYS refetch. We never show stale money data as if it were fresh.
  */
 
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/clerk-expo";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   usersApi,
   groupsApi,
@@ -22,6 +22,8 @@ import {
 } from "./api";
 import { queryKeys, staleTimes, invalidateAfterExpenseChange, invalidateAfterSettlementChange, invalidateAfterGroupChange, invalidateAfterMemberChange, invalidateAfterProfileUpdate } from "./query";
 import { dedupeMembers, computeBalancesFromMembers } from "./screen-helpers";
+import { membersToContacts, dedupeContacts, mergeWithRecency } from "./mention-utils";
+import { getRecentMentions, type RecentMention } from "./mention-recency";
 import type {
   UserDto,
   UserBalanceDto,
@@ -36,6 +38,7 @@ import type {
   SettlementDto,
   GroupInvitePreviewDto,
   ContactDto,
+  NotificationDto,
   CreateGroupRequest,
   CreateExpenseRequest,
   UpdateUserRequest,
@@ -126,6 +129,26 @@ export function useUserActivity() {
   return {
     ...query,
     // Flatten pages into a single array for easy consumption
+    data: query.data?.pages.flat() ?? [],
+  };
+}
+
+export function useNotifications() {
+  const fetchToken = useTokenFetcher();
+  const query = useInfiniteQuery<NotificationDto[], Error>({
+    queryKey: queryKeys.notifications,
+    queryFn: async ({ pageParam }) => {
+      const token = await fetchToken();
+      return usersApi.notifications(token, { page: pageParam as number, limit: PAGE_SIZE });
+    },
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length >= PAGE_SIZE ? allPages.length : undefined,
+    initialPageParam: 0,
+    staleTime: staleTimes.notifications,
+  });
+
+  return {
+    ...query,
     data: query.data?.pages.flat() ?? [],
   };
 }
@@ -243,6 +266,68 @@ export function useContacts() {
     },
     staleTime: staleTimes.groups,
   });
+}
+
+// ---- Merged Contacts (contacts API + group member fallback + recency) ----
+
+export function useMergedContacts() {
+  const { data: apiContacts, isLoading: contactsLoading } = useContacts();
+  const { data: groups } = useGroups();
+  const { user } = useUser();
+  const currentEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+  const fetchToken = useTokenFetcher();
+  const [recents, setRecents] = useState<RecentMention[]>([]);
+
+  useEffect(() => {
+    getRecentMentions().then(setRecents);
+  }, []);
+
+  // Only fetch group members when contacts API returned empty
+  const needsFallback = !contactsLoading && (!apiContacts || apiContacts.length === 0);
+
+  const memberQueries = useQueries({
+    queries: (groups ?? []).map((g) => ({
+      queryKey: queryKeys.groupMembers(g.id),
+      queryFn: async () => {
+        const token = await fetchToken();
+        const data = await groupsApi.listMembers(g.id, token);
+        return dedupeMembers(Array.isArray(data) ? data : []);
+      },
+      staleTime: staleTimes.members,
+      enabled: needsFallback,
+    })),
+  });
+
+  // Extract stable data arrays from memberQueries so useMemo doesn't recompute
+  // on every render due to useQueries returning a new array reference.
+  const memberData = memberQueries.map((q) => q.data);
+
+  const contacts = useMemo(() => {
+    let base: ContactDto[];
+    if (apiContacts?.length) {
+      base = apiContacts;
+    } else {
+      const allMembers = memberData.flatMap((d) => d ?? []);
+      base = dedupeContacts(membersToContacts(allMembers));
+    }
+    // Exclude current user
+    if (currentEmail) {
+      base = base.filter(
+        (c) => c.email?.toLowerCase() !== currentEmail.toLowerCase()
+      );
+    }
+    return mergeWithRecency(base, recents);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiContacts, ...memberData, recents, currentEmail]);
+
+  const isLoading =
+    contactsLoading || (needsFallback && memberQueries.some((q) => q.isLoading));
+
+  const refreshRecents = useCallback(() => {
+    getRecentMentions().then(setRecents);
+  }, []);
+
+  return { data: contacts, isLoading, refreshRecents };
 }
 
 // ---- Invite Preview (public, no auth) ----

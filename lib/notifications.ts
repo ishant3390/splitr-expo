@@ -130,9 +130,10 @@ export async function getExpoPushToken(): Promise<string | null> {
 /**
  * Register the push token with the backend.
  * Safe to call on every app launch (re-registering same token is harmless).
+ * Sends deviceId, deviceName, and platform alongside the token.
  */
 export async function registerPushToken(
-  apiRegister: (token: string, platform: string) => Promise<void>
+  apiRegister: (token: string, platform: string, deviceId: string, deviceName: string) => Promise<void>
 ): Promise<string | null> {
   const token = await getExpoPushToken();
   if (!token) return null;
@@ -141,8 +142,13 @@ export async function registerPushToken(
   const storedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
   if (storedToken === token) return token; // Already registered, skip API call
 
+  const deviceId = Constants.expoConfig?.extra?.eas?.projectId
+    ? `${Platform.OS}-${Constants.expoConfig.extra.eas.projectId}`
+    : `${Platform.OS}-${Date.now()}`;
+  const deviceName = Device.modelName ?? `${Platform.OS} device`;
+
   try {
-    await apiRegister(token, Platform.OS);
+    await apiRegister(token, Platform.OS, deviceId, deviceName);
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
   } catch {
     // Non-fatal — will retry on next launch
@@ -175,17 +181,41 @@ export async function clearBadge() {
   await Notifications.setBadgeCountAsync(0);
 }
 
-// ---- Deep link URL extraction ----
+// ---- Navigation route from notification ----
 
 /**
- * Extract the navigation URL from a notification response.
- * Notification payloads include a `url` field (e.g., "/group/abc123").
+ * Construct a navigation route from a notification response payload.
+ * Payload contains `type` + `groupId` (no pre-built URL).
  */
 export function getNotificationUrl(
   response: Notifications.NotificationResponse
 ): string | null {
   const data = response.notification.request.content.data;
-  return (data?.url as string) ?? null;
+  if (!data) return null;
+
+  const type = data.type as string | undefined;
+  const groupId = data.groupId as string | undefined;
+
+  if (!groupId) return null;
+
+  switch (type) {
+    case "expense_created":
+    case "expense_updated":
+    case "expense_deleted":
+    case "coalesced_expenses":
+      return `/group/${groupId}`;
+    case "settlement_created":
+      return `/settle-up?groupId=${groupId}`;
+    case "settlement_nudge_debtor":
+    case "settlement_nudge_manual":
+      return `/settle-up?groupId=${groupId}`;
+    case "settlement_nudge_creditor":
+      return `/group/${groupId}`;
+    case "member_joined_via_invite":
+      return `/group/${groupId}`;
+    default:
+      return `/group/${groupId}`;
+  }
 }
 
 // ---- Preferences ----

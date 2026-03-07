@@ -3,23 +3,30 @@ import { render, screen, waitFor } from "@testing-library/react-native";
 import NotificationsScreen from "@/app/notifications";
 
 const mockRefetch = jest.fn();
-const mockUseUserActivity = jest.fn(() => ({
+const mockFetchNextPage = jest.fn();
+const mockUseNotifications = jest.fn(() => ({
   data: [],
   isLoading: false,
   error: null,
   refetch: mockRefetch,
+  fetchNextPage: mockFetchNextPage,
+  hasNextPage: false,
+  isFetchingNextPage: false,
 }));
 
 jest.mock("@/lib/hooks", () => ({
-  useUserActivity: (...args: any[]) => mockUseUserActivity(...args),
+  useNotifications: (...args: any[]) => mockUseNotifications(...args),
 }));
 
 beforeEach(() => {
-  mockUseUserActivity.mockReturnValue({
+  mockUseNotifications.mockReturnValue({
     data: [],
     isLoading: false,
     error: null,
     refetch: mockRefetch,
+    fetchNextPage: mockFetchNextPage,
+    hasNextPage: false,
+    isFetchingNextPage: false,
   });
 });
 
@@ -40,27 +47,48 @@ describe("NotificationsScreen", () => {
     const realDateNow = Date.now;
     Date.now = () => new Date("2026-03-05T12:00:00Z").getTime();
 
-    mockUseUserActivity.mockReturnValue({
+    mockUseNotifications.mockReturnValue({
       data: [
         {
           id: "n1",
-          activityType: "expense_created",
-          actorUserName: "Alice",
-          groupName: "Trip",
+          notificationType: "expense_created",
+          groupId: "g1",
+          title: "Trip to Paris",
+          body: "Alice added $50.00 for Lunch",
+          deliveryStatus: "delivered",
           createdAt: "2026-03-05T10:00:00Z",
-          details: { description: "Lunch" },
         },
       ],
       isLoading: false,
       error: null,
       refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
     });
 
     render(<NotificationsScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Alice added "Lunch" in Trip/)).toBeTruthy();
+      expect(screen.getByText("Trip to Paris")).toBeTruthy();
+      expect(screen.getByText("Alice added $50.00 for Lunch")).toBeTruthy();
     });
 
     Date.now = realDateNow;
+  });
+
+  it("shows loading skeleton", () => {
+    mockUseNotifications.mockReturnValue({
+      data: [],
+      isLoading: true,
+      error: null,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    });
+
+    render(<NotificationsScreen />);
+    // Skeleton renders, no "No notifications" message
+    expect(screen.queryByText("No notifications yet")).toBeNull();
   });
 });

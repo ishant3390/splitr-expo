@@ -10,32 +10,44 @@
  */
 
 import React, { useEffect, useRef } from "react";
-import { AppState } from "react-native";
-import * as Notifications from "expo-notifications";
+import { AppState, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import { usersApi } from "@/lib/api";
-import {
-  configureForegroundHandler,
-  registerPushToken,
-  unregisterPushToken,
-  clearBadge,
-  getNotificationUrl,
-  setupNotificationCategories,
-} from "@/lib/notifications";
 
-// Configure foreground handler at module load (before any component renders)
-configureForegroundHandler();
+// Only import notifications on native platforms
+const isNative = Platform.OS === "ios" || Platform.OS === "android";
+
+// Conditionally configure foreground handler at module load
+if (isNative) {
+  const { configureForegroundHandler } = require("@/lib/notifications");
+  configureForegroundHandler();
+}
 
 interface NotificationProviderProps {
   children: React.ReactNode;
 }
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
+  // On web, just render children — no notification support
+  if (!isNative) return <>{children}</>;
+
+  return <NativeNotificationProvider>{children}</NativeNotificationProvider>;
+}
+
+function NativeNotificationProvider({ children }: NotificationProviderProps) {
+  const Notifications = require("expo-notifications") as typeof import("expo-notifications");
+  const {
+    registerPushToken,
+    unregisterPushToken,
+    clearBadge,
+    getNotificationUrl,
+    setupNotificationCategories,
+  } = require("@/lib/notifications");
+
   const router = useRouter();
   const { isSignedIn, getToken } = useAuth();
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<import("expo-notifications").EventSubscription | null>(null);
   const lastResponseId = useRef<string | null>(null);
 
   // ---- Token registration on sign-in ----
@@ -47,9 +59,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const authToken = await getToken();
       if (!authToken) return;
 
-      await registerPushToken(async (pushToken, platform) => {
+      await registerPushToken(async (pushToken: string, platform: string, deviceId: string, deviceName: string) => {
         await usersApi.registerPushToken(
-          { token: pushToken, platform },
+          { token: pushToken, platform, deviceId, deviceName },
           authToken
         );
       });
@@ -62,10 +74,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   useEffect(() => {
     if (isSignedIn) return;
 
-    // User just signed out — unregister token
     const unregister = async () => {
       const authToken = await getToken().catch(() => null);
-      await unregisterPushToken(async (pushToken) => {
+      await unregisterPushToken(async (pushToken: string) => {
         if (authToken) {
           await usersApi.unregisterPushToken(pushToken, authToken);
         }
@@ -79,7 +90,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   useEffect(() => {
     clearBadge();
 
-    const subscription = AppState.addEventListener("change", (nextState) => {
+    const subscription = AppState.addEventListener("change", (nextState: string) => {
       if (nextState === "active") clearBadge();
     });
 
@@ -89,8 +100,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   // ---- Handle notification taps (runtime: foreground + background) ----
   useEffect(() => {
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        // Deduplicate (same notification can fire multiple times)
+      (response: any) => {
         const responseId = response.notification.request.identifier;
         if (lastResponseId.current === responseId) return;
         lastResponseId.current = responseId;
@@ -120,7 +130,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
     const url = getNotificationUrl(lastNotificationResponse);
     if (url) {
-      // Small delay to ensure navigation stack is ready
       setTimeout(() => router.push(url as any), 500);
     }
   }, [lastNotificationResponse, isSignedIn]);

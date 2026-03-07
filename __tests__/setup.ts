@@ -20,6 +20,12 @@ jest.mock("expo-image", () => ({
   Image: "Image",
 }));
 
+// Mock expo-image-picker
+jest.mock("expo-image-picker", () => ({
+  launchCameraAsync: jest.fn(() => Promise.resolve({ canceled: true, assets: [] })),
+  launchImageLibraryAsync: jest.fn(() => Promise.resolve({ canceled: true, assets: [] })),
+}));
+
 // Mock expo-router
 jest.mock("expo-router", () => ({
   useRouter: () => ({
@@ -105,6 +111,7 @@ jest.mock("react-native-reanimated", () => {
     },
     FadeIn: { duration: () => ({}) },
     FadeInDown: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }), duration: () => ({ springify: () => ({}) }) },
+    FadeInUp: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }), duration: () => ({ springify: () => ({}) }) },
     FadeInRight: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }) },
     SlideInDown: { springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) },
     SlideOutDown: { springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) },
@@ -114,6 +121,7 @@ jest.mock("react-native-reanimated", () => {
     withTiming: (v: any) => v,
     withSpring: (v: any) => v,
     withRepeat: (v: any) => v,
+    withDelay: (_d: any, v: any) => v,
     withSequence: (...args: any[]) => args[0],
     interpolateColor: () => "#000000",
     Easing: { out: () => ({}), cubic: {}, in: () => ({}), inOut: () => ({}) },
@@ -170,6 +178,19 @@ jest.mock("expo-device", () => ({
 // Mock expo-constants
 jest.mock("expo-constants", () => ({
   expoConfig: { extra: { eas: { projectId: "test-project-id" } } },
+}));
+
+// Mock expo-local-authentication
+jest.mock("expo-local-authentication", () => ({
+  hasHardwareAsync: jest.fn(() => Promise.resolve(true)),
+  isEnrolledAsync: jest.fn(() => Promise.resolve(true)),
+  supportedAuthenticationTypesAsync: jest.fn(() => Promise.resolve([1])),
+  authenticateAsync: jest.fn(() => Promise.resolve({ success: true })),
+  AuthenticationType: {
+    FINGERPRINT: 1,
+    FACIAL_RECOGNITION: 2,
+    IRIS: 3,
+  },
 }));
 
 // Mock @/lib/notifications
@@ -243,6 +264,11 @@ jest.mock("@/components/NetworkProvider", () => ({
   NetworkProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+// Mock confetti component
+jest.mock("@/components/ui/confetti", () => ({
+  Confetti: () => null,
+}));
+
 // Mock @tanstack/react-query
 jest.mock("@tanstack/react-query", () => ({
   useQuery: jest.fn(() => ({ data: undefined, isLoading: false, error: null, refetch: jest.fn() })),
@@ -255,8 +281,25 @@ jest.mock("@tanstack/react-query", () => ({
     hasNextPage: false,
     isFetchingNextPage: false,
   })),
+  useQueries: jest.fn(({ queries }: { queries: any[] }) =>
+    queries.map(() => ({ data: undefined, isLoading: false, error: null }))
+  ),
   useMutation: jest.fn(() => ({ mutateAsync: jest.fn(), isPending: false })),
   useQueryClient: jest.fn(() => ({ setQueryData: jest.fn(), invalidateQueries: jest.fn() })),
   QueryClientProvider: ({ children }: { children: React.ReactNode }) => children,
   QueryClient: jest.fn(),
+}));
+
+// Mock expo-quick-actions
+jest.mock("expo-quick-actions", () => ({
+  setItems: jest.fn(() => Promise.resolve()),
+  addListener: jest.fn(() => ({ remove: jest.fn() })),
+  isSupported: jest.fn(() => Promise.resolve(false)),
+  initial: undefined,
+  maxCount: undefined,
+}));
+
+jest.mock("expo-quick-actions/router", () => ({
+  useQuickActionRouting: jest.fn(),
+  isRouterAction: jest.fn(() => false),
 }));

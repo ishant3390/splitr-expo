@@ -1,8 +1,10 @@
 import React from "react";
 import { Tabs as ExpoTabs } from "expo-router";
 import { TabBar } from "@/components/TabBar";
+import { useQuickActionRouting } from "expo-quick-actions/router";
 
 export default function TabsLayout() {
+  useQuickActionRouting();
   return (
     <ExpoTabs
       tabBar={(props) => <TabBar {...props} />}

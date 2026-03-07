@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
   ArrowLeft,
   Plus,
@@ -36,6 +36,8 @@ import {
   ArrowUpDown,
   PlusCircle,
   Receipt,
+  Bell,
+  BellOff,
 } from "lucide-react-native";
 import QRCode from "react-native-qrcode-svg";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -51,7 +53,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticLight, hapticSuccess, hapticWarning, hapticSelection } from "@/lib/haptics";
-import { dedupeMembers, aggregateByPerson, aggregateByCategory, filterExpenses, sortExpenses, resolvePayerName } from "@/lib/screen-helpers";
+import { dedupeMembers, aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, resolvePayerName } from "@/lib/screen-helpers";
 import * as Clipboard from "expo-clipboard";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
@@ -75,6 +77,7 @@ export default function GroupDetailScreen() {
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/groups"));
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getToken } = useAuth();
+  const { user: clerkUser } = useUser();
   const toast = useToast();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -124,6 +127,10 @@ export default function GroupDetailScreen() {
   const [hasMoreExpenses, setHasMoreExpenses] = useState(false);
   const [loadingMoreExpenses, setLoadingMoreExpenses] = useState(false);
 
+  // Notification toggle for current user in this group
+  const [groupNotificationsEnabled, setGroupNotificationsEnabled] = useState(true);
+  const [togglingNotifications, setTogglingNotifications] = useState(false);
+
   const loadData = async () => {
     try {
       const token = await getToken();
@@ -133,10 +140,22 @@ export default function GroupDetailScreen() {
         groupsApi.listExpenses(id, token!, { limit: "20" }),
       ]);
       setGroup(groupData);
-      setMembers(dedupeMembers(membersData));
+      const dedupedMembers = dedupeMembers(membersData);
+      setMembers(dedupedMembers);
       setExpenses(expensesResponse.data ?? []);
       setExpenseCursor(expensesResponse.pagination?.nextCursor);
       setHasMoreExpenses(expensesResponse.pagination?.hasMore ?? false);
+
+      // Initialize per-group notification preference from current user's member record
+      const myEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+      if (myEmail) {
+        const myMember = dedupedMembers.find(
+          (m) => m.user?.email?.toLowerCase() === myEmail.toLowerCase()
+        );
+        if (myMember && myMember.notificationsEnabled !== undefined) {
+          setGroupNotificationsEnabled(myMember.notificationsEnabled);
+        }
+      }
     } catch {
       setGroup(null);
     } finally {
@@ -174,6 +193,31 @@ export default function GroupDetailScreen() {
     await loadData();
     setRefreshing(false);
   }, [loadData]);
+
+  // Toggle per-group notification preference
+  const toggleGroupNotifications = async () => {
+    const myEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+    if (!myEmail) return;
+    const myMember = members.find(
+      (m) => m.user?.email?.toLowerCase() === myEmail.toLowerCase()
+    );
+    if (!myMember) return;
+
+    setTogglingNotifications(true);
+    const newValue = !groupNotificationsEnabled;
+    setGroupNotificationsEnabled(newValue); // optimistic
+    try {
+      const token = await getToken();
+      await groupsApi.updateMember(id, myMember.id, { notificationsEnabled: newValue }, token!);
+      hapticSuccess();
+    } catch {
+      setGroupNotificationsEnabled(!newValue); // revert
+      hapticWarning();
+      toast.show("Failed to update notification preference", "error");
+    } finally {
+      setTogglingNotifications(false);
+    }
+  };
 
   // Load contacts when add member modal opens
   useEffect(() => {
@@ -383,6 +427,7 @@ export default function GroupDetailScreen() {
   }
 
   const totalSpent = expenses.reduce((sum, e) => sum + (e.amountCents ?? 0), 0);
+  const isArchived = group.isArchived === true;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -402,13 +447,15 @@ export default function GroupDetailScreen() {
           >
             <Share2 size={22} color="#0d9488" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onPress={() => router.push({ pathname: "/(tabs)/add", params: { returnGroupId: id } })}
-          >
-            <Plus size={24} color="#0d9488" />
-          </Button>
+          {!isArchived && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onPress={() => router.push({ pathname: "/(tabs)/add", params: { returnGroupId: id } })}
+            >
+              <Plus size={24} color="#0d9488" />
+            </Button>
+          )}
         </View>
       </View>
 
@@ -419,9 +466,21 @@ export default function GroupDetailScreen() {
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
       >
+        {/* Archived banner */}
+        {isArchived && (
+          <Card className="mt-4 p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+            <Text className="text-sm font-sans-semibold text-amber-800 dark:text-amber-200">
+              This group is archived
+            </Text>
+            <Text className="text-xs text-amber-600 dark:text-amber-400 font-sans mt-1">
+              No new expenses or settlements can be added. You can still view history and balances.
+            </Text>
+          </Card>
+        )}
+
         {/* Group Info */}
         <View className="flex-row items-center gap-3 pt-5 pb-3">
-          <GroupAvatar name={group.name} emoji={group.emoji} groupType={group.groupType} size="lg" />
+          <GroupAvatar name={group.name} emoji={group.emoji} groupType={group.groupType} id={group.id} size="lg" />
           <View className="flex-1">
             <Text className="text-xl font-sans-bold text-foreground">{group.name}</Text>
             {group.description ? (
@@ -441,13 +500,15 @@ export default function GroupDetailScreen() {
             <Text className="text-sm font-sans-semibold text-muted-foreground">
               MEMBERS ({members.length})
             </Text>
-            <Pressable
-              onPress={() => setShowAddMember(true)}
-              className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10"
-            >
-              <UserPlus size={14} color="#0d9488" />
-              <Text className="text-xs font-sans-semibold text-primary">Add</Text>
-            </Pressable>
+            {!isArchived && (
+              <Pressable
+                onPress={() => setShowAddMember(true)}
+                className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10"
+              >
+                <UserPlus size={14} color="#0d9488" />
+                <Text className="text-xs font-sans-semibold text-primary">Add</Text>
+              </Pressable>
+            )}
           </View>
 
           {members.length > 0 && (
@@ -519,15 +580,58 @@ export default function GroupDetailScreen() {
         </Card>
 
         {/* Settle Up button */}
-        <Pressable
-          onPress={() => router.push({ pathname: "/settle-up", params: { groupId: id } })}
-          className="mb-4"
-        >
-          <Card className="p-4 flex-row items-center justify-center gap-2 bg-success/10 border-success/20">
-            <HandCoins size={20} color="#10b981" />
-            <Text className="text-base font-sans-semibold text-success">
-              Settle Up
-            </Text>
+        {!isArchived && (
+          <Pressable
+            onPress={() => router.push({ pathname: "/settle-up", params: { groupId: id } })}
+            className="mb-4"
+          >
+            <Card className="p-4 flex-row items-center justify-center gap-2 bg-success/10 border-success/20">
+              <HandCoins size={20} color="#10b981" />
+              <Text className="text-base font-sans-semibold text-success">
+                Settle Up
+              </Text>
+            </Card>
+          </Pressable>
+        )}
+
+        {/* Group notification toggle */}
+        <Pressable onPress={toggleGroupNotifications} disabled={togglingNotifications} className="mb-4">
+          <Card className="p-4 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-3">
+              {groupNotificationsEnabled ? (
+                <Bell size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+              ) : (
+                <BellOff size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+              )}
+              <View>
+                <Text className="text-sm font-sans-medium text-foreground">
+                  Group Notifications
+                </Text>
+                <Text className="text-xs text-muted-foreground font-sans">
+                  {groupNotificationsEnabled ? "You'll be notified about this group" : "Notifications muted for this group"}
+                </Text>
+              </View>
+            </View>
+            <View
+              style={{
+                width: 44,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: groupNotificationsEnabled ? "#0d9488" : (isDark ? "#334155" : "#cbd5e1"),
+                justifyContent: "center",
+                paddingHorizontal: 2,
+              }}
+            >
+              <View
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: "#ffffff",
+                  alignSelf: groupNotificationsEnabled ? "flex-end" : "flex-start",
+                }}
+              />
+            </View>
           </Card>
         </Pressable>
 
@@ -604,6 +708,38 @@ export default function GroupDetailScreen() {
                       </View>
                     </View>
                   )}
+
+                  {/* Monthly Breakdown */}
+                  {(() => {
+                    const monthlyData = aggregateByMonth(expenses);
+                    if (monthlyData.length < 2) return null;
+                    const maxMonthly = Math.max(...monthlyData.map((m) => m.total));
+                    const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    return (
+                      <View>
+                        <Text className="text-xs font-sans-semibold text-muted-foreground mb-2">MONTHLY SPENDING</Text>
+                        <View className="flex-row items-end gap-1" style={{ height: 80 }}>
+                          {monthlyData.slice(-6).map((m) => {
+                            const [, monthNum] = m.month.split("-");
+                            const label = MONTH_NAMES[parseInt(monthNum, 10) - 1] ?? m.month;
+                            const barHeight = maxMonthly > 0 ? (m.total / maxMonthly) * 60 + 4 : 4;
+                            return (
+                              <View key={m.month} className="flex-1 items-center gap-1">
+                                <Text className="text-[8px] font-sans text-muted-foreground" style={{ fontVariant: ["tabular-nums"] }}>
+                                  {formatCents(m.total)}
+                                </Text>
+                                <View
+                                  className="w-full rounded-t bg-primary"
+                                  style={{ height: barHeight, maxWidth: 32 }}
+                                />
+                                <Text className="text-[9px] font-sans-medium text-muted-foreground">{label}</Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    );
+                  })()}
                 </Card>
               );
             })()}
@@ -657,10 +793,10 @@ export default function GroupDetailScreen() {
           <EmptyState
             icon={Receipt}
             iconColor="#0d9488"
-            title="No expenses yet"
-            subtitle="Add your first expense to start tracking"
-            actionLabel="Add Expense"
-            onAction={() => router.push({ pathname: "/(tabs)/add", params: { returnGroupId: id } })}
+            title={isArchived ? "No expenses" : "No expenses yet"}
+            subtitle={isArchived ? "This archived group has no expense history" : "Add your first expense to start tracking"}
+            actionLabel={isArchived ? undefined : "Add Expense"}
+            onAction={isArchived ? undefined : () => router.push({ pathname: "/(tabs)/add", params: { returnGroupId: id } })}
           />
         ) : (() => {
           const filtered = filterExpenses(expenses, searchQuery) as ExpenseDto[];
@@ -697,20 +833,20 @@ export default function GroupDetailScreen() {
                     entering={FadeInDown.delay(idx * 50).duration(300).springify()}
                   >
                   <SwipeableRow
-                    onEdit={() => {
+                    onEdit={isArchived ? undefined : () => {
                       hapticLight();
                       router.push({
                         pathname: "/edit-expense/[id]",
                         params: { id: expense.id, groupId: id },
                       });
                     }}
-                    onDelete={() => {
+                    onDelete={isArchived ? undefined : () => {
                       hapticWarning();
                       handleDeleteExpenseWithUndo(expense);
                     }}
                   >
                   <Pressable
-                    onPress={() => {
+                    onPress={isArchived ? undefined : () => {
                       hapticLight();
                       router.push({
                         pathname: "/edit-expense/[id]",

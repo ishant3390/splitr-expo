@@ -347,6 +347,146 @@ export interface ContactDto {
   isGuest: boolean;
 }
 
+// ---- Mentions ----
+
+export interface MentionRecord {
+  trigger: "@" | "#";
+  displayName: string;
+  id: string; // "userId:abc" | "guestUserId:abc" | "groupId:abc"
+}
+
+// ---- Push Token ----
+
+export interface PushTokenDto {
+  id: string;
+  token: string;
+  deviceId: string;
+  deviceName?: string;
+  platform: string;
+  isActive: boolean;
+  lastUsedAt?: string;
+  createdAt: string;
+}
+
+export interface RegisterPushTokenRequest {
+  token: string;
+  deviceId: string;
+  deviceName?: string;
+  platform: string;
+}
+
+// ---- Notification ----
+
+export interface NotificationDto {
+  id: string;
+  notificationType: string;
+  groupId?: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  deliveryStatus: string;
+  createdAt: string;
+}
+
+// ---- Receipt Scan ----
+
+export interface ReceiptLineItem {
+  description: string;
+  amountCents: number;
+  quantity?: number;
+}
+
+export interface ReceiptConfidence {
+  overall: number;
+  total: number;
+  date: number;
+  merchant: number;
+  lineItems: number;
+}
+
+export interface ReceiptScanResultDto {
+  merchant: string | null;
+  date: string | null;
+  currency: string | null;
+  subtotalCents: number | null;
+  taxCents: number | null;
+  tipCents: number | null;
+  totalCents: number;
+  lineItems: ReceiptLineItem[];
+  confidence: ReceiptConfidence;
+  rawText?: string;
+}
+
+export interface ReceiptScanResponseDto {
+  receipt: ReceiptScanResultDto;
+  dailyScansUsed: number;
+  dailyScanLimit: number;
+}
+
+// ---- Chat ----
+
+export interface ChatGroupOption {
+  groupId: string;
+  name: string;
+  emoji?: string;
+  members: string[];
+  lastActivity?: string;
+}
+
+export interface ChatExpensePreview {
+  description: string;
+  totalAmountCents: number;
+  currency: string;
+  groupId: string;
+  groupName: string;
+  groupEmoji?: string;
+  splits: Array<{ name: string; amountCents: number }>;
+  payerName: string;
+  expenseDate: string;
+}
+
+export interface ChatGroupPreview {
+  name: string;
+  memberNames: string[];
+}
+
+export interface ChatActionRequired {
+  action: "select_group" | "confirm_expense" | "confirm_create_group";
+  requestId: string;
+  options?: ChatGroupOption[];
+  expensePreview?: ChatExpensePreview;
+  groupPreview?: ChatGroupPreview;
+}
+
+export interface ChatExpenseCreated {
+  id: string;
+  groupId: string;
+  description: string;
+  totalAmountCents: number;
+  currency: string;
+  groupName: string;
+  groupEmoji?: string;
+  perPersonCents: number;
+  splitCount: number;
+}
+
+export interface ChatQuotaDto {
+  dailyUsed: number;
+  dailyLimit: number;
+  resetsAt: string;
+  tier: "free" | "premium";
+}
+
+export type ChatSSEEvent =
+  | { type: "thinking"; conversationId: string }
+  | { type: "text_chunk"; content: string; conversationId: string }
+  | { type: "text"; content: string; conversationId: string }
+  | { type: "action_required"; action: ChatActionRequired; conversationId: string }
+  | { type: "expense_created"; expense: ChatExpenseCreated; conversationId: string }
+  | { type: "quota"; dailyUsed: number; dailyLimit: number; resetsAt: string }
+  | { type: "quota_exceeded"; dailyUsed: number; dailyLimit: number; resetsAt: string; message: string }
+  | { type: "error"; message: string; code?: string };
+
 // ---- Legacy aliases for backward compat ----
 
 export type ExpenseCategory =

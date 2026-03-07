@@ -248,6 +248,7 @@ export default function GroupsScreen() {
                       name={group.name}
                       emoji={group.emoji}
                       groupType={group.groupType}
+                      id={group.id}
                     />
                     <View className="flex-1">
                       <Text className="text-base font-sans-semibold text-card-foreground">

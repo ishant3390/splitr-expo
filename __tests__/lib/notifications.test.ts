@@ -158,7 +158,12 @@ describe("notifications.ts", () => {
       const mockRegister = jest.fn(() => Promise.resolve());
       const token = await registerPushToken(mockRegister);
       expect(token).toBe("ExponentPushToken[abc123]");
-      expect(mockRegister).toHaveBeenCalledWith("ExponentPushToken[abc123]", expect.any(String));
+      expect(mockRegister).toHaveBeenCalledWith(
+        "ExponentPushToken[abc123]",
+        expect.any(String),
+        expect.any(String),
+        expect.any(String)
+      );
       expect(AsyncStorage.setItem).toHaveBeenCalledWith("@splitr/push_token", "ExponentPushToken[abc123]");
     });
 
@@ -210,24 +215,50 @@ describe("notifications.ts", () => {
   });
 
   describe("getNotificationUrl", () => {
-    it("extracts url from notification response data", () => {
+    it("constructs route from type + groupId for expense_created", () => {
       const response = {
         notification: {
           request: {
             content: {
-              data: { type: "expense_added", url: "/group/abc123" },
+              data: { type: "expense_created", groupId: "grp_abc123" },
             },
           },
         },
       } as any;
-      expect(getNotificationUrl(response)).toBe("/group/abc123");
+      expect(getNotificationUrl(response)).toBe("/group/grp_abc123");
     });
 
-    it("returns null when no url in data", () => {
+    it("constructs settle-up route for settlement_created", () => {
       const response = {
         notification: {
           request: {
-            content: { data: { type: "expense_added" } },
+            content: {
+              data: { type: "settlement_created", groupId: "grp_xyz" },
+            },
+          },
+        },
+      } as any;
+      expect(getNotificationUrl(response)).toBe("/settle-up?groupId=grp_xyz");
+    });
+
+    it("constructs group route for member_joined_via_invite", () => {
+      const response = {
+        notification: {
+          request: {
+            content: {
+              data: { type: "member_joined_via_invite", groupId: "grp_123" },
+            },
+          },
+        },
+      } as any;
+      expect(getNotificationUrl(response)).toBe("/group/grp_123");
+    });
+
+    it("returns null when no groupId in data", () => {
+      const response = {
+        notification: {
+          request: {
+            content: { data: { type: "expense_created" } },
           },
         },
       } as any;

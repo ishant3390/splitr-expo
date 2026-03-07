@@ -44,18 +44,18 @@
 
 | # | Issue | Severity | Status | Reported | Details |
 |---|-------|----------|--------|----------|---------|
-| 22 | Receipt scanning is fully mocked | Low | Open | 2026-03-06 | No real OCR endpoint; receipt-scanner.tsx uses mock data |
-| 23 | Push notifications — Phase 2 (Backend) pending | Medium | Open - Backend | 2026-03-06 | Phase 1 (frontend) done: `lib/notifications.ts`, `NotificationProvider`, notification-settings screen, tests (24). Awaiting BE: push_tokens table, EPNS integration, domain event listeners, rate limiting, receipt polling |
+| 22 | ~~Receipt scanning is fully mocked~~ | Low | Fixed | 2026-03-06 | Replaced mock with real `POST /v1/receipts/scan` API. Premium UX: scan line animation, processing dots, confidence badges, error/retry states. 9 tests. |
+| 23 | ~~Push notifications — Full integration~~ | Medium | Fixed | 2026-03-06 | **Phase 1 + 2 complete.** Token registration with deviceId/deviceName, notification history from `GET /v1/users/me/notifications`, payload routing (type+groupId→route), global toggle syncs to BE via `PATCH /v1/users/me`, per-group toggle in group detail via `PATCH /v1/groups/{groupId}/members/{memberId}`, notifications screen shows real BE data. BE handles rate limiting (5/hr, 20/day) and coalescing (60s window). |
 | 24 | Deep link universal links not tested | Low | Open | 2026-03-06 | Requires AASA file hosted on splitr.app domain |
 
 ## Backlog
 
 | # | Feature | Priority | Details |
 |---|---------|----------|---------|
-| B1 | Onboarding walkthrough | Medium | First-time user tour highlighting key features (add expense, create group, settle up) |
+| B1 | ~~Onboarding walkthrough~~ | ~~Medium~~ | **Done**: `app/onboarding.tsx` — 4-step walkthrough (Welcome, Create Group, Add Expenses, Settle Up) with Reanimated animations, Skip/Next/Get Started, dots indicator. `AuthGate` checks `@splitr/onboarding_complete` AsyncStorage key. 7 tests. |
 | B2 | Smart expense suggestions | Low | AI-powered auto-fill based on past expenses (description, category, split) |
 | B3 | Group avatars with gradients | Low | Auto-generated gradient avatars based on group name/type instead of plain initials |
-| B4 | Real receipt scanning (OCR) | Medium | Replace mock with actual OCR endpoint; extract amount, description, date from photo |
+| B4 | ~~Real receipt scanning (OCR)~~ | ~~Medium~~ | **Done (FE)**. `POST /v1/receipts/scan` sends base64 image, returns `ReceiptScanResultDto` (merchant, date, currency, line items, totals, confidence scores). Premium UX: scan line animation, processing dots, confidence badges, error/retry. BE needs GPT-4o Vision integration. |
 | B5 | ~~Push notifications~~ | ~~Medium~~ | **Phase 1 Done**: `lib/notifications.ts` (foreground handler, permissions, token registration, preferences), `NotificationProvider` (token lifecycle, badge clear, tap handling, cold start), `notification-settings.tsx` (privacy/detailed toggle, per-category toggles), 24 tests. **Phase 2 (BE) pending**: push_tokens table, EPNS, domain events, rate limiting, coalescing. |
 | B6 | Activity feed for group deletions | Low | Backend: log group_deleted events so they appear in activity feed |
 | B7 | Expense attachments/photos | Low | Attach receipt photos to expenses for record-keeping |
@@ -66,16 +66,32 @@
 | B12 | ~~Expense date picker~~ | ~~High~~ | **Done**: Date picker (`@react-native-community/datetimepicker`) on Add Expense. Shows current date with "Today" badge, max date = today. |
 | B13 | ~~Settle-up nudge on Home~~ | ~~High~~ | **Done**: "Settle up $X.XX" CTA button on balance card when `totalOwesCents > 0`, links to groups tab. |
 | B14 | ~~Undo toast for destructive actions~~ | ~~High~~ | **Done**: Toast system supports `action` button with callback + custom `duration`. Expense deletion (group detail, swipe) and settlement deletion (settle-up) use 5-second undo toast with deferred API call. |
-| B15 | Biometric app lock | Medium | `expo-local-authentication` Face ID / fingerprint on app open. Toggle in Profile > Privacy & Security. |
-| B16 | Success micro-animation | Medium | Brief checkmark animation (Reanimated) after adding expense before navigating back. |
-| B17 | Group balance visualization | Medium | Bar chart or visual breakdown of who owes whom in group detail, not just a text list. |
-| B18 | Receipt photo attachment | Medium | Attach a photo (camera/gallery) to an expense via `expo-image-picker`. Simpler than full OCR. |
-| B19 | Quick add from Home | Medium | Long-press Add button for quick-entry sheet (amount + description, auto-selects last group). |
-| B20 | Group spending insights | Low | Monthly breakdown, top categories, spending trends. Good for trip recaps. |
-| B21 | Keyboard done button | Low | Toolbar above decimal keyboard with "Done" button to dismiss. Standard iOS pattern. |
-| B22 | 3D Touch quick actions | Low | Home screen shortcuts via `expo-quick-actions`: Add Expense, Scan Receipt, View Groups. |
-| B23 | Animated tab bar transitions | Low | Subtle scale/bounce on tab switch for extra polish. |
-| B24 | Confetti on full settlement | Low | When a group reaches $0 balance (all settled), trigger brief confetti animation. |
+| B15 | ~~Biometric app lock~~ | ~~Medium~~ | **Done**: Added `expo-local-authentication` app lock gate on app open/foreground resume with unlock overlay in `app/_layout.tsx` + toggle in Privacy & Security (`app/privacy-security.tsx`) persisted via `@splitr/biometric_lock`. |
+| B16 | ~~Success micro-animation~~ | ~~Medium~~ | **Done**: Full-screen teal overlay with animated checkmark + "Expense Added!" text, 800ms display before navigating back. Uses FadeIn + FadeInDown spring. |
+| B17 | ~~Group balance visualization~~ | ~~Medium~~ | **Done (existing)**: Group detail already has INSIGHTS section with by-person spending bars and by-category stacked bar + legend. Member cards show individual balance with color coding. |
+| B18 | ~~Receipt photo attachment~~ | ~~Medium~~ | **Done**: Camera + gallery buttons below description field on Add Expense. Uses `expo-image-picker`. Photo preview with remove button. URI stored locally (BE attachment endpoint pending). |
+| B19 | ~~Quick add from Home~~ | ~~Medium~~ | **Done**: Long-press FAB opens quick-add mode (amount + description + group only, equal split, no category/date/payer sections). Navigates via `?quick=true` param. |
+| B20 | ~~Group spending insights~~ | ~~Low~~ | **Done**: Monthly spending bar chart added to group INSIGHTS section. Shows last 6 months with proportional bars. Uses `aggregateByMonth()` helper. |
+| B21 | ~~Keyboard done button~~ | ~~Low~~ | **Done**: iOS `InputAccessoryView` with "Done" button on the amount decimal pad in Add Expense. |
+| B22 | ~~3D Touch quick actions~~ | ~~Low~~ | **Done**: `expo-quick-actions` v6. 3 actions (Add Expense, Scan Receipt, View Groups) registered in `_layout.tsx`, routing via `useQuickActionRouting()` in `(tabs)/_layout.tsx`. |
+| B23 | ~~Animated tab bar transitions~~ | ~~Low~~ | **Done (existing)**: Custom `TabBar.tsx` with Airbnb-style overshoot bounce (1->1.3->1.1), outline/filled icon crossfade, sliding teal indicator pill with stretch, label opacity/scale animations, FAB spring press. |
+| B24 | ~~Confetti on full settlement~~ | ~~Low~~ | **Done**: `Confetti` component with 40 animated particles (reanimated). Triggers on settle-up screen when suggestions list is empty (all debts settled). |
+| B25 | ~~AI Chat — Core implementation~~ | ~~High~~ | **Done (FE)**: `app/chat.tsx` — SSE streaming chat with interactive cards (group selection, expense confirmation, create group). `POST /v1/chat` with conversationId. Quota system (`GET /v1/chat/quota`), unmount cleanup, double-send prevention, smart scroll, cache invalidation, offline awareness, stop generation, retry on failure. 17 tests. **BE pending**: endpoint implementation. |
+| B26 | Chat — Message timestamps | Low | No timestamps on chat messages. Add `createdAt` to ChatMessage and display time on messages. |
+| B27 | Chat — Typing indicator animation | Low | Replace static "Thinking..." ActivityIndicator with animated dots (bouncing ellipsis). |
+| B28 | Chat — Copy message | Low | Long-press to copy AI-generated text (balance summaries, explanations). |
+| B29 | Chat — Suggested follow-ups | Low | Show contextual follow-up suggestions after actions (e.g., after expense: "Add another", "Check balance", "View group"). |
+| B30 | Chat — Conversation persistence | Low | Persist messages to AsyncStorage so conversations survive navigation. Currently lost on unmount. |
+| B31 | Chat — Bubble grouping | Low | Group consecutive same-role messages, only show bot avatar on last message in sequence. |
+| B32 | Chat — Accessibility | Medium | Add accessibilityLabels to send button, back button, action cards, group selection cards. Screen reader support. |
+| B33 | Chat — FlatList performance | Medium | Add `React.memo` on message renderer, `getItemLayout` for fixed-height items to reduce re-renders during streaming. |
+
+| B34 | Receipt → Chat auto-fill | High | Scan receipt → "Split via Chat" button → opens chat pre-filled with scanned amount/merchant/date → group selection → confirm. Chains receipt scan + chat. Small FE effort. |
+| B35 | Natural language balance queries | High | "How much does Sarah owe me across all groups?" BE needs `getCrossGroupBalances` tool. No new FE UI — chat text responses handle it. Small effort, high value. |
+| B36 | Smart split suggestions | Low | LLM suggests split ratios based on description (e.g., "hotel 2 nights" → split by nights). Niche use case. |
+| B37 | Recurring expense detection | Low | "You split dinner with Sarah last week too. Create recurring?" Needs historical analysis on BE. Medium effort. |
+| B38 | Expense auto-categorization | Low | LLM infers category from description during chat expense creation. Already partially possible. Low incremental value. |
+| B39 | Settlement nudge reminders | Low | "Mike has owed you $45 for 2 weeks. Send a reminder?" Ties into push notifications. Medium effort. |
 
 ## Notes
 

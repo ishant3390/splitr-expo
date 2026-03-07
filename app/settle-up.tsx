@@ -14,6 +14,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import {
   ArrowLeft,
   ArrowRight,
+  Bell,
   Check,
   HandCoins,
   History,
@@ -28,11 +29,13 @@ import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { settlementsApi, groupsApi } from "@/lib/api";
+import { useUserProfile } from "@/lib/hooks";
 import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
 import { getPaymentMethodLabel, getPaymentMethodEmoji } from "@/lib/screen-helpers";
 import { SkeletonList } from "@/components/ui/skeleton";
+import { Confetti } from "@/components/ui/confetti";
 import type {
   SettlementDto,
   SettlementSuggestionDto,
@@ -56,6 +59,10 @@ export default function SettleUpScreen() {
   const toast = useToast();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
+
+  const { data: currentUser } = useUserProfile();
+  const [nudgingUserId, setNudgingUserId] = useState<string | null>(null);
+  const [nudgedUserIds, setNudgedUserIds] = useState<Set<string>>(new Set());
 
   const [group, setGroup] = useState<GroupDto | null>(null);
   const [members, setMembers] = useState<GroupMemberDto[]>([]);
@@ -145,6 +152,31 @@ export default function SettleUpScreen() {
       loadData();
     }, [loadData])
   );
+
+  const handleNudge = async (targetUserId: string) => {
+    if (!groupId || nudgingUserId) return;
+    setNudgingUserId(targetUserId);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await groupsApi.nudge(groupId, targetUserId, token);
+      hapticSuccess();
+      toast.success("Reminder sent!");
+      setNudgedUserIds((prev) => new Set(prev).add(targetUserId));
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      if (msg.includes("429") || msg.toLowerCase().includes("cooldown")) {
+        toast.info("You already sent a reminder. Try again later.");
+      } else if (msg.toLowerCase().includes("not_owed") || msg.toLowerCase().includes("doesn't owe")) {
+        toast.error("This person doesn't owe you anything.");
+      } else {
+        toast.error("Failed to send reminder.");
+      }
+      hapticError();
+    } finally {
+      setNudgingUserId(null);
+    }
+  };
 
   const openCreateModal = (suggestion?: SettlementSuggestionDto) => {
     if (suggestion) {
@@ -360,7 +392,7 @@ export default function SettleUpScreen() {
                   return (
                     <Animated.View
                       key={suggIdx}
-                      entering={FadeInDown.delay(suggIdx * 60).duration(300).springify()}
+                      entering={FadeInDown.delay(suggIdx * 40).duration(300).springify()}
                     >
                     <Pressable
                       onPress={() => { hapticHeavy(); openCreateModal(s); }}
@@ -399,13 +431,48 @@ export default function SettleUpScreen() {
                             size="md"
                           />
                         </View>
-                        <View className="mt-3 items-center">
+                        <View className="mt-3 flex-row items-center justify-center gap-2">
                           <View className="flex-row items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
                             <Check size={14} color="#0d9488" />
                             <Text className="text-sm font-sans-semibold text-primary">
                               Record {formatCents(s.amount)} payment
                             </Text>
                           </View>
+                          {currentUser && s.toUser?.id === currentUser.id && s.fromUser && (
+                            <Pressable
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleNudge(s.fromUser!.id);
+                              }}
+                              disabled={nudgingUserId === s.fromUser.id || nudgedUserIds.has(s.fromUser.id)}
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 4,
+                                backgroundColor: nudgedUserIds.has(s.fromUser.id)
+                                  ? isDark ? "#1e293b" : "#f1f5f9"
+                                  : isDark ? "#1e293b" : "#fef3c7",
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                borderRadius: 999,
+                                opacity: nudgingUserId === s.fromUser.id ? 0.5 : 1,
+                              }}
+                            >
+                              <Bell
+                                size={14}
+                                color={nudgedUserIds.has(s.fromUser.id) ? "#94a3b8" : "#f59e0b"}
+                              />
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  fontFamily: "Inter_600SemiBold",
+                                  color: nudgedUserIds.has(s.fromUser.id) ? "#94a3b8" : "#f59e0b",
+                                }}
+                              >
+                                {nudgedUserIds.has(s.fromUser.id) ? "Sent" : "Remind"}
+                              </Text>
+                            </Pressable>
+                          )}
                         </View>
                       </Card>
                     </Pressable>
@@ -649,6 +716,9 @@ export default function SettleUpScreen() {
           )}
         </Button>
       </BottomSheetModal>
+
+      {/* Confetti when all settled */}
+      <Confetti visible={!loading && suggestions.length === 0 && activeTab === "suggestions"} />
 
       {/* Delete Confirmation */}
       <ConfirmModal

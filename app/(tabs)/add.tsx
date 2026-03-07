@@ -8,6 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  InputAccessoryView,
+  Keyboard,
 } from "react-native";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -21,7 +23,12 @@ import {
   Plus,
   Check,
   Calendar,
+  Camera,
+  ImageIcon,
+  X,
 } from "lucide-react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,8 +51,9 @@ const SMART_DEFAULTS_KEY = "@splitr/add_expense_defaults";
 export default function AddExpenseScreen() {
   const router = useRouter();
   const { isOnline, refreshPendingCount } = useNetwork();
-  const params = useLocalSearchParams<{ returnGroupId?: string }>();
+  const params = useLocalSearchParams<{ returnGroupId?: string; quick?: string }>();
   const returnGroupId = Array.isArray(params.returnGroupId) ? params.returnGroupId[0] : params.returnGroupId;
+  const isQuickMode = params.quick === "true";
   const goBack = () => {
     if (returnGroupId) {
       router.replace(`/group/${returnGroupId}`);
@@ -79,6 +87,8 @@ export default function AddExpenseScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [expenseDate, setExpenseDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
 
   // Load groups and categories on mount; auto-create "Personal" group if none exist
   useEffect(() => {
@@ -189,6 +199,21 @@ export default function AddExpenseScreen() {
       initSplitValues(next, splitType, amount);
       return next;
     });
+  };
+
+  const pickReceiptImage = async (useCamera: boolean) => {
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ["images"],
+      quality: 0.7,
+      allowsEditing: true,
+    };
+    const result = useCamera
+      ? await ImagePicker.launchCameraAsync(options)
+      : await ImagePicker.launchImageLibraryAsync(options);
+    if (!result.canceled && result.assets[0]) {
+      setReceiptUri(result.assets[0].uri);
+      hapticSuccess();
+    }
   };
 
   const handleSubmit = async () => {
@@ -309,12 +334,15 @@ export default function AddExpenseScreen() {
       if (isOnline) {
         await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
         hapticSuccess();
-        toast.success(`"${finalDescription}" added to ${selectedGroup.name}`);
         // Save smart defaults for next time
         AsyncStorage.setItem(SMART_DEFAULTS_KEY, JSON.stringify({
           groupId: selectedGroup.id,
           categoryId: selectedCategoryId,
         })).catch(() => {});
+        // Show success animation briefly before navigating back
+        setShowSuccess(true);
+        setTimeout(() => { setShowSuccess(false); goBack(); }, 800);
+        return;
       } else {
         // Offline: queue for later sync
         await addToQueue({
@@ -369,7 +397,7 @@ export default function AddExpenseScreen() {
             <Pressable onPress={goBack} hitSlop={12}>
               <Text className="text-base font-sans-medium text-muted-foreground">Cancel</Text>
             </Pressable>
-            <Text className="text-lg font-sans-semibold text-foreground">Add Expense</Text>
+            <Text className="text-lg font-sans-semibold text-foreground">{isQuickMode ? "Quick Add" : "Add Expense"}</Text>
             <Pressable onPress={handleSubmit} disabled={submitting} hitSlop={12}>
               <Text className="text-base font-sans-semibold text-primary">
                 {submitting ? "Saving..." : "Save"}
@@ -404,6 +432,7 @@ export default function AddExpenseScreen() {
                 placeholder="$0"
                 placeholderTextColor="#94a3b8"
                 className="text-foreground"
+                inputAccessoryViewID="amount-done"
                 style={{
                   fontSize: 56,
                   fontWeight: "700",
@@ -429,10 +458,41 @@ export default function AddExpenseScreen() {
             onChangeText={setDescription}
             maxLength={255}
           />
+          {/* Receipt photo */}
+          {!isQuickMode && receiptUri ? (
+            <View className="mt-3">
+              <View className="relative rounded-xl overflow-hidden" style={{ height: 120 }}>
+                <Image source={{ uri: receiptUri }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                <Pressable
+                  onPress={() => setReceiptUri(null)}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 items-center justify-center"
+                >
+                  <X size={14} color="#ffffff" />
+                </Pressable>
+              </View>
+            </View>
+          ) : !isQuickMode ? (
+            <View className="flex-row gap-2 mt-3">
+              <Pressable
+                onPress={() => pickReceiptImage(true)}
+                className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"
+              >
+                <Camera size={14} color="#64748b" />
+                <Text className="text-xs font-sans-medium text-muted-foreground">Photo</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => pickReceiptImage(false)}
+                className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"
+              >
+                <ImageIcon size={14} color="#64748b" />
+                <Text className="text-xs font-sans-medium text-muted-foreground">Gallery</Text>
+              </Pressable>
+            </View>
+          ) : null}
           </Animated.View>
 
           {/* Date */}
-          <Animated.View entering={FadeInDown.delay(150).duration(400).springify()}>
+          {!isQuickMode && <Animated.View entering={FadeInDown.delay(150).duration(400).springify()}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Date</Text>
             <Pressable
               onPress={() => setShowDatePicker(true)}
@@ -457,10 +517,10 @@ export default function AddExpenseScreen() {
                 }}
               />
             )}
-          </Animated.View>
+          </Animated.View>}
 
           {/* Category */}
-          <Animated.View entering={FadeInDown.delay(200).duration(400).springify()}>
+          {!isQuickMode && <Animated.View entering={FadeInDown.delay(200).duration(400).springify()}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Category</Text>
             {categories.length === 0 ? (
               <ActivityIndicator color="#0d9488" />
@@ -491,7 +551,7 @@ export default function AddExpenseScreen() {
                 })}
               </View>
             )}
-          </Animated.View>
+          </Animated.View>}
 
           {/* Group selector — compact chip style, auto-selects first group */}
           <Animated.View entering={FadeInDown.delay(300).duration(400).springify()}>
@@ -544,8 +604,26 @@ export default function AddExpenseScreen() {
             )}
           </Animated.View>
 
+          {/* Quick mode submit button */}
+          {isQuickMode && (
+            <Animated.View entering={FadeInDown.delay(200).duration(400).springify()}>
+              <Button variant="default" onPress={handleSubmit} disabled={submitting || !amount || !description.trim()}>
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text className="text-base font-sans-semibold text-primary-foreground">
+                    Quick Save
+                  </Text>
+                )}
+              </Button>
+              <Text className="text-xs text-muted-foreground font-sans text-center mt-2">
+                Equal split among all members
+              </Text>
+            </Animated.View>
+          )}
+
           {/* Paid by */}
-          {selectedGroup && members.length > 0 && (
+          {!isQuickMode && selectedGroup && members.length > 0 && (
             <View>
               <Text className="text-sm font-sans-medium text-foreground mb-2">Paid by</Text>
               {membersLoading ? (
@@ -593,7 +671,7 @@ export default function AddExpenseScreen() {
           )}
 
           {/* Split with */}
-          {selectedGroup && (
+          {!isQuickMode && selectedGroup && (
             <View>
               {/* Header row */}
               <View className="flex-row items-center justify-between mb-1">
@@ -701,6 +779,7 @@ export default function AddExpenseScreen() {
                                     setSplitPercentages((prev) => ({ ...prev, [member.id]: val }))
                                   }
                                   keyboardType="decimal-pad"
+                                  inputAccessoryViewID="amount-done"
                                   placeholder="0"
                                   placeholderTextColor="#94a3b8"
                                   style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", fontFamily: "Inter_400Regular" }}
@@ -720,6 +799,7 @@ export default function AddExpenseScreen() {
                                     setSplitFixedAmounts((prev) => ({ ...prev, [member.id]: val }))
                                   }
                                   keyboardType="decimal-pad"
+                                  inputAccessoryViewID="amount-done"
                                   placeholder="0.00"
                                   placeholderTextColor="#94a3b8"
                                   style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", fontFamily: "Inter_400Regular" }}
@@ -738,6 +818,51 @@ export default function AddExpenseScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Keyboard done button for decimal pad */}
+      {Platform.OS === "ios" && (
+        <InputAccessoryView nativeID="amount-done">
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "flex-end",
+              backgroundColor: "#f1f5f9",
+              borderTopWidth: 1,
+              borderTopColor: "#e2e8f0",
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+            }}
+          >
+            <Pressable onPress={() => Keyboard.dismiss()}>
+              <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#0d9488" }}>Done</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      )}
+
+      {/* Success overlay */}
+      {showSuccess && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(13, 148, 136, 0.95)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Animated.View entering={FadeInDown.duration(400).springify()}>
+            <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center mb-4">
+              <Check size={40} color="#ffffff" />
+            </View>
+            <Text className="text-lg font-sans-bold text-white text-center">Expense Added!</Text>
+          </Animated.View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }

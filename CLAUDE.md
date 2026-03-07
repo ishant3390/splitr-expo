@@ -24,17 +24,33 @@ app/                    # Screens (Expo Router file-based)
   create-group.tsx      # Create group form (name-only members, post-creation share sheet)
   join/[code].tsx       # Join group via invite code (deep link landing)
   invite/[code].tsx     # Re-export of join screen (matches deep link URL path)
-  settle-up.tsx         # Settlement screen (suggestions + history)
-  chat.tsx              # AI chat assistant
-  receipt-scanner.tsx   # Receipt scanning (OCR endpoint still mocked)
+  settle-up.tsx         # Settlement screen (suggestions + history + confetti on full settle)
+  chat.tsx              # AI chat assistant (SSE streaming, interactive cards, quota)
+  receipt-scanner.tsx   # Receipt scanning (POST /v1/receipts/scan, confidence badges, quota)
   edit-profile.tsx      # Edit profile
+  onboarding.tsx        # First-time user walkthrough (4 steps, AsyncStorage gate)
+  pending-expenses.tsx  # View/discard offline-queued expenses
+  privacy-security.tsx  # Biometric lock toggle, security settings
+  notification-settings.tsx # Push notification preferences
 components/
   ui/                   # Reusable UI components (Button, Card, Avatar, Input, etc.)
-  icons/                # Custom SVG icons (social auth logos)
+  ui/confetti.tsx       # Confetti animation (40 reanimated particles)
+  ui/toast.tsx          # Toast system with action buttons + custom durations
+  TabBar.tsx            # Custom animated tab bar (Airbnb-style bounce, sliding indicator, FAB with long-press quick-add)
+  NetworkProvider.tsx   # Network context, offline banner, auto-sync
+  NotificationProvider.tsx # Push notification lifecycle (native-only, web passthrough)
+  icons/                # Custom SVG icons (social auth logos, tab bar icons)
 lib/
   api.ts                # API client (usersApi, groupsApi, categoriesApi, expensesApi, settlementsApi, inviteApi, contactsApi)
   types.ts              # TypeScript interfaces/DTOs
   utils.ts              # cn(), formatCents(), formatDate(), getInitials(), etc.
+  screen-helpers.ts     # Pure helpers: aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, etc.
+  hooks.ts              # React Query hooks for all API data
+  query.ts              # QueryClient config, query keys, stale times
+  offline.ts            # AsyncStorage-based offline expense queue
+  biometrics.ts         # Biometric lock utilities (expo-local-authentication)
+  notifications.ts      # Push notification utilities (foreground handler, permissions, token, preferences)
+  haptics.ts            # Haptic feedback wrappers
 ```
 
 ## Design System
@@ -57,6 +73,13 @@ lib/
 - Groups have `groupType` (trip/home/couple/etc.) and `emoji` fields for display
 - When no groups exist, Add Expense auto-creates a "Personal" group
 - Default currency for new groups comes from `GET /v1/users/me` → `defaultCurrency`
+- Add Expense supports quick mode via `?quick=true` param (long-press FAB) — shows simplified UI with equal split
+- Smart defaults: last groupId + categoryId saved to AsyncStorage key `@splitr/add_expense_defaults`
+- Destructive actions (expense/settlement delete) use deferred deletion with 5s undo toast
+- Offline expenses queued in AsyncStorage, synced on reconnect via `NetworkProvider`
+- Biometric lock gate in `_layout.tsx` wraps `AuthGate`, checks on app open + foreground resume
+- Notifications: web platform renders passthrough (no expo-notifications on web)
+- Per-group notification toggle in group detail: reads `member.notificationsEnabled`, toggles via `PATCH /v1/groups/{groupId}/members/{memberId}`
 
 ## Key API Endpoints
 - `POST /v1/groups/{groupId}/expenses` — expenses always belong to a group
@@ -84,10 +107,58 @@ lib/
 - Guest-to-user promotion is automatic on backend when emails match
 - Members can be added by name only (no email required) — `AddGuestMemberRequest.email` is optional
 
+## Push Notification Integration
+- **Token registration**: `POST /v1/users/me/push-tokens` with `{ token, deviceId, deviceName, platform }`
+- **Token deletion**: `DELETE /v1/users/me/push-tokens/{tokenId}`
+- **Notification history**: `GET /v1/users/me/notifications?page=0&limit=20` — paginated, returns `NotificationDto[]`
+- **Global toggle**: `PATCH /v1/users/me` with `{ preferences: { notifications: true/false } }` — server-side filtering
+- **Per-group toggle**: `PATCH /v1/groups/{groupId}/members/{memberId}` with `{ notificationsEnabled: true/false }`
+- **Payload format**: `data: { type, groupId }` — no `url` field, FE constructs routes:
+  - `expense_created/updated/deleted/coalesced_expenses` → `/group/{groupId}`
+  - `settlement_created` → `/settle-up?groupId={groupId}`
+  - `member_joined_via_invite` → `/group/{groupId}`
+- **Rate limiting**: BE-handled (5/hr, 15/day expenses; 20/day total)
+- **Coalescing**: BE-handled (first immediate, subsequent batched in 60s window)
+
+## Onboarding
+- **Screen**: `app/onboarding.tsx` — 4-step walkthrough (Welcome, Create Group, Add Expenses, Settle Up)
+- **Gate**: `AuthGate` in `_layout.tsx` checks `@splitr/onboarding_complete` AsyncStorage key
+- First-time signed-in users redirect to `/onboarding` instead of `/(tabs)`
+- Skip button on all steps except last; "Get Started" on final step
+- Key protected from cache clear in `privacy-security.tsx`
+
+## 3D Touch Quick Actions
+- **Package**: `expo-quick-actions` — registered in `_layout.tsx` `RootLayout`
+- **Actions**: Add Expense (`/(tabs)/add`), Scan Receipt (`/receipt-scanner`), View Groups (`/(tabs)/groups`)
+- **Router**: `useQuickActionRouting()` in `app/(tabs)/_layout.tsx` handles navigation
+
+## Receipt Scanning
+- **Screen**: `app/receipt-scanner.tsx` — camera/gallery capture, sends base64 to backend
+- **API**: `POST /v1/receipts/scan` with `{ image: base64String }` — returns `ReceiptScanResponseDto` (wrapper with quota)
+- **Response**: `{ receipt: ReceiptScanResultDto, dailyScansUsed, dailyScanLimit }` — merchant, date, currency, subtotalCents, taxCents, tipCents, totalCents, lineItems[], confidence scores
+- **UX**: Scan line animation, processing dots, confidence badges (Verify) for <0.9 fields, error/retry, quota display ("X of Y free scans used today")
+- **Flow**: Scan -> results with line items + totals -> "Create Expense" pre-fills Add Expense form (amount, description, date)
+- **Backend**: Gemini 2.0 Flash for OCR (not GPT-4o — 100x cheaper)
+
+## AI Chat (Expense via Natural Language)
+- **Screen**: `app/chat.tsx` — SSE streaming chat with interactive action cards
+- **API**: `POST /v1/chat` with `{ conversationId: string|null, message: string }` — SSE response
+- **Quota**: `GET /v1/chat/quota` — returns `ChatQuotaDto { dailyUsed, dailyLimit, resetsAt, tier }`
+- **SSE Event Types**: `text`, `action_required`, `expense_created`, `quota`, `quota_exceeded`, `error`
+- **Interactive Cards**:
+  - `select_group` — tappable group cards with emoji, members, last activity
+  - `confirm_expense` — full breakdown (description, total, splits, payer) with Confirm + Edit buttons
+  - `confirm_create_group` — group name + members with Create button
+- **Edit button**: Opens `/(tabs)/add` pre-filled with parsed data (amount, description, date, groupId, currency)
+- **Quota UX**: Header shows remaining count when ≤5; input disabled + upgrade card when 0
+- **Safety**: Unmount cleanup (abort + mountedRef), null token handling, double-send prevention (sendingRef), smart scroll (only auto-scroll when near bottom), React Query invalidation on expense creation
+- **Cache invalidation**: `expense_created` → `invalidateAfterExpenseChange(groupId)`
+- **Offline**: Detects via `useNetwork()`, disables input + shows offline banner
+- **Stop generation**: Abort button shown during active streaming
+- **Retry**: Failed messages show "Tap to retry" with stored original text
+- **Tests**: 17 tests in `__tests__/screens/ChatScreen.test.tsx`
+
 ## Known Gaps (Not Yet Implemented)
-- Receipt scanning is fully mocked (no real OCR endpoint)
-- Push notifications (no token registration, no expo-notifications)
-- `GET /v1/users/me/balance` aggregate endpoint (frontend calls it, falls back to N+1 if backend 404s)
 - Activity `details.categoryName` — confirm backend populates this for category filtering
 - Deep link testing: universal links require AASA file hosted on splitr.app domain
 

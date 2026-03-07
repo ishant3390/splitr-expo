@@ -709,40 +709,50 @@ describe("chatStream", () => {
     };
   }
 
-  it("parses SSE chunks and calls onChunk", async () => {
-    const chunks: any[] = [];
-    const onChunk = jest.fn((c) => chunks.push(c));
+  it("parses SSE events and calls onEvent", async () => {
+    const onEvent = jest.fn();
     const onDone = jest.fn();
     const onError = jest.fn();
 
     mockFetch.mockResolvedValue(
       mockSSEResponse([
-        'data: {"content":"Hello"}\n\n',
-        'data: {"content":" world"}\n\n',
+        'data: {"type":"text","content":"Hello","conversationId":"c1"}\n\n',
+        'data: {"type":"text","content":" world","conversationId":"c1"}\n\n',
         "data: [DONE]\n\n",
       ])
     );
 
-    chatStream(
-      [{ role: "user", content: "Hi" }],
-      "token",
-      onChunk,
-      onDone,
-      onError
-    );
+    chatStream("Hi", null, "token", onEvent, onDone, onError);
 
-    // Wait for stream processing
     await new Promise((r) => setTimeout(r, 100));
 
-    expect(onChunk).toHaveBeenCalledTimes(2);
-    expect(onChunk).toHaveBeenCalledWith({ content: "Hello" });
-    expect(onChunk).toHaveBeenCalledWith({ content: " world" });
+    expect(onEvent).toHaveBeenCalledTimes(2);
+    expect(onEvent).toHaveBeenCalledWith({ type: "text", content: "Hello", conversationId: "c1" });
+    expect(onEvent).toHaveBeenCalledWith({ type: "text", content: " world", conversationId: "c1" });
     expect(onDone).toHaveBeenCalled();
     expect(onError).not.toHaveBeenCalled();
   });
 
+  it("sends message and conversationId in request body", async () => {
+    mockFetch.mockResolvedValue(
+      mockSSEResponse(["data: [DONE]\n\n"])
+    );
+
+    chatStream("Hello", "conv-123", "token", jest.fn(), jest.fn(), jest.fn());
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/chat"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ conversationId: "conv-123", message: "Hello" }),
+      })
+    );
+  });
+
   it("calls onDone when [DONE] is received", async () => {
-    const onChunk = jest.fn();
+    const onEvent = jest.fn();
     const onDone = jest.fn();
     const onError = jest.fn();
 
@@ -750,22 +760,16 @@ describe("chatStream", () => {
       mockSSEResponse(["data: [DONE]\n\n"])
     );
 
-    chatStream(
-      [{ role: "user", content: "Hi" }],
-      "token",
-      onChunk,
-      onDone,
-      onError
-    );
+    chatStream("Hi", null, "token", onEvent, onDone, onError);
 
     await new Promise((r) => setTimeout(r, 100));
 
-    expect(onChunk).not.toHaveBeenCalled();
+    expect(onEvent).not.toHaveBeenCalled();
     expect(onDone).toHaveBeenCalled();
   });
 
   it("calls onError on non-OK response", async () => {
-    const onChunk = jest.fn();
+    const onEvent = jest.fn();
     const onDone = jest.fn();
     const onError = jest.fn();
 
@@ -775,13 +779,7 @@ describe("chatStream", () => {
       body: null,
     });
 
-    chatStream(
-      [{ role: "user", content: "Hi" }],
-      "token",
-      onChunk,
-      onDone,
-      onError
-    );
+    chatStream("Hi", null, "token", onEvent, onDone, onError);
 
     await new Promise((r) => setTimeout(r, 100));
 
@@ -790,32 +788,26 @@ describe("chatStream", () => {
   });
 
   it("skips malformed JSON chunks", async () => {
-    const onChunk = jest.fn();
+    const onEvent = jest.fn();
     const onDone = jest.fn();
     const onError = jest.fn();
 
     mockFetch.mockResolvedValue(
       mockSSEResponse([
-        'data: {"content":"valid"}\n',
+        'data: {"type":"text","content":"valid","conversationId":"c1"}\n',
         "data: {bad json}\n",
-        'data: {"content":"also valid"}\n',
+        'data: {"type":"text","content":"also valid","conversationId":"c1"}\n',
         "data: [DONE]\n\n",
       ])
     );
 
-    chatStream(
-      [{ role: "user", content: "Hi" }],
-      "token",
-      onChunk,
-      onDone,
-      onError
-    );
+    chatStream("Hi", null, "token", onEvent, onDone, onError);
 
     await new Promise((r) => setTimeout(r, 100));
 
-    expect(onChunk).toHaveBeenCalledTimes(2);
-    expect(onChunk).toHaveBeenCalledWith({ content: "valid" });
-    expect(onChunk).toHaveBeenCalledWith({ content: "also valid" });
+    expect(onEvent).toHaveBeenCalledTimes(2);
+    expect(onEvent).toHaveBeenCalledWith({ type: "text", content: "valid", conversationId: "c1" });
+    expect(onEvent).toHaveBeenCalledWith({ type: "text", content: "also valid", conversationId: "c1" });
     expect(onDone).toHaveBeenCalled();
     expect(onError).not.toHaveBeenCalled();
   });
@@ -825,13 +817,7 @@ describe("chatStream", () => {
       mockSSEResponse(["data: [DONE]\n\n"])
     );
 
-    const abort = chatStream(
-      [{ role: "user", content: "Hi" }],
-      "token",
-      jest.fn(),
-      jest.fn(),
-      jest.fn()
-    );
+    const abort = chatStream("Hi", null, "token", jest.fn(), jest.fn(), jest.fn());
 
     expect(typeof abort).toBe("function");
   });

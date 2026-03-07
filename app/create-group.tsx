@@ -488,12 +488,14 @@ export default function CreateGroupScreen() {
             </Text>
           </View>
 
-          {/* Create button */}
+        </ScrollView>
+
+        {/* Sticky Create button — always visible at bottom */}
+        <View className="px-5 pb-4 pt-3 border-t border-border bg-background">
           <Button
             variant="default"
             onPress={handleCreate}
             disabled={submitting || !groupName.trim()}
-            className="mt-2"
           >
             {submitting ? (
               <ActivityIndicator size="small" color="#ffffff" />
@@ -506,7 +508,7 @@ export default function CreateGroupScreen() {
               </View>
             )}
           </Button>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
 
       {/* Post-Creation Share Sheet */}

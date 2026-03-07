@@ -60,15 +60,19 @@ export function Button({
     transform: [{ scale: scale.value }],
   }));
 
+  // Extract flex-1 to outer Animated.View so layout sizing works in flex parents
+  const hasFlexOne = className?.includes("flex-1");
+  const innerClassName = hasFlexOne ? className!.replace(/flex-1/g, "").trim() : className;
+
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated.View style={animatedStyle} className={hasFlexOne ? "flex-1" : undefined}>
       <Pressable
         className={clsx(
           "flex-row items-center justify-center",
           variantStyles[variant],
           sizeStyles[size],
           disabled && "opacity-50",
-          className
+          innerClassName
         )}
         disabled={disabled || loading}
         onPressIn={(e) => {

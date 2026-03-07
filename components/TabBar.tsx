@@ -55,10 +55,10 @@ function TabIcon({ name, isFocused }: { name: string; isFocused: boolean }) {
 
   useEffect(() => {
     if (isFocused) {
-      // Overshoot bounce: 1 -> 1.3 -> 1.1 (Airbnb signature)
+      // Overshoot bounce: 1 -> 1.15 -> 1.05 (subtle deformation)
       scale.value = withSequence(
-        withSpring(1.3, { damping: 6, stiffness: 250, mass: 0.5 }),
-        withSpring(1.1, SPRING_SMOOTH)
+        withSpring(1.15, { damping: 8, stiffness: 250, mass: 0.5 }),
+        withSpring(1.05, SPRING_SMOOTH)
       );
       translateY.value = withSpring(-3, SPRING_SMOOTH);
       filledOpacity.value = withTiming(1, { duration: 150 });
@@ -142,16 +142,25 @@ function FABButton() {
   const handlePress = () => {
     hapticMedium();
     scale.value = withSequence(
-      withSpring(0.85, { damping: 6, stiffness: 200 }),
-      withSpring(1, { damping: 8, stiffness: 120 })
+      withSpring(0.95, { damping: 8, stiffness: 200 }),
+      withSpring(1, { damping: 10, stiffness: 150 })
     );
     router.push("/(tabs)/add");
+  };
+
+  const handleLongPress = () => {
+    hapticMedium();
+    scale.value = withSequence(
+      withSpring(0.95, { damping: 8, stiffness: 200 }),
+      withSpring(1, { damping: 10, stiffness: 150 })
+    );
+    router.push({ pathname: "/(tabs)/add", params: { quick: "true" } });
   };
 
   return (
     <View style={styles.fabContainer}>
       <Animated.View style={[styles.fabShadow, animatedStyle]}>
-        <Pressable onPress={handlePress} style={styles.fab}>
+        <Pressable onPress={handlePress} onLongPress={handleLongPress} delayLongPress={400} style={styles.fab}>
           <Plus size={24} color="#ffffff" strokeWidth={2.5} />
         </Pressable>
       </Animated.View>

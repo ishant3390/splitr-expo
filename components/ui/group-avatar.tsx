@@ -31,6 +31,8 @@ interface GroupAvatarProps {
   name: string;
   emoji?: string;
   groupType?: string;
+  /** Unique group ID — used for deterministic gradient to avoid collisions */
+  id?: string;
   size?: "sm" | "md" | "lg";
 }
 
@@ -44,9 +46,10 @@ const SIZE_MAP = {
  * Group avatar with deterministic gradient background.
  * Shows emoji if available, otherwise first letter of group name.
  */
-export function GroupAvatar({ name, emoji, groupType, size = "md" }: GroupAvatarProps) {
+export function GroupAvatar({ name, emoji, groupType, id, size = "md" }: GroupAvatarProps) {
   const s = SIZE_MAP[size];
-  const hash = hashString(name + (groupType ?? ""));
+  // Prefer id for uniqueness; fall back to name + groupType
+  const hash = hashString(id ?? (name + (groupType ?? "")));
   const [from, to] = GRADIENT_PAIRS[hash % GRADIENT_PAIRS.length];
 
   return (

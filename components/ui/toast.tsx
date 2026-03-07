@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
-import { View, Text, Pressable, Animated, useColorScheme } from "react-native";
+import { View, Text, Pressable, Animated, Easing, useColorScheme } from "react-native";
 import { X, CheckCircle2, AlertTriangle, Info } from "lucide-react-native";
 
 type ToastType = "success" | "error" | "info";
@@ -60,14 +60,14 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 
   React.useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
 
     const timer = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: -20, duration: 200, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: -20, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
       ]).start(onDismiss);
     }, duration);
 

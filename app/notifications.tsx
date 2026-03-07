@@ -1,53 +1,35 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, SectionList, Pressable, ActivityIndicator, RefreshControl, useColorScheme } from "react-native";
+import { View, Text, SectionList, Pressable, RefreshControl, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { ArrowLeft, Bell, CheckCheck } from "lucide-react-native";
-import { Card } from "@/components/ui/card";
-import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useUserActivity } from "@/lib/hooks";
-import { getInitials, cn } from "@/lib/utils";
+import { SkeletonList } from "@/components/ui/skeleton";
+import { useNotifications } from "@/lib/hooks";
 import { hapticLight } from "@/lib/haptics";
-import type { ActivityLogDto } from "@/lib/types";
+import type { NotificationDto } from "@/lib/types";
 
 const NOTIF_EMOJI: Record<string, string> = {
   expense_created: "\uD83D\uDCB8",
   expense_updated: "\u270F\uFE0F",
   expense_deleted: "\uD83D\uDDD1\uFE0F",
-  member_joined: "\uD83D\uDC4B",
-  member_left: "\uD83D\uDC4B",
+  member_joined_via_invite: "\uD83D\uDC4B",
   group_created: "\uD83C\uDF89",
   settlement_created: "\uD83E\uDD1D",
-  settlement_deleted: "\u21A9\uFE0F",
+  coalesced_expenses: "\uD83D\uDCE6",
 };
 
-function formatNotifMessage(item: ActivityLogDto): string {
-  const actor = item.actorUserName ?? item.actorGuestName ?? "Someone";
-  const group = item.groupName ?? "";
-  const desc = (item.details?.description ?? item.details?.newDescription) as string | undefined;
+function getNotifRoute(notif: NotificationDto): string | null {
+  const groupId = notif.groupId ?? (notif.data?.groupId as string | undefined);
+  if (!groupId) return null;
 
-  switch (item.activityType) {
-    case "expense_created":
-      return `${actor} added "${desc ?? "an expense"}" in ${group}`;
-    case "expense_updated":
-      return `${actor} updated "${desc ?? "an expense"}" in ${group}`;
-    case "expense_deleted":
-      return `${actor} deleted an expense in ${group}`;
-    case "member_joined":
-      return `${actor} joined ${group}`;
-    case "member_left":
-      return `${actor} left ${group}`;
-    case "group_created":
-      return `${actor} created ${group}`;
+  switch (notif.notificationType) {
     case "settlement_created":
-      return `${actor} recorded a payment in ${group}`;
-    case "settlement_deleted":
-      return `${actor} reversed a payment in ${group}`;
+      return `/settle-up?groupId=${groupId}`;
     default:
-      return `${actor} ${item.activityType.replace(/_/g, " ")} in ${group}`;
+      return `/group/${groupId}`;
   }
 }
 
@@ -66,12 +48,12 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function groupByDay(items: ActivityLogDto[]): { title: string; data: ActivityLogDto[] }[] {
+function groupByDay(items: NotificationDto[]): { title: string; data: NotificationDto[] }[] {
   const now = new Date();
   const today = now.toDateString();
   const yesterday = new Date(now.getTime() - 86400000).toDateString();
 
-  const groups: Record<string, ActivityLogDto[]> = {};
+  const groups: Record<string, NotificationDto[]> = {};
   items.forEach((item) => {
     const d = new Date(item.createdAt).toDateString();
     const label = d === today ? "Today" : d === yesterday ? "Yesterday" : "Earlier";
@@ -88,11 +70,11 @@ function groupByDay(items: ActivityLogDto[]): { title: string; data: ActivityLog
 export default function NotificationsScreen() {
   const router = useRouter();
   const isDark = useColorScheme() === "dark";
-  const { data: activity = [], isLoading: loading, refetch } = useUserActivity();
+  const { data: notifications = [], isLoading: loading, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
-  const sections = useMemo(() => groupByDay(activity), [activity]);
+  const sections = useMemo(() => groupByDay(notifications), [notifications]);
 
   useFocusEffect(
     useCallback(() => {
@@ -128,8 +110,8 @@ export default function NotificationsScreen() {
       </View>
 
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#0d9488" />
+        <View className="px-5 pt-4">
+          <SkeletonList count={6} type="activity" />
         </View>
       ) : sections.length === 0 ? (
         <View className="flex-1 items-center justify-center">
@@ -148,6 +130,8 @@ export default function NotificationsScreen() {
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
+          onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+          onEndReachedThreshold={0.3}
           renderSectionHeader={({ section: { title } }) => (
             <Text className="text-xs font-sans-semibold text-muted-foreground px-5 mt-4 mb-2">
               {title}
@@ -155,21 +139,15 @@ export default function NotificationsScreen() {
           )}
           renderItem={({ item }) => {
             const isRead = readIds.has(item.id);
-            const actorName = item.actorUserName ?? item.actorGuestName ?? "?";
-            const emoji = NOTIF_EMOJI[item.activityType] ?? "\uD83D\uDCCB";
-
-            const destination = item.expenseId
-              ? { pathname: `/edit-expense/${item.expenseId}` as const, params: { groupId: item.groupId } }
-              : item.groupId
-              ? { pathname: `/group/${item.groupId}` as const }
-              : null;
+            const emoji = NOTIF_EMOJI[item.notificationType] ?? "\uD83D\uDCCB";
+            const route = getNotifRoute(item);
 
             return (
               <Pressable
                 onPress={() => {
                   hapticLight();
                   setReadIds((prev) => new Set(prev).add(item.id));
-                  if (destination) router.push(destination as any);
+                  if (route) router.push(route as any);
                 }}
                 style={{
                   flexDirection: "row",
@@ -187,7 +165,7 @@ export default function NotificationsScreen() {
                   )}
                 </View>
 
-                {/* Avatar */}
+                {/* Icon */}
                 <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? "#334155" : "#f1f5f9", alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ fontSize: 18 }}>{emoji}</Text>
                 </View>
@@ -202,9 +180,21 @@ export default function NotificationsScreen() {
                       lineHeight: 18,
                     }}
                   >
-                    {formatNotifMessage(item)}
+                    {item.title}
                   </Text>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#94a3b8", marginTop: 2 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "Inter_400Regular",
+                      color: isDark ? "#cbd5e1" : "#475569",
+                      lineHeight: 16,
+                      marginTop: 1,
+                    }}
+                    numberOfLines={2}
+                  >
+                    {item.body}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#94a3b8", marginTop: 3 }}>
                     {timeAgo(item.createdAt)}
                   </Text>
                 </View>

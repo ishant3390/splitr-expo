@@ -130,6 +130,19 @@ export function aggregateByCategory(expenses: ExpenseLike[], topN = 5): Array<[s
   return Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, topN);
 }
 
+export function aggregateByMonth(expenses: ExpenseLike[]): Array<{ month: string; total: number }> {
+  const byMonth: Record<string, number> = {};
+  expenses.forEach((e) => {
+    const d = e.date || e.createdAt;
+    if (!d) return;
+    const key = d.substring(0, 7); // "YYYY-MM"
+    byMonth[key] = (byMonth[key] || 0) + (e.amountCents ?? 0);
+  });
+  return Object.entries(byMonth)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, total]) => ({ month, total }));
+}
+
 export function filterExpenses(expenses: ExpenseLike[], query: string): ExpenseLike[] {
   if (!query.trim()) return expenses;
   const q = query.toLowerCase();

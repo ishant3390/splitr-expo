@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -60,9 +60,10 @@ const CONTACT_OPTIONS = [
 export default function HelpSupportScreen() {
   const router = useRouter();
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
       {/* Header */}
       <View className="flex-row items-center gap-3 px-5 pt-3 pb-4 border-b border-border">
         <Pressable
@@ -86,7 +87,12 @@ export default function HelpSupportScreen() {
           </Text>
           <View className="gap-2">
             {FAQ_ITEMS.map((item, idx) => (
-              <AccordionItem key={idx} title={item.question}>
+              <AccordionItem
+                key={idx}
+                title={item.question}
+                expanded={expandedFaq === idx}
+                onToggle={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
+              >
                 {item.answer}
               </AccordionItem>
             ))}

@@ -9,6 +9,7 @@ import {
   dedupeMembers,
   aggregateByPerson,
   aggregateByCategory,
+  aggregateByMonth,
   filterExpenses,
   sortExpenses,
   resolvePayerName,
@@ -434,6 +435,37 @@ describe("aggregateByCategory", () => {
       amountCents: (i + 1) * 100,
     }));
     expect(aggregateByCategory(expenses)).toHaveLength(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// aggregateByMonth
+// ---------------------------------------------------------------------------
+describe("aggregateByMonth", () => {
+  it("groups expenses by YYYY-MM and sorts chronologically", () => {
+    const expenses = [
+      { date: "2026-01-15", amountCents: 1000 },
+      { date: "2026-01-20", amountCents: 500 },
+      { date: "2026-02-05", amountCents: 800 },
+    ];
+    const result = aggregateByMonth(expenses);
+    expect(result).toEqual([
+      { month: "2026-01", total: 1500 },
+      { month: "2026-02", total: 800 },
+    ]);
+  });
+
+  it("falls back to createdAt when date is missing", () => {
+    const expenses = [
+      { createdAt: "2026-03-01T12:00:00Z", amountCents: 200 },
+      { createdAt: "2026-03-15T12:00:00Z", amountCents: 300 },
+    ];
+    const result = aggregateByMonth(expenses);
+    expect(result).toEqual([{ month: "2026-03", total: 500 }]);
+  });
+
+  it("returns empty array for no expenses", () => {
+    expect(aggregateByMonth([])).toEqual([]);
   });
 });
 
