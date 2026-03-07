@@ -13,6 +13,7 @@ export interface UserDto {
   preferences?: UserPreferences;
   createdAt: string;
   updatedAt: string;
+  version?: number;
 }
 
 export interface UserPreferences {
@@ -114,6 +115,7 @@ export interface GroupMemberDto {
   balance?: number;
   joinedAt?: string;
   leftAt?: string;
+  version?: number;
 }
 
 export interface GuestUserDto {
