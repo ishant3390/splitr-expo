@@ -5,6 +5,7 @@
  *   EXPO_PUBLIC_API_URL=http://localhost:8085/api
  */
 
+import { Platform } from "react-native";
 import type {
   UserDto,
   UpdateUserRequest,
@@ -350,6 +351,37 @@ export const chatApi = {
     request<ChatQuotaDto>("/v1/chat/quota", undefined, token),
 };
 
+/**
+ * Parse SSE lines from a buffer.
+ * Returns remaining incomplete data (to be prepended to the next chunk).
+ */
+function parseSSEBuffer(
+  buffer: string,
+  onEvent: (event: ChatSSEEvent) => void,
+  onDone: () => void
+): { remaining: string; isDone: boolean } {
+  const lines = buffer.split("\n");
+  const remaining = lines.pop() || "";
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith("data:")) continue;
+    const data = trimmed.slice(5).trim();
+    if (data === "[DONE]") {
+      onDone();
+      return { remaining: "", isDone: true };
+    }
+    try {
+      const parsed = JSON.parse(data);
+      if (__DEV__) console.log("[ChatSSE] event:", parsed.type);
+      onEvent(parsed as ChatSSEEvent);
+    } catch {
+      // skip malformed
+    }
+  }
+  return { remaining, isDone: false };
+}
+
 export function chatStream(
   message: string,
   conversationId: string | null,
@@ -359,11 +391,18 @@ export function chatStream(
   onError: (err: Error) => void,
   options?: { image?: string; deterministic?: boolean }
 ) {
-  const controller = new AbortController();
-
   const body: Record<string, unknown> = { conversationId, message };
   if (options?.image) body.image = options.image;
   if (options?.deterministic) body.deterministic = true;
+  const jsonBody = JSON.stringify(body);
+
+  // Use XMLHttpRequest for native (iOS/Android) — fetch ReadableStream
+  // is not supported on React Native. Use fetch streaming on web.
+  if (Platform.OS !== "web") {
+    return chatStreamXHR(jsonBody, token, onEvent, onDone, onError);
+  }
+
+  const controller = new AbortController();
 
   fetch(`${BASE_URL}/v1/chat`, {
     method: "POST",
@@ -371,7 +410,7 @@ export function chatStream(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(body),
+    body: jsonBody,
     signal: controller.signal,
   })
     .then(async (res) => {
@@ -387,32 +426,81 @@ export function chatStream(
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        if (__DEV__) console.log("[ChatSSE] raw chunk:", JSON.stringify(chunk));
-        buffer += chunk;
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith("data:")) continue;
-          const data = trimmed.slice(5).trim();
-          if (data === "[DONE]") {
-            onDone();
-            return;
-          }
-          try {
-            const parsed = JSON.parse(data);
-            if (__DEV__) console.log("[ChatSSE] event:", parsed.type);
-            onEvent(parsed as ChatSSEEvent);
-          } catch {
-            // skip malformed
-          }
-        }
+        buffer += decoder.decode(value, { stream: true });
+        const result = parseSSEBuffer(buffer, onEvent, onDone);
+        buffer = result.remaining;
+        if (result.isDone) return;
       }
       onDone();
     })
     .catch(onError);
 
   return () => controller.abort();
+}
+
+/**
+ * SSE streaming via XMLHttpRequest for React Native (iOS/Android).
+ * XHR fires onprogress with the full responseText so far — we track
+ * how much we've already processed and only parse the new portion.
+ */
+function chatStreamXHR(
+  jsonBody: string,
+  token: string,
+  onEvent: (event: ChatSSEEvent) => void,
+  onDone: () => void,
+  onError: (err: Error) => void
+) {
+  const xhr = new XMLHttpRequest();
+  let processedLength = 0;
+  let buffer = "";
+  let completed = false;
+
+  xhr.open("POST", `${BASE_URL}/v1/chat`);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+  xhr.onprogress = () => {
+    if (completed) return;
+    const newData = xhr.responseText.slice(processedLength);
+    processedLength = xhr.responseText.length;
+    if (!newData) return;
+
+    buffer += newData;
+    const result = parseSSEBuffer(buffer, onEvent, onDone);
+    buffer = result.remaining;
+    if (result.isDone) completed = true;
+  };
+
+  xhr.onload = () => {
+    if (completed) return;
+    // Process any remaining buffer
+    if (buffer.length > 0) {
+      const result = parseSSEBuffer(buffer + "\n", onEvent, onDone);
+      if (result.isDone) { completed = true; return; }
+    }
+    completed = true;
+    onDone();
+  };
+
+  xhr.onerror = () => {
+    if (completed) return;
+    completed = true;
+    onError(new Error(`Chat API request failed`));
+  };
+
+  xhr.ontimeout = () => {
+    if (completed) return;
+    completed = true;
+    onError(new Error("Chat API timeout"));
+  };
+
+  xhr.timeout = 60000; // 60s timeout for streaming
+  xhr.send(jsonBody);
+
+  return () => {
+    if (!completed) {
+      completed = true;
+      xhr.abort();
+    }
+  };
 }

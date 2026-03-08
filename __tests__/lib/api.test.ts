@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import {
   usersApi,
   groupsApi,
@@ -12,6 +13,10 @@ import {
 // Mock global fetch
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
+
+// chatStream tests use the fetch-based web path
+const originalPlatformOS = Platform.OS;
+
 
 function mockResponse(data: any, status = 200) {
   return {
@@ -689,6 +694,14 @@ describe("flattenMap edge cases", () => {
 });
 
 describe("chatStream", () => {
+  beforeAll(() => {
+    // Force web path so tests use fetch-based SSE (not XHR)
+    (Platform as any).OS = "web";
+  });
+  afterAll(() => {
+    (Platform as any).OS = originalPlatformOS;
+  });
+
   function mockSSEResponse(chunks: string[]) {
     const encoder = new TextEncoder();
     let index = 0;

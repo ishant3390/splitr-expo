@@ -97,9 +97,48 @@ jest.mock("react-native-svg", () => ({
   Mask: "Mask",
 }));
 
+// Mock react-native-gesture-handler
+jest.mock("react-native-gesture-handler", () => {
+  const RN = require("react-native");
+  const GestureMock = {
+    Pan: () => ({
+      activeOffsetX: () => GestureMock.Pan(),
+      failOffsetY: () => GestureMock.Pan(),
+      onUpdate: () => GestureMock.Pan(),
+      onEnd: () => GestureMock.Pan(),
+    }),
+  };
+  return {
+    Gesture: GestureMock,
+    GestureDetector: ({ children }: { children: React.ReactNode }) => children,
+    GestureHandlerRootView: RN.View,
+    Swipeable: RN.View,
+    DrawerLayout: RN.View,
+    State: {},
+    PanGestureHandler: RN.View,
+    BaseButton: RN.View,
+    Directions: {},
+  };
+});
+
+// Mock react-native-keyboard-controller
+jest.mock("react-native-keyboard-controller", () => {
+  const RN = require("react-native");
+  return {
+    KeyboardAvoidingView: RN.KeyboardAvoidingView,
+    KeyboardProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
+
 // Mock react-native-reanimated
 jest.mock("react-native-reanimated", () => {
   const RN = require("react-native");
+  function chainableAnim(): any {
+    const obj: any = {};
+    const methods = ["duration", "delay", "springify", "damping", "stiffness", "mass", "overshootClamping", "restDisplacementThreshold", "restSpeedThreshold", "withInitialValues", "build"];
+    for (const m of methods) obj[m] = () => obj;
+    return obj;
+  }
   return {
     __esModule: true,
     default: {
@@ -109,10 +148,12 @@ jest.mock("react-native-reanimated", () => {
       ScrollView: RN.ScrollView,
       createAnimatedComponent: (comp: any) => comp,
     },
-    FadeIn: { duration: () => ({}) },
-    FadeInDown: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }), duration: () => ({ springify: () => ({}) }) },
-    FadeInUp: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }), duration: () => ({ springify: () => ({}) }) },
-    FadeInRight: { delay: () => ({ duration: () => ({ springify: () => ({}) }) }) },
+    FadeIn: chainableAnim(),
+    FadeInDown: chainableAnim(),
+    FadeInUp: chainableAnim(),
+    FadeInRight: chainableAnim(),
+    FadeInLeft: chainableAnim(),
+    FadeOut: chainableAnim(),
     SlideInDown: { springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) },
     SlideOutDown: { springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) },
     useAnimatedStyle: (fn: any) => (typeof fn === "function" ? fn() : {}),
@@ -123,6 +164,7 @@ jest.mock("react-native-reanimated", () => {
     withRepeat: (v: any) => v,
     withDelay: (_d: any, v: any) => v,
     withSequence: (...args: any[]) => args[0],
+    runOnJS: (fn: any) => fn,
     interpolateColor: () => "#000000",
     Easing: { out: () => ({}), cubic: {}, in: () => ({}), inOut: () => ({}) },
     createAnimatedComponent: (comp: any) => comp,

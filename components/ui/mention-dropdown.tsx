@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { View, Text, FlatList, Pressable, useColorScheme, ActivityIndicator } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { Users, User } from "lucide-react-native";
 import { getInitials } from "@/lib/utils";
 import type { ContactDto, GroupDto } from "@/lib/types";
@@ -241,7 +242,9 @@ export function MentionDropdown({
 
   if (data.length === 0) {
     return (
-      <View
+      <Animated.View
+        entering={FadeIn.duration(150)}
+        exiting={FadeOut.duration(100)}
         style={{
           backgroundColor: isDark ? "#1e293b" : "#ffffff",
           borderWidth: 1,
@@ -287,12 +290,14 @@ export function MentionDropdown({
             </>
           )}
         </View>
-      </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View
+    <Animated.View
+      entering={FadeIn.duration(150)}
+      exiting={FadeOut.duration(100)}
       style={{
         backgroundColor: isDark ? "#1e293b" : "#ffffff",
         borderWidth: 1,
@@ -364,6 +369,6 @@ export function MentionDropdown({
         }
         onScrollToIndexFailed={() => {}}
       />
-    </View>
+    </Animated.View>
   );
 }

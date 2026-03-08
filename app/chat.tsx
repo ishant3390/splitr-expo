@@ -3,13 +3,17 @@ import {
   View,
   Text,
   FlatList,
-  KeyboardAvoidingView,
+  KeyboardAvoidingView as RNKeyboardAvoidingView,
   Platform,
   Pressable,
   TextInput,
   ScrollView,
   useColorScheme,
 } from "react-native";
+import {
+  KeyboardAvoidingView as KBCKeyboardAvoidingView,
+  KeyboardProvider,
+} from "react-native-keyboard-controller";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,6 +21,10 @@ import Animated, {
   withSequence,
   withTiming,
   withDelay,
+  withSpring,
+  FadeInRight,
+  FadeInLeft,
+  FadeIn,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -51,6 +59,9 @@ import { useNetwork } from "@/components/NetworkProvider";
 import { useMergedContacts, useGroups } from "@/lib/hooks";
 import { trackMention } from "@/lib/mention-recency";
 import { MentionDropdown } from "@/components/ui/mention-dropdown";
+import { ChatMarkdown } from "@/components/ui/chat-markdown";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 import {
   detectTrigger,
   filterContacts,
@@ -73,6 +84,25 @@ import type {
   GroupDto,
 } from "@/lib/types";
 
+// ---- Keyboard wrapper (smooth native animations on iOS/Android, fallback on web) ----
+
+function ChatKeyboardAvoidingView({ children }: { children: React.ReactNode }) {
+  if (Platform.OS === "web") {
+    return <View style={{ flex: 1 }}>{children}</View>;
+  }
+  return (
+    <KeyboardProvider>
+      <KBCKeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+        {children}
+      </KBCKeyboardAvoidingView>
+    </KeyboardProvider>
+  );
+}
+
 // ---- Message types ----
 
 let messageCounter = 0;
@@ -92,6 +122,7 @@ interface ChatMessage {
   failedText?: string;
   createdAt?: number;
   followUps?: string[];
+  replyTo?: { id: string; content: string; role: "user" | "assistant" };
 }
 
 // ---- B26: Timestamp helpers ----
@@ -195,6 +226,68 @@ function TypingDotsIndicator({ label }: { label: string }) {
   );
 }
 
+// ---- Animated Send Button ----
+
+function SendButton({
+  onSend,
+  enabled,
+  isDark,
+}: {
+  onSend: () => void;
+  enabled: boolean;
+  isDark: boolean;
+}) {
+  const scale = useSharedValue(1);
+  const prevEnabled = useRef(enabled);
+
+  useEffect(() => {
+    // Spring pop when button becomes enabled or disabled
+    if (prevEnabled.current !== enabled) {
+      scale.value = withSequence(
+        withSpring(enabled ? 1.2 : 0.85, { damping: 8, stiffness: 200 }),
+        withSpring(1, { damping: 12, stiffness: 180 })
+      );
+      prevEnabled.current = enabled;
+    }
+  }, [enabled]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    // Quick scale down + up on send
+    scale.value = withSequence(
+      withSpring(0.8, { damping: 10, stiffness: 300 }),
+      withSpring(1, { damping: 10, stiffness: 200 })
+    );
+    onSend();
+  };
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPress={handlePress}
+        disabled={!enabled}
+        accessibilityLabel="Send message"
+        accessibilityRole="button"
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: enabled
+            ? "#0d9488"
+            : isDark ? "#334155" : "#f1f5f9",
+        }}
+      >
+        <Send size={18} color={enabled ? "#ffffff" : "#94a3b8"} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 // ---- AsyncStorage keys ----
 
 const CHAT_MESSAGES_KEY = "@splitr/chat_messages";
@@ -219,60 +312,6 @@ const suggestedPrompts = [
   "Add $120 hotel expense in #Beach Trip",
   "How much do I owe in total?",
 ];
-
-// ---- Styled input overlay (web: colored mentions in input field) ----
-
-function renderStyledInputSegments(
-  text: string,
-  mentions: MentionRecord[],
-  isDark: boolean
-) {
-  if (!text || mentions.length === 0) return null;
-
-  // Find mention positions in the text
-  const positions: { start: number; end: number }[] = [];
-  for (const m of mentions) {
-    const pattern = `${m.trigger}${m.displayName}`;
-    const idx = text.indexOf(pattern);
-    if (idx !== -1) positions.push({ start: idx, end: idx + pattern.length });
-  }
-  positions.sort((a, b) => a.start - b.start);
-
-  if (positions.length === 0) return null;
-
-  const segments: React.ReactNode[] = [];
-  let lastIdx = 0;
-  for (let i = 0; i < positions.length; i++) {
-    const pos = positions[i];
-    if (pos.start > lastIdx) {
-      segments.push(
-        <Text key={`t${i}`} style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
-          {text.slice(lastIdx, pos.start)}
-        </Text>
-      );
-    }
-    segments.push(
-      <Text
-        key={`m${i}`}
-        style={{
-          color: "#0d9488",
-          fontFamily: "Inter_600SemiBold",
-        }}
-      >
-        {text.slice(pos.start, pos.end)}
-      </Text>
-    );
-    lastIdx = pos.end;
-  }
-  if (lastIdx < text.length) {
-    segments.push(
-      <Text key="tail" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
-        {text.slice(lastIdx)}
-      </Text>
-    );
-  }
-  return segments;
-}
 
 // ---- B31: Bubble grouping helpers ----
 
@@ -309,6 +348,7 @@ interface MessageItemProps {
   onConfirmCreateGroup: (messageId: string) => void;
   onFollowUp?: (text: string) => void;
   onCopy?: (text: string) => void;
+  onReply?: (message: ChatMessage) => void;
   previousMessage?: ChatMessage;
 }
 
@@ -326,6 +366,7 @@ const MessageItem = React.memo(
     onConfirmCreateGroup,
     onFollowUp,
     onCopy,
+    onReply,
     previousMessage,
   }: MessageItemProps) {
     const isUser = item.role === "user";
@@ -351,21 +392,105 @@ const MessageItem = React.memo(
     const showTs = shouldShowTimestamp(item, previousMessage);
     const timeStr = item.createdAt ? formatMessageTime(item.createdAt) : "";
 
+    // Message entrance animation — user slides from right, bot from left
+    const messageEntering = isUser
+      ? FadeInRight.duration(300).springify().damping(18).stiffness(140)
+      : FadeInLeft.duration(300).springify().damping(18).stiffness(140);
+
+    // B45: Swipe-to-reply gesture
+    const translateX = useSharedValue(0);
+    const replyIconOpacity = useSharedValue(0);
+
+    const triggerReply = useCallback(() => {
+      onReply?.(item);
+    }, [item, onReply]);
+
+    const swipeGesture = useMemo(() =>
+      Gesture.Pan()
+        .activeOffsetX(20)
+        .failOffsetY([-15, 15])
+        .onUpdate((e) => {
+          // Only allow right swipe, max 80px
+          const x = Math.max(0, Math.min(e.translationX, 80));
+          translateX.value = x;
+          replyIconOpacity.value = x > 40 ? 1 : x / 40;
+        })
+        .onEnd((e) => {
+          if (e.translationX > 50) {
+            runOnJS(triggerReply)();
+          }
+          translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
+          replyIconOpacity.value = withTiming(0, { duration: 150 });
+        }),
+    [triggerReply]);
+
+    const swipeStyle = useAnimatedStyle(() => ({
+      transform: [{ translateX: translateX.value }],
+    }));
+
+    const replyIconStyle = useAnimatedStyle(() => ({
+      opacity: replyIconOpacity.value,
+      transform: [{ scale: replyIconOpacity.value }],
+    }));
+
+    // B49: Check if content has markdown formatting (native only — web has CSS specificity issues)
+    const hasMarkdown = Platform.OS !== "web" && !isUser && item.content && (
+      item.content.includes("**") ||
+      item.content.includes("```") ||
+      item.content.includes("`") ||
+      /^\s*[-*]\s+/m.test(item.content) ||
+      /^\s*\d+[.)]\s+/m.test(item.content)
+    );
+
     return (
       <>
         {/* B26: Timestamp separator */}
         {showTs && timeStr ? (
-          <View className="items-center py-2">
+          <Animated.View entering={FadeIn.duration(200)} className="items-center py-2">
             <Text className="text-[10px] text-muted-foreground font-sans">
               {timeStr}
             </Text>
-          </View>
+          </Animated.View>
         ) : null}
 
-        <View
+        <Animated.View
+          entering={messageEntering}
           className={cn("px-4", verticalPadding, isUser ? "items-end" : "items-start")}
           accessibilityLabel={item.content || undefined}
         >
+          {/* B45: Reply icon behind the swipeable message */}
+          <View style={{ position: "relative", width: "100%" }}>
+            <Animated.View
+              style={[
+                {
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  justifyContent: "center",
+                  paddingLeft: 4,
+                },
+                replyIconStyle,
+              ]}
+            >
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: isDark ? "#334155" : "#e2e8f0",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <RotateCcw size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+              </View>
+            </Animated.View>
+
+            <GestureDetector gesture={swipeGesture}>
+          <Animated.View
+            style={[{ alignItems: isUser ? "flex-end" : "flex-start" }, swipeStyle]}
+          >
           <View
             className={cn("flex-row items-start gap-2", isUser ? "max-w-[85%]" : "max-w-[90%]")}
           >
@@ -383,6 +508,39 @@ const MessageItem = React.memo(
               </View>
             )}
             <View className="flex-shrink">
+              {/* B45: Reply quote */}
+              {item.replyTo && (
+                <View
+                  style={{
+                    borderLeftWidth: 2,
+                    borderLeftColor: "#0d9488",
+                    paddingLeft: 8,
+                    marginBottom: 4,
+                    opacity: 0.7,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontFamily: "Inter_500Medium",
+                      color: "#0d9488",
+                      marginBottom: 1,
+                    }}
+                  >
+                    {item.replyTo.role === "user" ? "You" : "Assistant"}
+                  </Text>
+                  <Text
+                    numberOfLines={2}
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "Inter_400Regular",
+                      color: isDark ? "#94a3b8" : "#64748b",
+                    }}
+                  >
+                    {item.replyTo.content}
+                  </Text>
+                </View>
+              )}
               {/* Image attachment */}
               {item.imageUri && (
                 <View className="rounded-2xl overflow-hidden mb-1" style={{ width: 200, height: 150 }}>
@@ -399,11 +557,17 @@ const MessageItem = React.memo(
                   onLongPress={onCopy ? () => onCopy(item.content) : undefined}
                 >
                   <View className={cn(getBubbleClasses(), "px-4 py-3")}>
+                    {/* B49: Markdown rendering for assistant messages (native only) */}
+                    {hasMarkdown ? (
+                      <ChatMarkdown content={item.content} isUser={false} />
+                    ) : (
                     <Text
-                      className={cn(
-                        "text-sm font-sans leading-5",
-                        isUser ? "text-primary-foreground" : "text-foreground"
-                      )}
+                      style={{
+                        fontSize: 14,
+                        lineHeight: 20,
+                        fontFamily: "Inter_400Regular",
+                        color: isUser ? "#ffffff" : (isDark ? "#f1f5f9" : "#0f172a"),
+                      }}
                     >
                       {parseMentionsForDisplay(item.content).map((seg, i) =>
                         seg.type === "mention" ? (
@@ -421,6 +585,7 @@ const MessageItem = React.memo(
                         )
                       )}
                     </Text>
+                    )}
                   </View>
                 </Pressable>
               ) : null}
@@ -696,7 +861,10 @@ const MessageItem = React.memo(
               )}
             </View>
           </View>
-        </View>
+          </Animated.View>
+            </GestureDetector>
+          </View>
+        </Animated.View>
       </>
     );
   },
@@ -746,6 +914,7 @@ export default function ChatScreen() {
   const isNearBottomRef = useRef(true); // H2: smart scroll
   const inputRef = useRef(""); // tracks latest input for handleSelectionChange
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(-1);
+  const [replyTo, setReplyTo] = useState<{ id: string; content: string; role: "user" | "assistant" } | null>(null);
   const skipEnterRef = useRef(false); // skip onChangeText after Enter selects mention
   const filteredItemsRef = useRef<(ContactDto | GroupDto)[]>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // B30: debounce save
@@ -854,10 +1023,12 @@ export default function ChatScreen() {
         content: text.trim(),
         imageUri: imageData?.uri,
         createdAt: Date.now(),
+        ...(replyTo ? { replyTo } : {}),
       };
 
       safeSetMessages((prev) => [...prev, userMessage]);
       setInput("");
+      setReplyTo(null);
       sentImageRef.current = !!imageData;
       setPendingImage(null);
       safeSetLoading(true);
@@ -1377,6 +1548,15 @@ export default function ChatScreen() {
     [handleSend]
   );
 
+  // B45: Reply handler — set reply context
+  const handleReply = useCallback((message: ChatMessage) => {
+    setReplyTo({
+      id: message.id,
+      content: message.content.slice(0, 150),
+      role: message.role,
+    });
+  }, []);
+
   const renderMessageItem = useCallback(
     ({ item, index }: { item: ChatMessage; index: number }) => (
       <MessageItem
@@ -1392,10 +1572,11 @@ export default function ChatScreen() {
         onConfirmCreateGroup={handleConfirmCreateGroup}
         onFollowUp={handleFollowUp}
         onCopy={handleCopyMessage}
+        onReply={handleReply}
         previousMessage={index > 0 ? messages[index - 1] : undefined}
       />
     ),
-    [messages, isDark, loading, handleRetry, handleSelectGroup, handleConfirmExpense, handleEditExpense, handleConfirmCreateGroup, handleFollowUp, handleCopyMessage]
+    [messages, isDark, loading, handleRetry, handleSelectGroup, handleConfirmExpense, handleEditExpense, handleConfirmCreateGroup, handleFollowUp, handleCopyMessage, handleReply]
   );
 
   // ---- Quota display ----
@@ -1470,11 +1651,7 @@ export default function ChatScreen() {
         </Pressable>
       </View>
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
-      >
+      <ChatKeyboardAvoidingView>
         <FlatList
           ref={listRef}
           data={messages}
@@ -1611,8 +1788,67 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {/* B45: Reply preview bar */}
+        {replyTo && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderTopWidth: 1,
+              borderTopColor: isDark ? "#334155" : "#e2e8f0",
+              backgroundColor: isDark ? "#1e293b" : "#f8fafc",
+              gap: 8,
+            }}
+          >
+            <View
+              style={{
+                borderLeftWidth: 2,
+                borderLeftColor: "#0d9488",
+                paddingLeft: 8,
+                flex: 1,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontFamily: "Inter_500Medium",
+                  color: "#0d9488",
+                  marginBottom: 1,
+                }}
+              >
+                Replying to {replyTo.role === "user" ? "yourself" : "Assistant"}
+              </Text>
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 12,
+                  fontFamily: "Inter_400Regular",
+                  color: isDark ? "#94a3b8" : "#64748b",
+                }}
+              >
+                {replyTo.content}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setReplyTo(null)}
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: isDark ? "#334155" : "#e2e8f0",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <X size={12} color={isDark ? "#94a3b8" : "#64748b"} />
+            </Pressable>
+          </View>
+        )}
+
         {/* Input */}
-        <View className={`flex-row items-end gap-2 px-4 py-3 ${!pendingImage ? "border-t border-border" : ""} bg-background`}>
+        <View className={`flex-row items-end gap-2 px-4 py-3 ${!pendingImage && !replyTo ? "border-t border-border" : ""} bg-background`}>
           <Pressable
             onPress={handleTakePhoto}
             onLongPress={handlePickImage}
@@ -1635,34 +1871,7 @@ export default function ChatScreen() {
               color={!loading && !isQuotaExceeded && isConnected ? (isDark ? "#f1f5f9" : "#64748b") : "#94a3b8"}
             />
           </Pressable>
-          <View style={{ flex: 1, position: "relative" }}>
-            {/* Styled mention overlay (web: colored @mentions in input) */}
-            {mentions.length > 0 && Platform.OS === "web" && (
-              <View
-                // @ts-ignore — pointerEvents style prop works on web
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  zIndex: 1,
-                  pointerEvents: "none",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    lineHeight: 20,
-                    fontFamily: "Inter_400Regular",
-                  }}
-                >
-                  {renderStyledInputSegments(input, mentions, isDark)}
-                </Text>
-              </View>
-            )}
+          <View style={{ flex: 1 }}>
             <TextInput
               value={input}
               onChangeText={handleInputChange}
@@ -1681,44 +1890,22 @@ export default function ChatScreen() {
               multiline
               maxLength={500}
               editable={!isQuotaExceeded && isConnected}
-              className="bg-muted rounded-2xl px-4 py-3 text-base text-foreground font-sans max-h-24"
-              style={
-                mentions.length > 0 && Platform.OS === "web"
-                  ? { color: "transparent", caretColor: isDark ? "#f1f5f9" : "#0f172a" } as any
-                  : undefined
-              }
+              className="bg-muted rounded-2xl px-4 py-3 max-h-24 text-foreground"
+              style={{
+                fontSize: 16,
+                fontFamily: "Inter_400Regular",
+              }}
               onSubmitEditing={() => handleSend()}
               accessibilityLabel="Chat message input"
             />
           </View>
-          <Pressable
-            onPress={() => handleSend()}
-            disabled={(!input.trim() && !pendingImage) || loading || isQuotaExceeded || !isConnected}
-            accessibilityLabel="Send message"
-            accessibilityRole="button"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor:
-                (input.trim() || pendingImage) && !loading && !isQuotaExceeded && isConnected
-                  ? "#0d9488"
-                  : (isDark ? "#334155" : "#f1f5f9"),
-            }}
-          >
-            <Send
-              size={18}
-              color={
-                (input.trim() || pendingImage) && !loading && !isQuotaExceeded && isConnected
-                  ? "#ffffff"
-                  : "#94a3b8"
-              }
-            />
-          </Pressable>
+          <SendButton
+            onSend={() => handleSend()}
+            enabled={(!!input.trim() || !!pendingImage) && !loading && !isQuotaExceeded && isConnected}
+            isDark={isDark}
+          />
         </View>
-      </KeyboardAvoidingView>
+      </ChatKeyboardAvoidingView>
     </SafeAreaView>
   );
 }

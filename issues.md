@@ -77,14 +77,14 @@
 | B23 | ~~Animated tab bar transitions~~ | ~~Low~~ | **Done (existing)**: Custom `TabBar.tsx` with Airbnb-style overshoot bounce (1->1.3->1.1), outline/filled icon crossfade, sliding teal indicator pill with stretch, label opacity/scale animations, FAB spring press. |
 | B24 | ~~Confetti on full settlement~~ | ~~Low~~ | **Done**: `Confetti` component with 40 animated particles (reanimated). Triggers on settle-up screen when suggestions list is empty (all debts settled). |
 | B25 | ~~AI Chat — Core implementation~~ | ~~High~~ | **Done (FE)**: `app/chat.tsx` — SSE streaming chat with interactive cards (group selection, expense confirmation, create group). `POST /v1/chat` with conversationId. Quota system (`GET /v1/chat/quota`), unmount cleanup, double-send prevention, smart scroll, cache invalidation, offline awareness, stop generation, retry on failure. 17 tests. **BE pending**: endpoint implementation. |
-| B26 | Chat — Message timestamps | Low | No timestamps on chat messages. Add `createdAt` to ChatMessage and display time on messages. |
-| B27 | Chat — Typing indicator animation | Low | Replace static "Thinking..." ActivityIndicator with animated dots (bouncing ellipsis). |
+| B26 | Chat — Message timestamps | Low | **Done**: Timestamps with `formatMessageTime()` + smart grouping via `shouldShowTimestamp()` (5-min gap). Animated with `FadeIn.duration(200)`. |
+| B27 | ~~Chat — Typing indicator animation~~ | ~~Low~~ | **Done**: `TypingDotsIndicator` with 3 bouncing dots using Reanimated `withRepeat`/`withSequence`/`withTiming`. Staggered delays (0/150/300ms). |
 | B28 | Chat — Copy message | Low | Long-press to copy AI-generated text (balance summaries, explanations). |
 | B29 | Chat — Suggested follow-ups | Low | Show contextual follow-up suggestions after actions (e.g., after expense: "Add another", "Check balance", "View group"). |
-| B30 | Chat — Conversation persistence | Low | Persist messages to AsyncStorage so conversations survive navigation. Currently lost on unmount. |
-| B31 | Chat — Bubble grouping | Low | Group consecutive same-role messages, only show bot avatar on last message in sequence. |
+| B30 | ~~Chat — Conversation persistence~~ | ~~Low~~ | **Done**: Messages + conversationId persisted to AsyncStorage with debounced save (500ms). New Chat button clears storage. Loaded on mount. |
+| B31 | ~~Chat — Bubble grouping~~ | ~~Low~~ | **Done**: `getBubblePosition()` detects consecutive same-role messages. Reduced vertical padding for middle bubbles. Bot avatar only on last/only. Border radius adjusted per position. |
 | B32 | Chat — Accessibility | Medium | Add accessibilityLabels to send button, back button, action cards, group selection cards. Screen reader support. |
-| B33 | Chat — FlatList performance | Medium | Add `React.memo` on message renderer, `getItemLayout` for fixed-height items to reduce re-renders during streaming. |
+| B33 | ~~Chat — FlatList performance~~ | ~~Medium~~ | **Done**: `MessageItem` wrapped in `React.memo` with custom comparator (role, index, dark mode, loading, adjacent roles). Memoized `keyExtractor`. FlatList tuned: `removeClippedSubviews`, `maxToRenderPerBatch=10`, `windowSize=10`, `initialNumToRender=20`. |
 
 | B34 | Receipt → Chat auto-fill | High | Scan receipt → "Split via Chat" button → opens chat pre-filled with scanned amount/merchant/date → group selection → confirm. Chains receipt scan + chat. Small FE effort. |
 | B35 | Natural language balance queries | High | "How much does Sarah owe me across all groups?" BE needs `getCrossGroupBalances` tool. No new FE UI — chat text responses handle it. Small effort, high value. |
@@ -92,6 +92,17 @@
 | B37 | Recurring expense detection | Low | "You split dinner with Sarah last week too. Create recurring?" Needs historical analysis on BE. Medium effort. |
 | B38 | Expense auto-categorization | Low | LLM infers category from description during chat expense creation. Already partially possible. Low incremental value. |
 | B39 | Settlement nudge reminders | Low | "Mike has owed you $45 for 2 weeks. Send a reminder?" Ties into push notifications. Medium effort. |
+| B40 | ~~Chat — Message entrance animations~~ | ~~Medium~~ | **Done**: Messages slide in from right (user) or left (assistant) with `FadeInRight`/`FadeInLeft` spring physics (damping 18, stiffness 140). |
+| B41 | ~~Chat — Send button animation~~ | ~~Low~~ | **Done**: `SendButton` component with spring pop on enable/disable state change and on press via `withSequence`/`withSpring`. |
+| B42 | ~~Chat — MentionDropdown animation~~ | ~~Low~~ | **Done**: `FadeIn.duration(150)` entering + `FadeOut.duration(100)` exiting on both empty state and list views. |
+| B43 | ~~Chat — Smooth keyboard~~ | ~~Medium~~ | **Done**: Replaced RN `KeyboardAvoidingView` with `react-native-keyboard-controller` (`KeyboardProvider` + `KBCKeyboardAvoidingView`) for 60fps keyboard-synced animations on native. Web fallback to plain View. |
+| B44 | Chat — Haptic feedback on actions | Low | Add haptic impact on send, on action card tap (confirm/edit), on group selection. Use `impactAsync(Light)` for taps, `notificationAsync(Success)` for confirmations. |
+| B45 | ~~Chat — Swipe to reply~~ | ~~Medium~~ | **Done**: Pan gesture (react-native-gesture-handler) on messages — swipe right >50px triggers reply. Reply icon animates behind message during swipe. Reply preview bar above input shows quoted content with dismiss button. Quoted messages shown inline with teal left border. |
+| B46 | Chat — Message reactions | Low | Long-press message → emoji reaction picker (👍 ✅ ❓). Visual feedback only, not persisted. Low priority. |
+| B47 | Chat — Scroll-to-bottom FAB | Low | Floating "↓" button when user scrolls up past threshold. Shows unread count badge. Tapping scrolls to bottom with spring animation. |
+| B48 | Chat — Image preview modal | Low | Tap attached image to open full-screen preview with pinch-to-zoom. Currently images are inline-only. |
+| B49 | ~~Chat — Markdown rendering~~ | ~~Medium~~ | **Done**: Custom lightweight `ChatMarkdown` component — no external dependency. Supports **bold**, *italic*, `inline code`, ```code blocks```, bullet lists (- / *), numbered lists. Conditional rendering: only activates when markdown formatting detected in AI responses. 10 tests. |
+| B50 | Chat — Voice input | Low | Microphone button for speech-to-text input. Uses `expo-speech` or platform speech recognition. "Add $20 for lunch with Sarah" via voice. |
 
 ## Notes
 

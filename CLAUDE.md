@@ -41,16 +41,18 @@ components/
   NotificationProvider.tsx # Push notification lifecycle (native-only, web passthrough)
   icons/                # Custom SVG icons (social auth logos, tab bar icons)
 lib/
-  api.ts                # API client (usersApi, groupsApi, categoriesApi, expensesApi, settlementsApi, inviteApi, contactsApi)
+  api.ts                # API client (usersApi, groupsApi, categoriesApi, expensesApi, settlementsApi, inviteApi, contactsApi, chatApi)
   types.ts              # TypeScript interfaces/DTOs
   utils.ts              # cn(), formatCents(), formatDate(), getInitials(), etc.
   screen-helpers.ts     # Pure helpers: aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, etc.
-  hooks.ts              # React Query hooks for all API data
+  hooks.ts              # React Query hooks for all API data (+ useMergedContacts for @mention fallback)
   query.ts              # QueryClient config, query keys, stale times
   offline.ts            # AsyncStorage-based offline expense queue
   biometrics.ts         # Biometric lock utilities (expo-local-authentication)
   notifications.ts      # Push notification utilities (foreground handler, permissions, token, preferences)
   haptics.ts            # Haptic feedback wrappers
+  mention-utils.ts      # @/# mention detection, filtering, insertion, wire format, recency merge
+  mention-recency.ts    # AsyncStorage-backed recent mention tracking (cap 20)
 ```
 
 ## Design System
@@ -85,18 +87,24 @@ lib/
 - `POST /v1/groups/{groupId}/expenses` — expenses always belong to a group
 - `GET /v1/categories` — returns categories with `id`, `name`, `icon` (icon name string)
 - `GET /v1/users/me/activity` — user activity feed (details may include categoryName)
-- `GET /v1/users/me/balance` — aggregate balance (totalOwedCents, totalOwesCents, netBalanceCents); home screen falls back to N+1 if unavailable
+- `GET /v1/users/me/balance` — multi-currency: `{ totalOwed: CurrencyAmount[], totalOwing: CurrencyAmount[] }`; FE normalizes via `sumAmounts()` in `useUserBalance` hook
 - `GET /v1/users/me` — returns current user (auto-creates from JWT claims if user doesn't exist); call on app startup after login
 - `POST /v1/users/sync` — **admin-only** bulk endpoint that syncs ALL users from Clerk API; do NOT call from frontend
 - `GET /v1/groups/{groupId}/settlements/suggestions` — debt simplification suggestions
 - `POST /v1/groups/{groupId}/settlements` — record a settlement payment
 - `GET /v1/groups/{groupId}/settlements` — list settlement history
 - `DELETE /v1/settlements/{settlementId}` — soft-delete a settlement (reverses balances)
-- `PUT /v1/settlements/{settlementId}` — update settlement (optimistic locking via `version`)
+- `PUT /v1/settlements/{settlementId}` — update settlement (optimistic locking via `version` — **mandatory**, 400 without)
+- `PUT /v1/expenses/{expenseId}` — update expense (optimistic locking via `version` — **mandatory**, 400 without)
+- `PATCH /v1/groups/{groupId}` — update group (version optional but recommended)
+- `PATCH /v1/users/me` — update user profile/preferences (no version needed)
+- `PATCH /v1/groups/{groupId}/members/{memberId}` — update member (no version needed)
 - `GET /v1/groups/invite/{inviteCode}` — public group preview (no auth, returns GroupInvitePreviewDto)
 - `POST /v1/groups/join` — join group via invite code `{ inviteCode }` (handles duplicates, guest-to-user promotion)
 - `POST /v1/groups/{groupId}/invite/regenerate` — regenerate invite code (invalidates old link)
 - `GET /v1/users/me/contacts` — deduplicated contacts from all user's groups
+- `POST /v1/groups/{groupId}/nudge` — send settlement reminder to debtor (`{ targetUserId }`); ERR-407 = cooldown
+- `GET /v1/groups?status=active|archived` — filter groups by lifecycle status
 
 ## Invite / Join Flow
 - Groups auto-generate an `inviteCode` on creation
@@ -142,7 +150,7 @@ lib/
 
 ## AI Chat (Expense via Natural Language)
 - **Screen**: `app/chat.tsx` — SSE streaming chat with interactive action cards
-- **API**: `POST /v1/chat` with `{ conversationId: string|null, message: string }` — SSE response
+- **API**: `POST /v1/chat` with `{ conversationId: string|null, message: string, deterministic?: boolean }` — SSE response
 - **Quota**: `GET /v1/chat/quota` — returns `ChatQuotaDto { dailyUsed, dailyLimit, resetsAt, tier }`
 - **SSE Event Types**: `text`, `action_required`, `expense_created`, `quota`, `quota_exceeded`, `error`
 - **Interactive Cards**:
@@ -156,7 +164,38 @@ lib/
 - **Offline**: Detects via `useNetwork()`, disables input + shows offline banner
 - **Stop generation**: Abort button shown during active streaming
 - **Retry**: Failed messages show "Tap to retry" with stored original text
+- **Deterministic**: Confirm/Select sends `{ deterministic: true }` (skips LLM + quota)
+- **@mention system**: `lib/mention-utils.ts` + `lib/mention-recency.ts` + `components/ui/mention-dropdown.tsx`
+  - `@` triggers contact autocomplete, `#` triggers group autocomplete
+  - Wire format: `@[Name](userId:id)`, `#[Group](groupId:id)`
+  - Fallback: When contacts API empty, aggregates members from all groups via `useMergedContacts()`
+  - Recency: AsyncStorage tracks last 20 mentioned people, shown first in dropdown
+- **Chat polish (B26-B33)**:
+  - B26: Timestamps between messages (5-min gap threshold)
+  - B27: Typing dots indicator (reanimated bounce animation)
+  - B28: Long-press to copy assistant messages (clipboard + haptic + toast)
+  - B29: Follow-up suggestion pills after expense creation
+  - B30: AsyncStorage persistence for messages + conversationId; "New Chat" button
+  - B31: Bubble grouping (consecutive same-role messages share rounded corners)
+  - B32: Accessibility labels on 13 interactive elements
+  - B33: React.memo MessageItem + FlatList optimization (removeClippedSubviews, maxToRenderPerBatch=10)
 - **Tests**: 17 tests in `__tests__/screens/ChatScreen.test.tsx`
+
+## Group Lifecycle
+- **Archive/Unarchive**: `PATCH /v1/groups/{id}` with `{ isArchived: true/false, version }` — long-press action sheet in Groups screen
+- **Filtering**: `GET /v1/groups?status=active|archived` — Active/Archived tab toggle in Groups screen
+- **Hook**: `useArchiveGroup()` mutation in `lib/hooks.ts`
+
+## Settlement Nudges
+- **API**: `POST /v1/groups/{id}/nudge` with `{ targetUserId }` — nudge button in settle-up suggestions
+- **Cooldown**: ERR-407 / 429 → "Already reminded recently, try again later"
+- **UI**: `settle-up.tsx` tracks nudging/nudged state per user
+
+## Optimistic Locking (version field)
+- **Mandatory**: `PUT /v1/expenses/{id}` and `PUT /v1/settlements/{id}` — 400 without `version`
+- **Optional**: `PATCH /v1/groups/{id}` — recommended but won't 400
+- **Not needed**: `PATCH /v1/users/me`, `PATCH /v1/groups/{id}/members/{id}`
+- Edit expense passes `expense.version` in `edit-expense/[id].tsx`
 
 ## Known Gaps (Not Yet Implemented)
 - Activity `details.categoryName` — confirm backend populates this for category filtering
