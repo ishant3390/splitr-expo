@@ -146,6 +146,7 @@ lib/
 - **Response**: `{ receipt: ReceiptScanResultDto, dailyScansUsed, dailyScanLimit }` — merchant, date, currency, subtotalCents, taxCents, tipCents, totalCents, lineItems[], confidence scores
 - **UX**: Scan line animation, processing dots, confidence badges (Verify) for <0.9 fields, error/retry, quota display ("X of Y free scans used today")
 - **Flow**: Scan -> results with line items + totals -> "Create Expense" pre-fills Add Expense form (amount, description, date)
+- **Split via Chat (B34)**: "Split via Chat" button on results → navigates to `/chat` with `receiptMessage` param containing natural language summary (merchant, amount, date, up to 5 line items). Chat auto-sends on mount.
 - **Backend**: Gemini 2.0 Flash for OCR (not GPT-4o — 100x cheaper)
 
 ## AI Chat (Expense via Natural Language)
@@ -179,7 +180,11 @@ lib/
   - B31: Bubble grouping (consecutive same-role messages share rounded corners)
   - B32: Accessibility labels on 13 interactive elements
   - B33: React.memo MessageItem + FlatList optimization (removeClippedSubviews, maxToRenderPerBatch=10)
-- **Tests**: 17 tests in `__tests__/screens/ChatScreen.test.tsx`
+- **Chat additions (B34/B35/B47)**:
+  - B34: Receipt → Chat auto-fill via `receiptMessage` route param, auto-sends on mount
+  - B35: Natural language balance queries — "Who owes me money?" suggested prompt; BE has 4 LLM tools (`get_user_balance`, `get_balance_with_user`, `get_cross_group_balances`, `get_group_balance`)
+  - B47: Scroll-to-bottom FAB — ChevronDown button appears when scrolled >300px from bottom, FadeIn/FadeOut animation, haptic on tap
+- **Tests**: 21 tests in `__tests__/screens/ChatScreen.test.tsx`
 
 ## Group Lifecycle
 - **Archive/Unarchive**: `PATCH /v1/groups/{id}` with `{ isArchived: true/false, version }` — long-press action sheet in Groups screen
