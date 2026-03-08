@@ -30,6 +30,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Receipt,
+  MessageSquare,
 } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -217,6 +218,26 @@ export default function ReceiptScannerScreen() {
         ...(result.date ? { date: result.date } : {}),
       },
     });
+  };
+
+  // B34: Build natural language message from receipt and open chat
+  const handleSplitViaChat = () => {
+    if (!result) return;
+    const amount = (result.totalCents / 100).toFixed(2);
+    const merchant = result.merchant || "a receipt";
+    let msg = `Split $${amount} from ${merchant}`;
+    if (result.date) msg += ` on ${result.date}`;
+    if (result.lineItems && result.lineItems.length > 0) {
+      const maxItems = 5;
+      const items = result.lineItems.slice(0, maxItems).map(
+        (item) => `${item.description} $${(item.amountCents / 100).toFixed(2)}`
+      );
+      msg += `. Items: ${items.join(", ")}`;
+      if (result.lineItems.length > maxItems) {
+        msg += ` and ${result.lineItems.length - maxItems} more`;
+      }
+    }
+    router.push({ pathname: "/chat", params: { receiptMessage: msg } });
   };
 
   const handleReset = () => {
@@ -486,6 +507,14 @@ export default function ReceiptScannerScreen() {
                   <Text className="text-base font-sans-semibold text-primary-foreground">
                     Create Expense
                   </Text>
+                </Button>
+                <Button variant="outline" size="lg" onPress={handleSplitViaChat} className="w-full">
+                  <View className="flex-row items-center gap-2">
+                    <MessageSquare size={18} color={iconColor} />
+                    <Text className="text-base font-sans-medium text-foreground">
+                      Split via Chat
+                    </Text>
+                  </View>
                 </Button>
                 {quota && quota.used < quota.limit && (
                   <Button variant="outline" size="lg" onPress={handleReset} className="w-full">

@@ -5,6 +5,7 @@ import ChatScreen from "@/app/chat";
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
+let mockSearchParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     push: mockPush,
@@ -12,6 +13,7 @@ jest.mock("expo-router", () => ({
     replace: mockReplace,
     canGoBack: () => true,
   }),
+  useLocalSearchParams: () => mockSearchParams,
 }));
 
 const mockGetToken = jest.fn(() => Promise.resolve("test-token"));
@@ -22,6 +24,7 @@ jest.mock("@clerk/clerk-expo", () => ({
 jest.mock("@/lib/haptics", () => ({
   hapticSuccess: jest.fn(),
   hapticWarning: jest.fn(),
+  hapticLight: jest.fn(),
 }));
 
 jest.mock("@/lib/query", () => ({
@@ -92,6 +95,7 @@ describe("ChatScreen", () => {
     mockOnEvent = null;
     mockOnDone = null;
     mockOnError = null;
+    mockSearchParams = {};
   });
 
   it("renders welcome message and suggested prompts", () => {
@@ -500,5 +504,63 @@ describe("ChatScreen", () => {
 
     // chatStream should not be called
     expect(mockChatStream).not.toHaveBeenCalled();
+  });
+
+  // B47: Scroll-to-bottom FAB
+  it("renders scroll-to-bottom button with accessibility label", () => {
+    render(<ChatScreen />);
+    // FAB should not be visible initially (no scroll)
+    expect(screen.queryByLabelText("Scroll to bottom")).toBeNull();
+  });
+
+  // B35: Suggested prompt for balance queries
+  it("renders 'Who owes me money?' suggested prompt", () => {
+    render(<ChatScreen />);
+    expect(screen.getByText("Who owes me money?")).toBeTruthy();
+  });
+
+  it("sends balance query suggested prompt on tap", async () => {
+    const { chatStream: mockChatStream } = require("@/lib/api");
+    render(<ChatScreen />);
+
+    fireEvent.press(screen.getByText("Who owes me money?"));
+
+    await waitFor(() => {
+      expect(mockChatStream).toHaveBeenCalledWith(
+        "Who owes me money?",
+        null,
+        "test-token",
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function),
+        undefined
+      );
+    });
+  });
+
+  // B34: Receipt auto-send
+  it("auto-sends receipt message when receiptMessage param is provided", async () => {
+    jest.useFakeTimers();
+    const { chatStream: mockChatStream } = require("@/lib/api");
+    mockSearchParams = { receiptMessage: "Split $16.20 from Test Cafe on 2026-03-06" };
+
+    render(<ChatScreen />);
+
+    // Advance past the 300ms delay
+    jest.advanceTimersByTime(350);
+
+    await waitFor(() => {
+      expect(mockChatStream).toHaveBeenCalledWith(
+        "Split $16.20 from Test Cafe on 2026-03-06",
+        null,
+        "test-token",
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function),
+        undefined
+      );
+    });
+
+    jest.useRealTimers();
   });
 });

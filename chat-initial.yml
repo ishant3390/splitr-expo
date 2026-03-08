@@ -1,0 +1,28 @@
+- generic [ref=e16]:
+  - generic [ref=e17]:
+    - generic [ref=e19]: S
+    - generic [ref=e20]: Splitr
+    - generic [ref=e21]: Split expenses effortlessly
+  - generic [ref=e22]:
+    - generic [ref=e24] [cursor=pointer]: Sign Up
+    - generic [ref=e26] [cursor=pointer]: Sign In
+  - generic [ref=e27]:
+    - generic [ref=e29] [cursor=pointer]:
+      - img [ref=e30]
+      - generic [ref=e35]: Sign up with Google
+    - generic [ref=e37] [cursor=pointer]:
+      - img [ref=e38]
+      - generic [ref=e40]: Sign up with Apple
+    - generic [ref=e42] [cursor=pointer]:
+      - img [ref=e43]
+      - generic [ref=e45]: Sign up with Facebook
+    - generic [ref=e47] [cursor=pointer]:
+      - img [ref=e48]
+      - generic [ref=e51]: Sign up with Instagram
+  - generic [ref=e54]: or
+  - generic [ref=e56]:
+    - generic [ref=e58] [cursor=pointer]:
+      - img [ref=e59]
+      - generic [ref=e62]: Sign up with email or phone
+    - generic [ref=e63]: By signing up, you agree to our Terms of Service and Privacy Policy.
+  - generic [ref=e65] [cursor=pointer]: Already have an account? Sign In

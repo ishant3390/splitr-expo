@@ -192,4 +192,36 @@ describe("ReceiptScannerScreen", () => {
       expect(screen.getByText(/1 of 2 free scans used today/)).toBeTruthy();
     });
   });
+
+  // B34: Split via Chat button
+  it("shows 'Split via Chat' button after scan results", async () => {
+    mockScanReceipt.mockResolvedValueOnce(MOCK_RESPONSE);
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Split via Chat")).toBeTruthy();
+    });
+  });
+
+  it("navigates to chat with receipt message on Split via Chat", async () => {
+    mockScanReceipt.mockResolvedValueOnce(MOCK_RESPONSE);
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Split via Chat")).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText("Split via Chat"));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/chat",
+      params: {
+        receiptMessage: "Split $16.20 from Test Cafe on 2026-03-06. Items: Coffee $5.00, Sandwich $10.00",
+      },
+    });
+  });
 });

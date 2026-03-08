@@ -25,11 +25,13 @@ import Animated, {
   FadeInRight,
   FadeInLeft,
   FadeIn,
+  FadeOut,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   ArrowLeft,
+  Home,
   Send,
   Bot,
   Users,
@@ -43,6 +45,9 @@ import {
   Camera,
   X,
   MessageSquarePlus,
+  RefreshCw,
+  Mic,
+  ChevronDown,
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -54,7 +59,7 @@ import { chatStream, chatApi } from "@/lib/api";
 import { useAuth } from "@clerk/clerk-expo";
 import { cn, formatCents } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
-import { hapticSuccess } from "@/lib/haptics";
+import { hapticSuccess, hapticLight } from "@/lib/haptics";
 import { useNetwork } from "@/components/NetworkProvider";
 import { useMergedContacts, useGroups } from "@/lib/hooks";
 import { trackMention } from "@/lib/mention-recency";
@@ -169,18 +174,30 @@ function shouldShowTimestamp(
   return current.createdAt - previous.createdAt > 2 * 60_000; // > 2 minutes
 }
 
-// ---- B27: Typing Dots ----
+// ---- B27: Typing Dots (iMessage-style) ----
 
 function TypingDot({ delay: d }: { delay: number }) {
   const translateY = useSharedValue(0);
+  const opacity = useSharedValue(0.4);
 
   useEffect(() => {
     translateY.value = withDelay(
       d,
       withRepeat(
         withSequence(
-          withTiming(-6, { duration: 200 }),
-          withTiming(0, { duration: 200 })
+          withTiming(-8, { duration: 300 }),
+          withTiming(0, { duration: 300 })
+        ),
+        -1,
+        false
+      )
+    );
+    opacity.value = withDelay(
+      d,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 300 }),
+          withTiming(0.4, { duration: 300 })
         ),
         -1,
         false
@@ -190,12 +207,13 @@ function TypingDot({ delay: d }: { delay: number }) {
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
+    opacity: opacity.value,
   }));
 
   return (
     <Animated.View
       style={[
-        { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(13,148,136,0.5)" },
+        { width: 8, height: 8, borderRadius: 4, backgroundColor: "#8e8e93" },
         animStyle,
       ]}
     />
@@ -206,15 +224,26 @@ function TypingDotsIndicator({ label }: { label: string }) {
   return (
     <View className="px-4 py-2 items-start">
       <View className="flex-row items-start gap-2">
-        <View className="w-7 h-7 rounded-full bg-primary/10 items-center justify-center mt-1">
-          <Bot size={14} color="#0d9488" />
+        <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center mt-1">
+          <Bot size={14} color="#8e8e93" />
         </View>
         <View>
-          <View className="bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3">
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          {/* iMessage-style typing bubble */}
+          <View 
+            style={{ 
+              backgroundColor: "#e5e5ea", 
+              borderRadius: 18, 
+              paddingHorizontal: 16, 
+              paddingVertical: 12,
+              minWidth: 60,
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <TypingDot delay={0} />
-              <TypingDot delay={150} />
-              <TypingDot delay={300} />
+              <TypingDot delay={200} />
+              <TypingDot delay={400} />
             </View>
           </View>
           <Text className="text-[10px] text-muted-foreground font-sans mt-1 ml-1">
@@ -278,8 +307,8 @@ function SendButton({
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: enabled
-            ? "#0d9488"
-            : isDark ? "#334155" : "#f1f5f9",
+            ? "#0078fe"
+            : isDark ? "#334155" : "#e5e5ea",
         }}
       >
         <Send size={18} color={enabled ? "#ffffff" : "#94a3b8"} />
@@ -311,6 +340,7 @@ const suggestedPrompts = [
   "Split $50 for dinner with @Sarah and @Mike",
   "Add $120 hotel expense in #Beach Trip",
   "How much do I owe in total?",
+  "Who owes me money?",
 ];
 
 // ---- B31: Bubble grouping helpers ----
@@ -376,14 +406,63 @@ const MessageItem = React.memo(
     // B31: Vertical spacing based on grouping
     const verticalPadding = position === "middle" ? "py-0.5" : "py-1.5";
 
+// ---- Bubble Tail Component (iMessage-style) ----
+
+function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePosition }) {
+  const isLastOrOnly = position === "only" || position === "last";
+  
+  if (position === "middle" || position === "first") return null;
+
+  if (isUser) {
+    return (
+      <View
+        style={{
+          position: "absolute",
+          right: -8,
+          bottom: 8,
+          width: 0,
+          height: 0,
+          borderTopWidth: 8,
+          borderTopColor: "transparent",
+          borderBottomWidth: 8,
+          borderBottomColor: "transparent",
+          borderLeftWidth: 10,
+          borderLeftColor: "#0078fe",
+        }}
+      />
+    );
+  }
+
+  return (
+    <View
+      style={{
+        position: "absolute",
+        left: -8,
+        bottom: 8,
+        width: 0,
+        height: 0,
+        borderTopWidth: 8,
+        borderTopColor: "transparent",
+        borderBottomWidth: 8,
+        borderBottomColor: "transparent",
+        borderRightWidth: 10,
+        borderRightColor: "#e5e5ea",
+      }}
+    />
+  );
+}
+
     // B31: Border radius adjustments for grouped bubbles
+    // iMessage style: user = blue bubbles, assistant = gray bubbles
     const getBubbleClasses = () => {
       if (isUser) {
-        const base = "bg-primary rounded-2xl";
+        // iMessage blue for user bubbles
+        const base = "bg-[#0078fe] rounded-2xl";
         if (position === "only" || position === "last") return `${base} rounded-br-md`;
         return base;
       }
-      const base = "bg-card border border-border rounded-2xl";
+      // Light gray for assistant bubbles (iMessage style)
+      const base = "bg-[#e5e5ea] rounded-2xl";
       if (position === "only" || position === "last") return `${base} rounded-bl-md`;
       return base;
     };
@@ -392,10 +471,10 @@ const MessageItem = React.memo(
     const showTs = shouldShowTimestamp(item, previousMessage);
     const timeStr = item.createdAt ? formatMessageTime(item.createdAt) : "";
 
-    // Message entrance animation — user slides from right, bot from left
+    // Message entrance animation — iMessage-style bounce effect
     const messageEntering = isUser
-      ? FadeInRight.duration(300).springify().damping(18).stiffness(140)
-      : FadeInLeft.duration(300).springify().damping(18).stiffness(140);
+      ? FadeInRight.duration(250).springify().damping(12).stiffness(160)
+      : FadeInLeft.duration(250).springify().damping(12).stiffness(160);
 
     // B45: Swipe-to-reply gesture
     const translateX = useSharedValue(0);
@@ -501,8 +580,8 @@ const MessageItem = React.memo(
                 style={{ opacity: showAvatar ? 1 : 0 }}
               >
                 {showAvatar && (
-                  <View className="w-7 h-7 rounded-full bg-primary/10 items-center justify-center">
-                    <Bot size={14} color="#0d9488" />
+                  <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center">
+                    <Bot size={14} color="#8e8e93" />
                   </View>
                 )}
               </View>
@@ -513,7 +592,7 @@ const MessageItem = React.memo(
                 <View
                   style={{
                     borderLeftWidth: 2,
-                    borderLeftColor: "#0d9488",
+                    borderLeftColor: "#0078fe",
                     paddingLeft: 8,
                     marginBottom: 4,
                     opacity: 0.7,
@@ -523,7 +602,7 @@ const MessageItem = React.memo(
                     style={{
                       fontSize: 11,
                       fontFamily: "Inter_500Medium",
-                      color: "#0d9488",
+                      color: "#0078fe",
                       marginBottom: 1,
                     }}
                   >
@@ -566,7 +645,7 @@ const MessageItem = React.memo(
                         fontSize: 14,
                         lineHeight: 20,
                         fontFamily: "Inter_400Regular",
-                        color: isUser ? "#ffffff" : (isDark ? "#f1f5f9" : "#0f172a"),
+                        color: isUser ? "#ffffff" : "#000000",
                       }}
                     >
                       {parseMentionsForDisplay(item.content).map((seg, i) =>
@@ -574,7 +653,7 @@ const MessageItem = React.memo(
                           <Text
                             key={i}
                             style={{
-                              color: isUser ? "#ccfbf1" : "#0d9488",
+                              color: isUser ? "#bbdefb" : "#0078fe",
                               fontFamily: "Inter_600SemiBold",
                             }}
                           >
@@ -587,6 +666,8 @@ const MessageItem = React.memo(
                     </Text>
                     )}
                   </View>
+                  {/* iMessage-style bubble tail */}
+                  <BubbleTail isUser={isUser} position={position} />
                 </Pressable>
               ) : null}
 
@@ -882,6 +963,7 @@ const MessageItem = React.memo(
 
 export default function ChatScreen() {
   const router = useRouter();
+  const { receiptMessage } = useLocalSearchParams<{ receiptMessage?: string }>();
   const { getToken } = useAuth();
   const isDark = useColorScheme() === "dark";
   const { isOnline: isConnected } = useNetwork();
@@ -899,6 +981,7 @@ export default function ChatScreen() {
   const [hasStreaming, setHasStreaming] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string } | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [mentionState, setMentionState] = useState<{
     trigger: "@" | "#";
     query: string;
@@ -915,6 +998,9 @@ export default function ChatScreen() {
   const inputRef = useRef(""); // tracks latest input for handleSelectionChange
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(-1);
   const [replyTo, setReplyTo] = useState<{ id: string; content: string; role: "user" | "assistant" } | null>(null);
+  const [showReactions, setShowReactions] = useState<string | null>(null);
+  const [messageReactions, setMessageReactions] = useState<Record<string, string>>({});
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const skipEnterRef = useRef(false); // skip onChangeText after Enter selects mention
   const filteredItemsRef = useRef<(ContactDto | GroupDto)[]>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // B30: debounce save
@@ -1268,6 +1354,19 @@ export default function ChatScreen() {
     [input, sendMessage, pendingImage, mentions]
   );
 
+  // B34: Auto-send receipt message when navigated from receipt scanner
+  const receiptSentRef = useRef(false);
+  useEffect(() => {
+    if (receiptMessage && !receiptSentRef.current) {
+      receiptSentRef.current = true;
+      // Small delay to let mount + persisted messages load settle
+      const timer = setTimeout(() => {
+        sendMessage(receiptMessage);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [receiptMessage, sendMessage]);
+
   // ---- Mention handlers ----
 
   const handleInputChange = useCallback(
@@ -1512,18 +1611,38 @@ export default function ChatScreen() {
     }
   }, []);
 
+  // Voice input handler - placeholder for speech-to-text
+  const handleVoiceInput = useCallback(async () => {
+    if (isRecording) {
+      setIsRecording(false);
+      return;
+    }
+    // Show toast that voice input is not yet implemented
+    // In production, integrate expo-speech or native speech recognition
+    toast.info("Voice input coming soon!");
+  }, [isRecording, toast]);
+
   // H2: Smart scroll — only auto-scroll if user is near bottom
   const handleScroll = useCallback((e: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distanceFromBottom =
       contentSize.height - contentOffset.y - layoutMeasurement.height;
     isNearBottomRef.current = distanceFromBottom < 100;
+    // B47: Show scroll-to-bottom FAB when scrolled up
+    setShowScrollButton(distanceFromBottom > 300);
   }, []);
 
   const handleContentSizeChange = useCallback(() => {
     if (isNearBottomRef.current) {
       listRef.current?.scrollToEnd({ animated: true });
     }
+  }, []);
+
+  // B47: Scroll to bottom handler
+  const scrollToBottom = useCallback(() => {
+    hapticLight();
+    listRef.current?.scrollToEnd({ animated: true });
+    setShowScrollButton(false);
   }, []);
 
   // ---- Render message (B33: delegates to memoized MessageItem) ----
@@ -1595,32 +1714,33 @@ export default function ChatScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       {/* Header */}
-      <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border">
+      <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border" style={{ paddingTop: Platform.OS === "web" ? 12 : 0 }}>
         <Pressable
-          onPress={goBack}
-          accessibilityLabel="Go back"
+          onPress={() => router.replace("/(tabs)")}
+          accessibilityLabel="Go to home"
           accessibilityRole="button"
           style={{
             width: 40,
             height: 40,
-            borderRadius: 12,
+            borderRadius: 20,
             alignItems: "center",
             justifyContent: "center",
+            backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
           }}
         >
-          <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
+          <Home size={20} color={isDark ? "#94a3b8" : "#64748b"} />
         </Pressable>
         <View
           style={{
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: "rgba(13, 148, 136, 0.1)",
+            backgroundColor: "rgba(0, 120, 254, 0.1)",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Bot size={20} color="#0d9488" />
+          <Bot size={20} color="#0078fe" />
         </View>
         <View className="flex-1">
           <Text className="text-base font-sans-semibold text-foreground">
@@ -1679,6 +1799,43 @@ export default function ChatScreen() {
             ) : null
           }
         />
+
+        {/* B47: Scroll-to-bottom FAB */}
+        {showScrollButton && (
+          <Animated.View
+            entering={FadeIn.duration(150)}
+            exiting={FadeOut.duration(100)}
+            style={{
+              position: "absolute",
+              right: 16,
+              bottom: 70,
+              zIndex: 10,
+            }}
+          >
+            <Pressable
+              onPress={scrollToBottom}
+              accessibilityLabel="Scroll to bottom"
+              accessibilityRole="button"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: isDark ? "#334155" : "#ffffff",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.15,
+                shadowRadius: 4,
+                elevation: 4,
+                borderWidth: 1,
+                borderColor: isDark ? "#475569" : "#e2e8f0",
+              }}
+            >
+              <ChevronDown size={20} color={isDark ? "#f1f5f9" : "#0f172a"} />
+            </Pressable>
+          </Animated.View>
+        )}
 
         {/* Suggested prompts */}
         {messages.length <= 1 && !isQuotaExceeded && (
@@ -1805,7 +1962,7 @@ export default function ChatScreen() {
             <View
               style={{
                 borderLeftWidth: 2,
-                borderLeftColor: "#0d9488",
+                borderLeftColor: "#0078fe",
                 paddingLeft: 8,
                 flex: 1,
               }}
@@ -1814,7 +1971,7 @@ export default function ChatScreen() {
                 style={{
                   fontSize: 11,
                   fontFamily: "Inter_500Medium",
-                  color: "#0d9488",
+                  color: "#0078fe",
                   marginBottom: 1,
                 }}
               >
@@ -1871,6 +2028,30 @@ export default function ChatScreen() {
               color={!loading && !isQuotaExceeded && isConnected ? (isDark ? "#f1f5f9" : "#64748b") : "#94a3b8"}
             />
           </Pressable>
+          
+          {/* Voice input button */}
+          <Pressable
+            onPress={handleVoiceInput}
+            disabled={loading || isQuotaExceeded || !isConnected}
+            accessibilityLabel="Voice input"
+            accessibilityRole="button"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: !loading && !isQuotaExceeded && isConnected
+                ? (isDark ? "#334155" : "#f1f5f9")
+                : (isDark ? "rgba(51,65,85,0.5)" : "rgba(241,245,249,0.5)"),
+            }}
+          >
+            <Mic
+              size={20}
+              color={!loading && !isQuotaExceeded && isConnected ? (isDark ? "#f1f5f9" : "#64748b") : "#94a3b8"}
+            />
+          </Pressable>
+          
           <View style={{ flex: 1 }}>
             <TextInput
               value={input}

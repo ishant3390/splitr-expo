@@ -86,8 +86,8 @@
 | B32 | Chat — Accessibility | Medium | Add accessibilityLabels to send button, back button, action cards, group selection cards. Screen reader support. |
 | B33 | ~~Chat — FlatList performance~~ | ~~Medium~~ | **Done**: `MessageItem` wrapped in `React.memo` with custom comparator (role, index, dark mode, loading, adjacent roles). Memoized `keyExtractor`. FlatList tuned: `removeClippedSubviews`, `maxToRenderPerBatch=10`, `windowSize=10`, `initialNumToRender=20`. |
 
-| B34 | Receipt → Chat auto-fill | High | Scan receipt → "Split via Chat" button → opens chat pre-filled with scanned amount/merchant/date → group selection → confirm. Chains receipt scan + chat. Small FE effort. |
-| B35 | Natural language balance queries | High | "How much does Sarah owe me across all groups?" BE needs `getCrossGroupBalances` tool. No new FE UI — chat text responses handle it. Small effort, high value. |
+| B34 | ~~Receipt → Chat auto-fill~~ | ~~High~~ | **Done (FE)**: "Split via Chat" button on receipt results → navigates to chat with natural language message (merchant, amount, date, line items). Chat auto-sends on mount via `receiptMessage` param. BE handles group selection + expense creation. 2 tests. |
+| B35 | ~~Natural language balance queries~~ | ~~High~~ | **Done (FE + BE)**: "Who owes me money?" suggested prompt + chat renders markdown responses. BE has 4 LLM tools: `get_user_balance`, `get_balance_with_user`, `get_cross_group_balances`, `get_group_balance` — returns SSE `text` events with markdown. |
 | B36 | Smart split suggestions | Low | LLM suggests split ratios based on description (e.g., "hotel 2 nights" → split by nights). Niche use case. |
 | B37 | Recurring expense detection | Low | "You split dinner with Sarah last week too. Create recurring?" Needs historical analysis on BE. Medium effort. |
 | B38 | Expense auto-categorization | Low | LLM infers category from description during chat expense creation. Already partially possible. Low incremental value. |
@@ -99,7 +99,7 @@
 | B44 | Chat — Haptic feedback on actions | Low | Add haptic impact on send, on action card tap (confirm/edit), on group selection. Use `impactAsync(Light)` for taps, `notificationAsync(Success)` for confirmations. |
 | B45 | ~~Chat — Swipe to reply~~ | ~~Medium~~ | **Done**: Pan gesture (react-native-gesture-handler) on messages — swipe right >50px triggers reply. Reply icon animates behind message during swipe. Reply preview bar above input shows quoted content with dismiss button. Quoted messages shown inline with teal left border. |
 | B46 | Chat — Message reactions | Low | Long-press message → emoji reaction picker (👍 ✅ ❓). Visual feedback only, not persisted. Low priority. |
-| B47 | Chat — Scroll-to-bottom FAB | Low | Floating "↓" button when user scrolls up past threshold. Shows unread count badge. Tapping scrolls to bottom with spring animation. |
+| B47 | ~~Chat — Scroll-to-bottom FAB~~ | ~~Low~~ | **Done**: Floating ChevronDown button appears when scrolled >300px from bottom. FadeIn/FadeOut animation, haptic on tap, scrolls to end. Positioned absolute bottom-right above input. 1 test. |
 | B48 | Chat — Image preview modal | Low | Tap attached image to open full-screen preview with pinch-to-zoom. Currently images are inline-only. |
 | B49 | ~~Chat — Markdown rendering~~ | ~~Medium~~ | **Done**: Custom lightweight `ChatMarkdown` component — no external dependency. Supports **bold**, *italic*, `inline code`, ```code blocks```, bullet lists (- / *), numbered lists. Conditional rendering: only activates when markdown formatting detected in AI responses. 10 tests. |
 | B50 | Chat — Voice input | Low | Microphone button for speech-to-text input. Uses `expo-speech` or platform speech recognition. "Add $20 for lunch with Sarah" via voice. |
