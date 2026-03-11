@@ -94,7 +94,8 @@ export default function CreateGroupScreen() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
   const [memberName, setMemberName] = useState("");
-  const [members, setMembers] = useState<string[]>([]);
+  const [memberEmail, setMemberEmail] = useState("");
+  const [members, setMembers] = useState<{ name: string; email?: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   // Post-creation share sheet state
@@ -143,17 +144,23 @@ export default function CreateGroupScreen() {
 
   const handleAddMember = () => {
     const name = memberName.trim();
+    const email = memberEmail.trim() || undefined;
     if (!name) {
       toast.error("Please enter a name.");
       return;
     }
-    if (members.includes(name)) {
+    if (members.some((m) => m.name === name)) {
       toast.error("This person has already been added.");
       return;
     }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
     hapticLight();
-    setMembers((prev) => [...prev, name]);
+    setMembers((prev) => [...prev, { name, email }]);
     setMemberName("");
+    setMemberEmail("");
   };
 
   const handleCreate = async () => {
@@ -176,10 +183,10 @@ export default function CreateGroupScreen() {
         token!
       );
 
-      // Add members by name as guests (no email required)
+      // Add members as guests; if email provided, include it for future guest promotion
       await Promise.all(
-        members.map((name) =>
-          groupsApi.addGuestMember(group.id, { name }, token!)
+        members.map((m) =>
+          groupsApi.addGuestMember(group.id, m.email ? { name: m.name, email: m.email } : { name: m.name }, token!)
         )
       );
 
@@ -431,7 +438,7 @@ export default function CreateGroupScreen() {
             {/* Added members list */}
             {members.length > 0 && (
               <View className="gap-2 mb-3">
-                {members.map((name, idx) => (
+                {members.map((m, idx) => (
                   <View
                     key={`member-${idx}`}
                     className="flex-row items-center gap-3 bg-card rounded-xl border border-border px-3 py-2.5"
@@ -442,16 +449,18 @@ export default function CreateGroupScreen() {
                     >
                       <User size={14} color="#0d9488" />
                     </View>
-                    <Text
-                      className="flex-1 text-sm font-sans-medium text-foreground"
-                      numberOfLines={1}
-                    >
-                      {name}
-                    </Text>
+                    <View className="flex-1">
+                      <Text className="text-sm font-sans-medium text-foreground" numberOfLines={1}>
+                        {m.name}
+                      </Text>
+                      {m.email ? (
+                        <Text className="text-xs text-muted-foreground font-sans" numberOfLines={1}>
+                          {m.email}
+                        </Text>
+                      ) : null}
+                    </View>
                     <Pressable
-                      onPress={() =>
-                        setMembers((prev) => prev.filter((_, i) => i !== idx))
-                      }
+                      onPress={() => setMembers((prev) => prev.filter((_, i) => i !== idx))}
                       hitSlop={8}
                     >
                       <X size={16} color="#94a3b8" />
@@ -461,30 +470,43 @@ export default function CreateGroupScreen() {
               </View>
             )}
 
-            {/* Name input */}
-            <View className="flex-row gap-2">
-              <Input
-                placeholder="e.g., Alex, Sarah, Mike"
-                value={memberName}
-                onChangeText={setMemberName}
-                autoCapitalize="words"
-                containerClassName="flex-1"
-                onSubmitEditing={handleAddMember}
-                returnKeyType="done"
-              />
-              <Button
-                variant="default"
-                size="md"
-                onPress={handleAddMember}
-                disabled={!memberName.trim()}
-              >
-                <Text className="text-sm font-sans-semibold text-primary-foreground">
-                  Add
-                </Text>
-              </Button>
+            {/* Name + optional email inputs */}
+            <View className="gap-2">
+              <View className="flex-row gap-2">
+                <Input
+                  placeholder="Name (e.g., Alex)"
+                  value={memberName}
+                  onChangeText={setMemberName}
+                  autoCapitalize="words"
+                  containerClassName="flex-1"
+                  returnKeyType="next"
+                />
+              </View>
+              <View className="flex-row gap-2">
+                <Input
+                  placeholder="Email (optional)"
+                  value={memberEmail}
+                  onChangeText={setMemberEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  containerClassName="flex-1"
+                  onSubmitEditing={handleAddMember}
+                  returnKeyType="done"
+                />
+                <Button
+                  variant="default"
+                  size="md"
+                  onPress={handleAddMember}
+                  disabled={!memberName.trim()}
+                >
+                  <Text className="text-sm font-sans-semibold text-primary-foreground">
+                    Add
+                  </Text>
+                </Button>
+              </View>
             </View>
             <Text className="text-xs text-muted-foreground font-sans mt-2 leading-5">
-              Just add names for now. Share the group link after to let them join.
+              Add an email so they can be auto-matched when they join the group.
             </Text>
           </View>
 

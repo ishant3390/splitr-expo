@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   useColorScheme,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
@@ -17,6 +18,7 @@ import {
   ArrowLeft,
   Trash2,
   Check,
+  Calendar,
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +27,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { expensesApi, groupsApi, categoriesApi } from "@/lib/api";
+import { inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents, centsToAmount } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticLight } from "@/lib/haptics";
@@ -84,9 +87,14 @@ export default function EditExpenseScreen() {
   const [splitType, setSplitType] = useState<SplitType>("equal");
   const [splitPercentages, setSplitPercentages] = useState<Record<string, string>>({});
   const [splitFixedAmounts, setSplitFixedAmounts] = useState<Record<string, string>>({});
+  const [expenseDate, setExpenseDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const userPickedCategoryRef = useRef(false);
+  // Track the description loaded from server so we don't infer on initial population
+  const initialDescriptionRef = useRef("");
 
   const initSplitValues = (memberIds: string[], type: SplitType, totalStr: string) => {
     if (type === "percentage" && memberIds.length > 0) {
@@ -119,15 +127,13 @@ export default function EditExpenseScreen() {
     const load = async () => {
       try {
         const token = await getToken();
-        const [expensesResponse, membersData, categoriesData] = await Promise.all([
-          groupsApi.listExpenses(groupId, token!),
+        const [expenseData, membersData, categoriesData] = await Promise.all([
+          expensesApi.get(id, token!),
           groupsApi.listMembers(groupId, token!),
           categoriesApi.list(token!),
         ]);
-        console.log("[EditExpense] categoriesData:", JSON.stringify(categoriesData, null, 2));
         setCategories(Array.isArray(categoriesData) ? categoriesData : []);
 
-        const expenseData = expensesResponse.data?.find((e) => e.id === id);
         if (!expenseData) {
           toast.error("Expense not found.");
           router.replace("/(tabs)");
@@ -147,10 +153,14 @@ export default function EditExpenseScreen() {
         setMembers(memberList);
 
         // Pre-populate form fields
+        initialDescriptionRef.current = expenseData.description;
         setDescription(expenseData.description);
         const amountStr = centsToAmount(expenseData.amountCents).toFixed(2);
         setAmount(amountStr);
         setSelectedCategoryId(expenseData.category?.id ?? null);
+        if (expenseData.date) {
+          setExpenseDate(new Date(expenseData.date));
+        }
 
         // Pre-select split type from expense
         const rawSplitType = expenseData.splitType ?? "equal";
@@ -221,6 +231,14 @@ export default function EditExpenseScreen() {
     };
     load();
   }, [id, groupId]);
+
+  // Auto-infer category when user changes description (not on initial load)
+  useEffect(() => {
+    if (loading || userPickedCategoryRef.current || categories.length === 0) return;
+    if (!description.trim() || description === initialDescriptionRef.current) return;
+    const inferred = inferCategoryFromDescription(description, categories);
+    if (inferred) setSelectedCategoryId(inferred);
+  }, [description, categories, loading]);
 
   const handleToggleMember = (memberId: string) => {
     hapticLight();
@@ -299,26 +317,36 @@ export default function EditExpenseScreen() {
           setSubmitting(false);
           return;
         }
-        splits = uniqueSplitMembers.map((member) => ({
+        // Compute cents for all but the last member, then assign the remainder to the last
+        // to avoid rounding drift that fails backend sum validation
+        const rawCents = uniqueSplitMembers.map((member) =>
+          Math.round(totalCents * (parseFloat(splitPercentages[member.id] ?? "0") / 100))
+        );
+        const sumExceptLast = rawCents.slice(0, -1).reduce((a, b) => a + b, 0);
+        rawCents[rawCents.length - 1] = totalCents - sumExceptLast;
+        splits = uniqueSplitMembers.map((member, idx) => ({
           userId: member.user?.id,
           guestUserId: member.guestUser?.id,
           percentage: parseFloat(splitPercentages[member.id] ?? "0"),
-          splitAmount: Math.round(totalCents * (parseFloat(splitPercentages[member.id] ?? "0") / 100)),
+          splitAmount: rawCents[idx],
         }));
       } else if (splitType === "fixed") {
-        const totalFixedCents = uniqueSplitMembers.reduce(
-          (s, m) => s + amountToCents(parseFloat(splitFixedAmounts[m.id] ?? "0") || 0), 0
+        const fixedCents = uniqueSplitMembers.map((member) =>
+          amountToCents(parseFloat(splitFixedAmounts[member.id] ?? "0") || 0)
         );
+        const totalFixedCents = fixedCents.reduce((a, b) => a + b, 0);
         if (Math.abs(totalFixedCents - totalCents) > 1) {
           hapticError();
           toast.error(`Fixed amounts must add up to $${parsed.toFixed(2)}`);
           setSubmitting(false);
           return;
         }
-        splits = uniqueSplitMembers.map((member) => ({
+        // Absorb any 1-cent rounding difference into the last member
+        fixedCents[fixedCents.length - 1] += totalCents - totalFixedCents;
+        splits = uniqueSplitMembers.map((member, idx) => ({
           userId: member.user?.id,
           guestUserId: member.guestUser?.id,
-          splitAmount: amountToCents(parseFloat(splitFixedAmounts[member.id] ?? "0") || 0),
+          splitAmount: fixedCents[idx],
         }));
       } else {
         const perPersonCents = Math.floor(totalCents / uniqueSplitMembers.length);
@@ -335,7 +363,7 @@ export default function EditExpenseScreen() {
         totalAmount: totalCents,
         currency: expense?.currency ?? "USD",
         categoryId: selectedCategoryId ?? undefined,
-        expenseDate: (expense?.date ?? new Date().toISOString()).split("T")[0],
+        expenseDate: expenseDate.toISOString().split("T")[0],
         splitType: splitType === "fixed" ? "exact" : splitType,
         payers: [{ userId: payerMember?.user?.id, guestUserId: payerMember?.guestUser?.id, amountPaid: totalCents }],
         splits,
@@ -445,6 +473,32 @@ export default function EditExpenseScreen() {
             maxLength={255}
           />
 
+          {/* Date */}
+          <View>
+            <Text className="text-sm font-sans-medium text-foreground mb-2">Date</Text>
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              className="flex-row items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card"
+            >
+              <Calendar size={16} color="#0d9488" />
+              <Text className="flex-1 text-sm font-sans-medium text-foreground">
+                {expenseDate.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+              </Text>
+            </Pressable>
+            {showDatePicker && (
+              <DateTimePicker
+                value={expenseDate}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                maximumDate={new Date()}
+                onChange={(_, date) => {
+                  setShowDatePicker(Platform.OS === "ios");
+                  if (date) setExpenseDate(date);
+                }}
+              />
+            )}
+          </View>
+
           {/* Category */}
           <View>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Category</Text>
@@ -457,7 +511,7 @@ export default function EditExpenseScreen() {
                   return (
                     <Pressable
                       key={cat.id}
-                      onPress={() => { hapticSelection(); setSelectedCategoryId(cat.id); }}
+                      onPress={() => { hapticSelection(); userPickedCategoryRef.current = true; setSelectedCategoryId(cat.id); }}
                       className={cn(
                         "flex-row items-center gap-2 px-3 py-2 rounded-xl border",
                         isSelected ? "bg-primary border-primary" : "bg-card border-border"

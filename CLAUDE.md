@@ -44,7 +44,7 @@ lib/
   api.ts                # API client (usersApi, groupsApi, categoriesApi, expensesApi, settlementsApi, inviteApi, contactsApi, chatApi)
   types.ts              # TypeScript interfaces/DTOs
   utils.ts              # cn(), formatCents(), formatDate(), getInitials(), etc.
-  screen-helpers.ts     # Pure helpers: aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, etc.
+  screen-helpers.ts     # Pure helpers: aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, inferCategoryFromDescription, etc.
   hooks.ts              # React Query hooks for all API data (+ useMergedContacts for @mention fallback)
   query.ts              # QueryClient config, query keys, stale times
   offline.ts            # AsyncStorage-based offline expense queue
@@ -72,6 +72,7 @@ lib/
 - Amounts stored in cents (use `amountToCents()` / `formatCents()`)
 - Deduplicate member lists (API sometimes returns duplicates)
 - Backend category `icon` field returns icon names (e.g. "restaurant"), not emojis — use `getCategoryEmoji()` from `lib/screen-helpers` to convert to emoji
+- Auto-category inference: `inferCategoryFromDescription(description, categories)` in `lib/screen-helpers` — keyword-maps description to a category id. Used in `add.tsx` + `edit-expense/[id].tsx`. Respects manual overrides via `userPickedCategoryRef`. Does not override on initial load in edit screen (guarded by `initialDescriptionRef`)
 - Groups have `groupType` (trip/home/couple/etc.) and `emoji` fields for display
 - When no groups exist, Add Expense auto-creates a "Personal" group
 - Default currency for new groups comes from `GET /v1/users/me` → `defaultCurrency`

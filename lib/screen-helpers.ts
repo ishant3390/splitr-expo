@@ -61,6 +61,70 @@ export function validateFixedSplit(fixedAmounts: Record<string, string>, totalCe
   return { valid: Math.abs(totalFixed - totalCents) <= 1, totalFixed };
 }
 
+// --- Auto-category inference ---
+
+const KEYWORD_TO_CATEGORY: Array<{ keywords: string[]; category: string }> = [
+  {
+    keywords: ["dinner", "lunch", "breakfast", "pizza", "burger", "coffee", "cafe", "restaurant", "food", "meal", "snack", "drink", "bar", "brunch", "sushi", "taco", "sandwich", "bakery", "dessert", "takeout", "takeaway", "doordash", "ubereats", "grubhub"],
+    category: "food",
+  },
+  {
+    keywords: ["uber", "lyft", "taxi", "cab", "gas", "fuel", "parking", "toll", "flight", "train", "bus", "metro", "subway", "transport", "commute", "ferry", "amtrak", "greyhound"],
+    category: "transport",
+  },
+  {
+    keywords: ["hotel", "airbnb", "hostel", "motel", "rent", "mortgage", "lodging", "accommodation"],
+    category: "accommodation",
+  },
+  {
+    keywords: ["movie", "cinema", "netflix", "concert", "show", "gaming", "ticket", "theater", "theatre", "spotify", "hulu", "disney", "streaming", "entertainment"],
+    category: "entertainment",
+  },
+  {
+    keywords: ["grocery", "groceries", "supermarket", "costco", "market", "produce", "walmart", "target", "trader joe", "whole foods", "safeway", "aldi"],
+    category: "groceries",
+  },
+  {
+    keywords: ["amazon", "shop", "store", "mall", "clothes", "clothing", "shoes", "outfit", "fashion", "apparel"],
+    category: "shopping",
+  },
+  {
+    keywords: ["pharmacy", "doctor", "medicine", "hospital", "clinic", "gym", "fitness", "dental", "dentist", "medical", "prescription", "vitamin", "therapy"],
+    category: "health",
+  },
+  {
+    keywords: ["electric", "electricity", "water bill", "internet", "wifi", "phone bill", "cable", "insurance", "utility", "utilities"],
+    category: "utilities",
+  },
+  {
+    keywords: ["office", "work", "business", "conference", "meeting", "subscription", "software", "aws", "github", "slack"],
+    category: "work",
+  },
+  {
+    keywords: ["tuition", "course", "textbook", "books", "school", "class", "workshop", "training", "education", "udemy", "coursera"],
+    category: "education",
+  },
+];
+
+/**
+ * Infers the best matching category ID from a description string.
+ * Returns null if no confident match is found or user hasn't picked one yet.
+ */
+export function inferCategoryFromDescription(
+  description: string,
+  categories: Array<{ id: string; name: string }>
+): string | null {
+  if (!description.trim() || categories.length === 0) return null;
+  const lower = description.toLowerCase();
+  for (const { keywords, category } of KEYWORD_TO_CATEGORY) {
+    if (keywords.some((kw) => lower.includes(kw))) {
+      const match = categories.find((c) => c.name.toLowerCase().includes(category));
+      if (match) return match.id;
+    }
+  }
+  return null;
+}
+
 // --- From settle-up.tsx ---
 
 const PAYMENT_METHODS = [

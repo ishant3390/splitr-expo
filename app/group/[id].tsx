@@ -38,6 +38,10 @@ import {
   Receipt,
   Bell,
   BellOff,
+  MoreVertical,
+  Archive,
+  RotateCcw,
+  Trash2,
 } from "lucide-react-native";
 import QRCode from "react-native-qrcode-svg";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -49,6 +53,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { groupsApi, contactsApi, inviteApi, expensesApi } from "@/lib/api";
+import { useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -114,6 +119,13 @@ export default function GroupDetailScreen() {
   // Remove member state
   const [memberToRemove, setMemberToRemove] = useState<GroupMemberDto | null>(null);
   const [removingMember, setRemovingMember] = useState(false);
+
+  // Group action (archive/delete) state
+  const [showGroupActions, setShowGroupActions] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const archiveMutation = useArchiveGroup();
+  const deleteMutation = useDeleteGroup();
 
   // Delete expense state
   const [expenseToDelete, setExpenseToDelete] = useState<ExpenseDto | null>(null);
@@ -456,6 +468,13 @@ export default function GroupDetailScreen() {
               <Plus size={24} color="#0d9488" />
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onPress={() => setShowGroupActions(true)}
+          >
+            <MoreVertical size={22} color={isDark ? "#94a3b8" : "#64748b"} />
+          </Button>
         </View>
       </View>
 
@@ -1169,6 +1188,102 @@ export default function GroupDetailScreen() {
           </Pressable>
         </View>
       </BottomSheetModal>
+
+      {/* Group Actions Sheet */}
+      <BottomSheetModal visible={showGroupActions} onClose={() => setShowGroupActions(false)}>
+        <View className="flex-row items-center justify-between mb-3">
+          <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+            Group Options
+          </Text>
+          <Pressable onPress={() => setShowGroupActions(false)}>
+            <X size={22} color="#64748b" />
+          </Pressable>
+        </View>
+
+        {isArchived ? (
+          <Pressable
+            onPress={() => {
+              setShowGroupActions(false);
+              archiveMutation.mutateAsync({ groupId: id, version: group.version ?? 0, archive: false })
+                .then(() => toast.success(`"${group.name}" restored.`))
+                .catch(() => toast.error("Failed to restore group."));
+            }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: isDark ? "#334155" : "#f1f5f9" }}
+          >
+            <RotateCcw size={20} color="#0d9488" />
+            <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+              Restore Group
+            </Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => { setShowGroupActions(false); setShowArchiveConfirm(true); }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: isDark ? "#334155" : "#f1f5f9" }}
+          >
+            <Archive size={20} color="#f59e0b" />
+            <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+              Archive Group
+            </Text>
+          </Pressable>
+        )}
+
+        <Pressable
+          onPress={() => { setShowGroupActions(false); setShowDeleteConfirm(true); }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, paddingHorizontal: 4 }}
+        >
+          <Trash2 size={20} color="#ef4444" />
+          <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: "#ef4444" }}>
+            Delete Group
+          </Text>
+        </Pressable>
+      </BottomSheetModal>
+
+      {/* Archive Confirmation */}
+      <ConfirmModal
+        visible={showArchiveConfirm}
+        title="Archive Group"
+        message={`Archive "${group?.name}"? No new expenses or settlements can be added while archived. Balances are preserved and you can restore it anytime.`}
+        confirmLabel="Archive"
+        cancelLabel="Cancel"
+        onConfirm={async () => {
+          try {
+            await archiveMutation.mutateAsync({ groupId: id, version: group.version ?? 0, archive: true });
+            toast.success(`"${group?.name}" archived.`);
+          } catch {
+            toast.error("Failed to archive group.");
+          } finally {
+            setShowArchiveConfirm(false);
+          }
+        }}
+        onCancel={() => setShowArchiveConfirm(false)}
+      />
+
+      {/* Delete Group Confirmation */}
+      <ConfirmModal
+        visible={showDeleteConfirm}
+        title="Delete Group"
+        message={`Permanently delete "${group?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={async () => {
+          try {
+            await deleteMutation.mutateAsync(id);
+            toast.success(`"${group?.name}" deleted.`);
+            router.replace("/(tabs)/groups");
+          } catch (err: any) {
+            const body = err?.message ?? "";
+            if (body.includes("OUTSTANDING_BALANCES") || body.toLowerCase().includes("outstanding balance")) {
+              toast.error("Cannot delete — settle up all balances first.");
+            } else {
+              toast.error("Failed to delete group.");
+            }
+          } finally {
+            setShowDeleteConfirm(false);
+          }
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </SafeAreaView>
   );
 }

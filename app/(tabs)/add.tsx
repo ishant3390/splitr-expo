@@ -39,7 +39,7 @@ import { groupsApi, categoriesApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
-import { getCategoryEmoji, initSplitValues as computeSplitValues, dedupeMembers } from "@/lib/screen-helpers";
+import { getCategoryEmoji, initSplitValues as computeSplitValues, dedupeMembers, inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { useNetwork } from "@/components/NetworkProvider";
 import { addToQueue, generateClientId } from "@/lib/offline";
 import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
@@ -89,6 +89,7 @@ export default function AddExpenseScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const userPickedCategoryRef = useRef(false);
 
   // Load groups and categories on mount; auto-create "Personal" group if none exist
   useEffect(() => {
@@ -177,6 +178,13 @@ export default function AddExpenseScreen() {
     };
     load();
   }, [selectedGroup?.id]);
+
+  // Auto-select category based on description, unless user already picked one manually
+  useEffect(() => {
+    if (userPickedCategoryRef.current || categories.length === 0 || !description.trim()) return;
+    const inferred = inferCategoryFromDescription(description, categories);
+    if (inferred) setSelectedCategoryId(inferred);
+  }, [description, categories]);
 
   const initSplitValues = (memberIds: string[], type: SplitType, totalStr: string) => {
     const values = computeSplitValues(memberIds, type, totalStr);
@@ -531,7 +539,7 @@ export default function AddExpenseScreen() {
                   return (
                     <Pressable
                       key={cat.id}
-                      onPress={() => { hapticSelection(); setSelectedCategoryId(cat.id); }}
+                      onPress={() => { hapticSelection(); userPickedCategoryRef.current = true; setSelectedCategoryId(cat.id); }}
                       className={cn(
                         "flex-row items-center gap-2 px-3 py-2 rounded-xl border",
                         isSelected ? "bg-primary border-primary" : "bg-card border-border"

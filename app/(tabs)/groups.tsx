@@ -42,6 +42,9 @@ export default function GroupsScreen() {
   const [selectedGroup, setSelectedGroup] = useState<GroupDto | null>(null);
   const [showActions, setShowActions] = useState(false);
 
+  // Archive confirmation
+  const [groupToArchive, setGroupToArchive] = useState<GroupDto | null>(null);
+
   // Delete confirmation
   const [groupToDelete, setGroupToDelete] = useState<GroupDto | null>(null);
 
@@ -61,18 +64,17 @@ export default function GroupsScreen() {
     setRefreshing(false);
   }, [refetch]);
 
-  const handleArchive = async () => {
-    if (!selectedGroup) return;
+  const handleArchiveConfirm = async () => {
+    if (!groupToArchive) return;
     try {
       await archiveMutation.mutateAsync({
-        groupId: selectedGroup.id,
-        version: selectedGroup.version ?? 0,
+        groupId: groupToArchive.id,
+        version: groupToArchive.version ?? 0,
         archive: true,
       });
       hapticSuccess();
-      toast.success(`"${selectedGroup.name}" archived.`);
-      setShowActions(false);
-      setSelectedGroup(null);
+      toast.success(`"${groupToArchive.name}" archived.`);
+      setGroupToArchive(null);
     } catch {
       toast.error("Failed to archive group.");
     }
@@ -102,8 +104,13 @@ export default function GroupsScreen() {
       hapticSuccess();
       toast.success(`"${groupToDelete.name}" deleted.`);
       setGroupToDelete(null);
-    } catch {
-      toast.error("Failed to delete group.");
+    } catch (err: any) {
+      const body = err?.message ?? "";
+      if (body.includes("OUTSTANDING_BALANCES") || body.toLowerCase().includes("outstanding balance")) {
+        toast.error("Cannot delete — this group has outstanding balances. Settle up first.");
+      } else {
+        toast.error("Failed to delete group.");
+      }
     }
   };
 
@@ -282,7 +289,10 @@ export default function GroupsScreen() {
 
         {filter === "active" ? (
           <Pressable
-            onPress={handleArchive}
+            onPress={() => {
+              setShowActions(false);
+              setGroupToArchive(selectedGroup);
+            }}
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -337,6 +347,17 @@ export default function GroupsScreen() {
           </Text>
         </Pressable>
       </BottomSheetModal>
+
+      {/* Archive Confirmation */}
+      <ConfirmModal
+        visible={!!groupToArchive}
+        title="Archive Group"
+        message={`Archive "${groupToArchive?.name}"? No new expenses or settlements can be added while archived. Existing balances are preserved and the group can be unarchived at any time.`}
+        confirmLabel="Archive"
+        cancelLabel="Cancel"
+        onConfirm={handleArchiveConfirm}
+        onCancel={() => setGroupToArchive(null)}
+      />
 
       {/* Delete Confirmation */}
       <ConfirmModal

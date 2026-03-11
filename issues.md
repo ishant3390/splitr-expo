@@ -48,6 +48,23 @@
 | 23 | ~~Push notifications — Full integration~~ | Medium | Fixed | 2026-03-06 | **Phase 1 + 2 complete.** Token registration with deviceId/deviceName, notification history from `GET /v1/users/me/notifications`, payload routing (type+groupId→route), global toggle syncs to BE via `PATCH /v1/users/me`, per-group toggle in group detail via `PATCH /v1/groups/{groupId}/members/{memberId}`, notifications screen shows real BE data. BE handles rate limiting (5/hr, 20/day) and coalescing (60s window). |
 | 24 | Deep link universal links not tested | Low | Open | 2026-03-06 | Requires AASA file hosted on splitr.app domain |
 
+## IMG.png Bug Report (2026-03-11)
+
+Bugs reported via IMG.png bug tracker. All fixes include integration/unit tests.
+
+| # | Type | Screen | Title | Description | Priority | Status | Fixed Date | Notes |
+|---|------|--------|-------|-------------|----------|--------|------------|-------|
+| IMG-1 | Defect | New Group | Unable to add members while creating a new group | Creating a new group should allow adding members the same way as an existing group | Medium | **FIXED** | 2026-03-11 | Added name+email member form to `create-group.tsx`; calls `groupsApi.addGuestMember()` post-creation with optional email |
+| IMG-2 | Enhancement | New Expense / Edit Expense | Unable to change the date while adding/editing the expense | Users need the ability to change the expense date; currently defaults to today | Low | **FIXED** | 2026-03-11 | Added `DateTimePicker` to `edit-expense/[id].tsx`; initialised from `expenseData.date` on load. `add.tsx` already had it |
+| IMG-3 | Question | New Expense | Photo and Gallery options are showing the same thing | What's the expected behavior difference between Photo and Gallery on the Add Expense screen? | Low | **BACKLOG** | — | Camera (`launchCameraAsync`) and Gallery (`launchImageLibraryAsync`) are functionally distinct. On iOS Simulator camera is unavailable — both appear to open gallery. On device they behave differently. See B-IMG3 in Backlog below |
+| IMG-4 | New Feature | New Expense / Edit Expense | Auto-select icon/category based on expense description | App should automatically select an appropriate category when the user types a description | Low | **FIXED** | 2026-03-11 | Added `inferCategoryFromDescription()` in `lib/screen-helpers.ts`; wired into `add.tsx` + `edit-expense/[id].tsx`. 27 unit tests |
+| IMG-5 | Defect | Edit Expense | Update expense is not working | App throws error while trying to update the expense | High | **FIXED** | 2026-03-11 | `edit-expense/[id].tsx` was fetching from `listExpenses` (ignores payers/splits); switched to `expensesApi.get(id)` which returns full expense with `version` |
+| IMG-6 | Defect | New Expense | Percentage and Fixed share options not working | App ignores user-entered percentages/fixed amounts and always splits equally | High | **FIXED** | 2026-03-11 | Fixed rounding: last member absorbs cent remainder for percentage splits; same for fixed splits. Prevents backend sum-validation rejection |
+| IMG-7 | Defect | Settle Up | Settlement recalculation is wrong | After recording a payment, balances should decrease but instead they increase | High | **FIXED** | 2026-03-11 | `BalanceCalculationService.java`: settlement signs were inverted — payer (debtor) was being debited instead of credited. 6 regression integration tests added |
+| IMG-8 | Enhancement | Existing Group | No delete/archive option in group detail screen | Delete and archive are only available via long-press on the Groups list, not inside the group | Low | **FIXED** | 2026-03-11 | Added `⋮` menu in `group/[id].tsx` header with Archive/Unarchive and Delete actions + confirmation modals |
+| IMG-9 | Defect | Group List | Delete group feature not working | App throws error when trying to delete a group that has outstanding balances — no user-friendly message | Medium | **FIXED** | 2026-03-11 | FE: parses `OUTSTANDING_BALANCES` error code and shows clear message. BE already throws correctly. 2 regression integration tests |
+| IMG-10 | Enhancement | Group List | Archive group should ask for confirmation | Show confirmation dialog explaining what archiving does and check for open balances | Medium | **FIXED** | 2026-03-11 | Added `ConfirmModal` in `groups.tsx` with message explaining archive. Also added same in new `group/[id].tsx` actions |
+
 ## Backlog
 
 | # | Feature | Priority | Details |
@@ -85,7 +102,6 @@
 | B31 | ~~Chat — Bubble grouping~~ | ~~Low~~ | **Done**: `getBubblePosition()` detects consecutive same-role messages. Reduced vertical padding for middle bubbles. Bot avatar only on last/only. Border radius adjusted per position. |
 | B32 | Chat — Accessibility | Medium | Add accessibilityLabels to send button, back button, action cards, group selection cards. Screen reader support. |
 | B33 | ~~Chat — FlatList performance~~ | ~~Medium~~ | **Done**: `MessageItem` wrapped in `React.memo` with custom comparator (role, index, dark mode, loading, adjacent roles). Memoized `keyExtractor`. FlatList tuned: `removeClippedSubviews`, `maxToRenderPerBatch=10`, `windowSize=10`, `initialNumToRender=20`. |
-
 | B34 | ~~Receipt → Chat auto-fill~~ | ~~High~~ | **Done (FE)**: "Split via Chat" button on receipt results → navigates to chat with natural language message (merchant, amount, date, line items). Chat auto-sends on mount via `receiptMessage` param. BE handles group selection + expense creation. 2 tests. |
 | B35 | ~~Natural language balance queries~~ | ~~High~~ | **Done (FE + BE)**: "Who owes me money?" suggested prompt + chat renders markdown responses. BE has 4 LLM tools: `get_user_balance`, `get_balance_with_user`, `get_cross_group_balances`, `get_group_balance` — returns SSE `text` events with markdown. |
 | B36 | Smart split suggestions | Low | LLM suggests split ratios based on description (e.g., "hotel 2 nights" → split by nights). Niche use case. |
@@ -103,6 +119,7 @@
 | B48 | Chat — Image preview modal | Low | Tap attached image to open full-screen preview with pinch-to-zoom. Currently images are inline-only. |
 | B49 | ~~Chat — Markdown rendering~~ | ~~Medium~~ | **Done**: Custom lightweight `ChatMarkdown` component — no external dependency. Supports **bold**, *italic*, `inline code`, ```code blocks```, bullet lists (- / *), numbered lists. Conditional rendering: only activates when markdown formatting detected in AI responses. 10 tests. |
 | B50 | Chat — Voice input | Low | Microphone button for speech-to-text input. Uses `expo-speech` or platform speech recognition. "Add $20 for lunch with Sarah" via voice. |
+| B-IMG3 | Clarify Photo vs Gallery behavior on Add Expense | Low | IMG-3 (Question): `launchCameraAsync` (Photo) and `launchImageLibraryAsync` (Gallery) are correctly distinct. On iOS Simulator camera is unavailable so both fall back to gallery — expected platform limitation, not a bug. Consider showing a "Camera unavailable" message when camera permission is denied or unavailable on simulator |
 
 ## Notes
 
