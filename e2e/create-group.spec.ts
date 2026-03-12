@@ -2,7 +2,7 @@ import { test, expect } from "./auth.setup";
 
 test.describe("Create Group Flow", () => {
   test.beforeEach(async ({ page }) => {
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await expect(page.getByText("New")).toBeVisible({ timeout: 10000 });
     await page.getByText("New").click();
     await expect(page.getByText("New Group")).toBeVisible({ timeout: 5000 });
@@ -27,23 +27,21 @@ test.describe("Create Group Flow", () => {
   });
 
   test("shows currency selector with options", async ({ page }) => {
-    await expect(page.getByText("USD")).toBeVisible();
-    await expect(page.getByText("EUR")).toBeVisible();
-    await expect(page.getByText("GBP")).toBeVisible();
-    await expect(page.getByText("INR")).toBeVisible();
-    await expect(page.getByText("CAD")).toBeVisible();
-    await expect(page.getByText("AUD")).toBeVisible();
-    await expect(page.getByText("JPY")).toBeVisible();
+    // Use exact match to avoid matching "1 members · USD" from groups list in background DOM
+    await expect(page.getByText("USD", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("EUR", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("GBP", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("INR", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("CAD", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("AUD", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("JPY", { exact: true }).first()).toBeVisible();
   });
 
   test("shows add people section with helper text", async ({ page }) => {
     await expect(page.getByText("Add People")).toBeVisible();
     await expect(page.getByText("(optional)")).toBeVisible();
     await expect(
-      page.getByPlaceholder("e.g., Alex, Sarah, Mike")
-    ).toBeVisible();
-    await expect(
-      page.getByText("Just add names for now")
+      page.getByPlaceholder("Name (e.g., Alex)")
     ).toBeVisible();
   });
 

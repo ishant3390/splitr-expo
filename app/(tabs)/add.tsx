@@ -481,13 +481,15 @@ export default function AddExpenseScreen() {
             </View>
           ) : !isQuickMode ? (
             <View className="flex-row gap-2 mt-3">
-              <Pressable
-                onPress={() => pickReceiptImage(true)}
-                className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"
-              >
-                <Camera size={14} color="#64748b" />
-                <Text className="text-xs font-sans-medium text-muted-foreground">Photo</Text>
-              </Pressable>
+              {Platform.OS !== "web" && (
+                <Pressable
+                  onPress={() => pickReceiptImage(true)}
+                  className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"
+                >
+                  <Camera size={14} color="#64748b" />
+                  <Text className="text-xs font-sans-medium text-muted-foreground">Photo</Text>
+                </Pressable>
+              )}
               <Pressable
                 onPress={() => pickReceiptImage(false)}
                 className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"

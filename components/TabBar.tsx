@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, Pressable, StyleSheet, Dimensions } from "react-native";
+import { View, Text, Pressable, StyleSheet, useWindowDimensions } from "react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import Animated, {
   useSharedValue,
@@ -160,7 +160,7 @@ function FABButton() {
   return (
     <View style={styles.fabContainer}>
       <Animated.View style={[styles.fabShadow, animatedStyle]}>
-        <Pressable onPress={handlePress} onLongPress={handleLongPress} delayLongPress={400} style={styles.fab}>
+        <Pressable onPress={handlePress} onLongPress={handleLongPress} delayLongPress={400} style={styles.fab} accessibilityLabel="Add Expense" accessibilityRole="button">
           <Plus size={24} color="#ffffff" strokeWidth={2.5} />
         </Pressable>
       </Animated.View>
@@ -174,7 +174,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const isDark = colorScheme === "dark";
 
   // Sliding indicator
-  const screenWidth = Dimensions.get("window").width;
+  const { width: screenWidth } = useWindowDimensions();
   const realTabs = state.routes.filter((r) => r.name !== "add");
   const tabWidth = screenWidth / (realTabs.length + 1);
   const indicatorX = useSharedValue(0);

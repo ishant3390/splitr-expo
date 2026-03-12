@@ -46,14 +46,14 @@ const CONTACT_OPTIONS = [
   {
     icon: Mail,
     label: "Email Support",
-    subtitle: "support@splitr.app",
-    onPress: () => Linking.openURL("mailto:support@splitr.app"),
+    subtitle: "support@splitr.ai",
+    onPress: () => Linking.openURL("mailto:support@splitr.ai"),
   },
   {
     icon: Globe,
     label: "Visit Website",
-    subtitle: "splitr.app",
-    onPress: () => Linking.openURL("https://splitr.app"),
+    subtitle: "splitr.ai",
+    onPress: () => Linking.openURL("https://splitr.ai"),
   },
 ];
 

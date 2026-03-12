@@ -15,6 +15,7 @@ import type {
   GroupMemberDto,
   AddMemberRequest,
   AddGuestMemberRequest,
+  InviteByEmailRequest,
   UpdateMemberRequest,
   ExpenseDto,
   CreateExpenseRequest,
@@ -156,6 +157,13 @@ export const groupsApi = {
   addGuestMember: (groupId: string, data: AddGuestMemberRequest, token: string) =>
     request<GroupMemberDto>(
       `/v1/groups/${groupId}/members/guest`,
+      { method: "POST", body: JSON.stringify(data) },
+      token
+    ),
+
+  inviteByEmail: (groupId: string, data: InviteByEmailRequest, token: string) =>
+    request<GroupMemberDto>(
+      `/v1/groups/${groupId}/members/invite`,
       { method: "POST", body: JSON.stringify(data) },
       token
     ),

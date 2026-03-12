@@ -5,9 +5,7 @@ test.describe("Add Expense Flow", () => {
     // Navigate via tab bar — the Add tab is the center button
     // Use the tab bar role/structure to find the + button
     // On web, Expo Router renders tabs with role="tablist"
-    await page.getByRole("tab", { name: /^$/ }).or(
-      page.locator('[role="tablist"] > *:nth-child(3)')
-    ).first().click();
+    await page.getByRole("button", { name: "Add Expense" }).click();
 
     // Wait for the add expense screen — it might also land on the add tab screen
     await page.waitForTimeout(2000);
@@ -31,7 +29,7 @@ test.describe("Add Expense Flow", () => {
   test("can navigate to add expense from home quick action", async ({ page }) => {
     // Alternative: use the "Add" quick action on home screen
     // Go back to home first
-    await page.getByRole("tab", { name: "Home" }).click();
+    await page.getByRole("button", { name: "Home" }).click();
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 5000 });
 
     // Look for "Add" quick action button on home

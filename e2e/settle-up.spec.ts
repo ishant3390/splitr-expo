@@ -3,7 +3,7 @@ import { test, expect } from "./auth.setup";
 test.describe("Settle Up Flow", () => {
   test("can navigate to settle up from group detail", async ({ page }) => {
     // First go to Groups and open a group (if any exist)
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await page.waitForTimeout(2000);
 
     // Check if there are any groups
@@ -19,18 +19,18 @@ test.describe("Settle Up Flow", () => {
       await page.waitForTimeout(1000);
 
       // Look for Settle Up button
-      await expect(page.getByText("Settle Up")).toBeVisible({ timeout: 5000 });
-      await page.getByText("Settle Up").click();
+      await expect(page.getByText("Settle Up").first()).toBeVisible({ timeout: 5000 });
+      await page.getByText("Settle Up").first().click();
 
-      // Should see the settle up screen
-      await expect(page.getByText("Settle Up")).toBeVisible({ timeout: 5000 });
+      // Should see the settle up screen header
+      await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
       await expect(page.getByText("Suggested")).toBeVisible();
       await expect(page.getByText("History")).toBeVisible();
     }
   });
 
   test("settle up screen shows tabs", async ({ page }) => {
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await page.waitForTimeout(2000);
 
     const hasGroups = await page
@@ -61,7 +61,7 @@ test.describe("Settle Up Flow", () => {
   });
 
   test("can switch to History tab", async ({ page }) => {
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await page.waitForTimeout(2000);
 
     const hasGroups = await page

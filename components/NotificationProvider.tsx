@@ -114,7 +114,7 @@ function NativeNotificationProvider({ children }: NotificationProviderProps) {
 
     return () => {
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        responseListener.current.remove();
       }
     };
   }, [router]);

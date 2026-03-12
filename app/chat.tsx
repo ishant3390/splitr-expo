@@ -1529,6 +1529,7 @@ export default function ChatScreen() {
 
   const handleSelectGroup = useCallback(
     (messageId: string, group: ChatGroupOption) => {
+      hapticLight();
       setMessages((prev) =>
         prev.map((m) =>
           m.id === messageId ? { ...m, actionHandled: true } : m
@@ -1541,6 +1542,7 @@ export default function ChatScreen() {
 
   const handleConfirmExpense = useCallback(
     (messageId: string) => {
+      hapticSuccess();
       setMessages((prev) =>
         prev.map((m) =>
           m.id === messageId ? { ...m, actionHandled: true } : m
@@ -1553,6 +1555,7 @@ export default function ChatScreen() {
 
   const handleEditExpense = useCallback(
     (preview: ChatExpensePreview, messageId: string) => {
+      hapticLight();
       setMessages((prev) =>
         prev.map((m) =>
           m.id === messageId ? { ...m, actionHandled: true } : m
@@ -1574,6 +1577,7 @@ export default function ChatScreen() {
 
   const handleConfirmCreateGroup = useCallback(
     (messageId: string) => {
+      hapticSuccess();
       setMessages((prev) =>
         prev.map((m) =>
           m.id === messageId ? { ...m, actionHandled: true } : m

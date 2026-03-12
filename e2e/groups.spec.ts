@@ -3,7 +3,7 @@ import { test, expect } from "./auth.setup";
 test.describe("Groups Screen", () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to Groups tab
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
   });
 
   test("shows groups header and tabs", async ({ page }) => {

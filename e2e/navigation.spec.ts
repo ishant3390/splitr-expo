@@ -6,23 +6,23 @@ test.describe("Cross-Screen Navigation", () => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
 
     // Navigate to Groups
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
 
     // Navigate to Activity
-    await page.getByRole("tab", { name: "Activity" }).click();
+    await page.getByRole("button", { name: "Activity" }).click();
     await expect(page.getByText("Recent Activity")).toBeVisible({
       timeout: 5000,
     });
 
     // Navigate to Profile
-    await page.getByRole("tab", { name: "Profile" }).click();
+    await page.getByRole("button", { name: "Profile" }).click();
     await expect(page.getByText("Edit Profile")).toBeVisible({
       timeout: 5000,
     });
 
     // Navigate back to Home
-    await page.getByRole("tab", { name: "Home" }).click();
+    await page.getByRole("button", { name: "Home" }).click();
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 5000 });
   });
 
@@ -30,7 +30,7 @@ test.describe("Cross-Screen Navigation", () => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
 
     // Go to Groups tab
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await page.waitForTimeout(2000);
 
     const hasGroups = await page
@@ -43,11 +43,11 @@ test.describe("Cross-Screen Navigation", () => {
 
     // Open a group
     await page.getByText("members").first().click();
-    await expect(page.getByText("MEMBERS")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/^MEMBERS/).first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("Total Spent")).toBeVisible();
 
-    // Navigate back using the tab bar (Groups tab)
-    await page.getByRole("tab", { name: "Groups" }).click();
+    // group/[id] is a push screen (no tab bar) — go back
+    await page.goBack();
     await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
   });
 
@@ -55,11 +55,7 @@ test.describe("Cross-Screen Navigation", () => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
 
     // Click the center Add tab (3rd child in tablist)
-    await page
-      .getByRole("tab", { name: /^$/ })
-      .or(page.locator('[role="tablist"] > *:nth-child(3)'))
-      .first()
-      .click();
+    await page.getByRole("button", { name: "Add Expense" }).click();
 
     await page.waitForTimeout(2000);
 
@@ -80,7 +76,7 @@ test.describe("Cross-Screen Navigation", () => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
 
     // Navigate to Profile
-    await page.getByRole("tab", { name: "Profile" }).click();
+    await page.getByRole("button", { name: "Profile" }).click();
     await expect(page.getByText("Edit Profile")).toBeVisible({
       timeout: 5000,
     });
@@ -93,8 +89,8 @@ test.describe("Cross-Screen Navigation", () => {
     await expect(page.getByPlaceholder("Your name")).toBeVisible();
     await expect(page.getByText("Save Changes")).toBeVisible();
 
-    // Navigate back to Profile via tab bar
-    await page.getByRole("tab", { name: "Profile" }).click();
+    // edit-profile is a push screen (no tab bar) — use back navigation
+    await page.goBack();
     await expect(page.getByText("Edit Profile")).toBeVisible({
       timeout: 5000,
     });
@@ -105,7 +101,7 @@ test.describe("Cross-Screen Navigation", () => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
 
     // Navigate to Groups
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await expect(page.getByText("New")).toBeVisible({ timeout: 5000 });
 
     // Click "New" to go to create group
@@ -113,15 +109,15 @@ test.describe("Cross-Screen Navigation", () => {
     await expect(page.getByText("New Group")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("Create Group")).toBeVisible();
 
-    // Go back to Groups via tab bar
-    await page.getByRole("tab", { name: "Groups" }).click();
+    // create-group is a push screen (no tab bar) — use back navigation
+    await page.goBack();
     await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
   });
 
   test("Group detail to Settle Up and back", async ({ page }) => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
 
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await page.waitForTimeout(2000);
 
     const hasGroups = await page
@@ -141,8 +137,9 @@ test.describe("Cross-Screen Navigation", () => {
     await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/History/)).toBeVisible();
 
-    // Go back via tab bar to Groups
-    await page.getByRole("tab", { name: "Groups" }).click();
+    // settle-up is a push screen (no tab bar) — go back to group detail, then back to groups
+    await page.goBack();
+    await page.goBack();
     await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
   });
 
@@ -198,8 +195,10 @@ test.describe("Cross-Screen Navigation", () => {
       // Either navigated to scan screen or stayed on home (if scan opens a modal)
       expect(isOnScan || isOnHome).toBeTruthy();
 
-      // Navigate back to home
-      await page.getByRole("tab", { name: "Home" }).click();
+      // receipt-scanner is a push screen — navigate back
+      if (isOnScan) {
+        await page.goBack();
+      }
       await expect(page.getByText("Splitr")).toBeVisible({ timeout: 5000 });
     }
 
@@ -213,14 +212,17 @@ test.describe("Cross-Screen Navigation", () => {
       await page.getByText("Chat").click();
       await page.waitForTimeout(2000);
 
-      // Should navigate to chat screen
+      // Should navigate to chat screen — check for the chat input or assistant label
       const isOnChat = await page
-        .getByText(/Chat|AI|Assistant/i)
-        .first()
+        .getByText("Split Assistant")
+        .isVisible()
+        .catch(() => false);
+      const isOnChatAlt = await page
+        .getByPlaceholder(/message/i)
         .isVisible()
         .catch(() => false);
 
-      expect(isOnChat).toBeTruthy();
+      expect(isOnChat || isOnChatAlt).toBeTruthy();
     }
   });
 
@@ -228,17 +230,17 @@ test.describe("Cross-Screen Navigation", () => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
 
     // Go to Groups and verify content
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
 
     // Switch to Activity
-    await page.getByRole("tab", { name: "Activity" }).click();
+    await page.getByRole("button", { name: "Activity" }).click();
     await expect(page.getByText("Recent Activity")).toBeVisible({
       timeout: 5000,
     });
 
     // Switch back to Groups — should still show group content
-    await page.getByRole("tab", { name: "Groups" }).click();
+    await page.getByRole("button", { name: "Groups" }).click();
     await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("Archived")).toBeVisible();
   });

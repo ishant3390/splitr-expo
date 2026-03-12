@@ -74,7 +74,7 @@ const iconMap: Record<ExpenseCategory, typeof Utensils> = {
 };
 
 function getInviteUrl(inviteCode: string) {
-  return `https://splitr.app/invite/${inviteCode}`;
+  return `https://splitr.ai/invite/${inviteCode}`;
 }
 
 export default function GroupDetailScreen() {
@@ -106,6 +106,7 @@ export default function GroupDetailScreen() {
   // Add member state
   const [showAddMember, setShowAddMember] = useState(false);
   const [addMemberName, setAddMemberName] = useState("");
+  const [addMemberEmail, setAddMemberEmail] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const [contacts, setContacts] = useState<ContactDto[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -258,24 +259,48 @@ export default function GroupDetailScreen() {
     load();
   }, [showAddMember]);
 
-  const handleAddMemberByName = async () => {
+  const handleAddMember = async () => {
     const name = addMemberName.trim();
+    const email = addMemberEmail.trim().toLowerCase();
     if (!name) {
       toast.error("Please enter a name.");
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Please enter a valid email address.");
       return;
     }
     setAddingMember(true);
     try {
       const token = await getToken();
-      await groupsApi.addGuestMember(id, { name }, token!);
-      hapticSuccess();
-      toast.success(`${name} added to group.`);
+      if (email) {
+        await groupsApi.inviteByEmail(id, { email }, token!);
+        hapticSuccess();
+        toast.success(`Invite sent to ${email}`);
+      } else {
+        await groupsApi.addGuestMember(id, { name }, token!);
+        hapticSuccess();
+        toast.success(`${name} added to group.`);
+      }
       setAddMemberName("");
+      setAddMemberEmail("");
       setShowAddMember(false);
       const updated = await groupsApi.listMembers(id, token!);
       setMembers(dedupeMembers(updated));
-    } catch {
-      toast.error("Failed to add member. They may already be in the group.");
+    } catch (err: unknown) {
+      hapticError();
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("409") || msg.includes("ERR-409") || msg.includes("INVITE_ALREADY_MEMBER")) {
+        toast.error("This person is already in the group.");
+      } else if (msg.includes("ERR-402") || msg.includes("GROUP_ARCHIVED")) {
+        toast.error("This group is archived.");
+      } else if (msg.includes("404") || msg.includes("ERR-300")) {
+        toast.error("Group not found.");
+      } else if (msg.includes("403") || msg.includes("ERR-201")) {
+        toast.error("You're not a member of this group.");
+      } else {
+        toast.error("Failed to add member. They may already be in the group.");
+      }
     } finally {
       setAddingMember(false);
     }
@@ -949,13 +974,13 @@ export default function GroupDetailScreen() {
       />
 
       {/* Add Member Modal */}
-      <BottomSheetModal visible={showAddMember} onClose={() => setShowAddMember(false)} keyboardAvoiding>
+      <BottomSheetModal visible={showAddMember} onClose={() => { setShowAddMember(false); setAddMemberEmail(""); }} keyboardAvoiding>
         {/* Modal header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
             Add Member
           </Text>
-          <Pressable onPress={() => setShowAddMember(false)}>
+          <Pressable onPress={() => { setShowAddMember(false); setAddMemberEmail(""); }}>
             <X size={22} color="#64748b" />
           </Pressable>
         </View>
@@ -1019,27 +1044,35 @@ export default function GroupDetailScreen() {
           </View>
         ) : null}
 
-        {/* Name input (primary) */}
+        {/* Name + optional email */}
         <Input
           label="Name"
           placeholder="e.g., Alex"
           value={addMemberName}
           onChangeText={setAddMemberName}
           autoCapitalize="words"
-          onSubmitEditing={handleAddMemberByName}
+          returnKeyType="next"
+        />
+
+        <Input
+          label="Email (optional)"
+          placeholder="e.g., alex@example.com"
+          value={addMemberEmail}
+          onChangeText={setAddMemberEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          onSubmitEditing={handleAddMember}
           returnKeyType="done"
         />
 
-        <Text
-          style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b", lineHeight: 18 }}
-        >
-          They'll be added as a guest. Share the group link so they can join with their account.
+        <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b", lineHeight: 18 }}>
+          Add an email to send them a direct invite. Without one, share the group link so they can join.
         </Text>
 
         {/* Add button */}
         <Button
           variant="default"
-          onPress={handleAddMemberByName}
+          onPress={handleAddMember}
           disabled={addingMember || !addMemberName.trim()}
         >
           {addingMember ? (
@@ -1054,7 +1087,7 @@ export default function GroupDetailScreen() {
         {/* Share link shortcut */}
         {group?.inviteCode && (
           <Pressable
-            onPress={() => { setShowAddMember(false); setShowShareModal(true); }}
+            onPress={() => { setShowAddMember(false); setAddMemberEmail(""); setShowShareModal(true); }}
             style={{
               flexDirection: "row",
               alignItems: "center",

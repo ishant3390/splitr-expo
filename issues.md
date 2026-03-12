@@ -46,7 +46,7 @@
 |---|-------|----------|--------|----------|---------|
 | 22 | ~~Receipt scanning is fully mocked~~ | Low | Fixed | 2026-03-06 | Replaced mock with real `POST /v1/receipts/scan` API. Premium UX: scan line animation, processing dots, confidence badges, error/retry states. 9 tests. |
 | 23 | ~~Push notifications — Full integration~~ | Medium | Fixed | 2026-03-06 | **Phase 1 + 2 complete.** Token registration with deviceId/deviceName, notification history from `GET /v1/users/me/notifications`, payload routing (type+groupId→route), global toggle syncs to BE via `PATCH /v1/users/me`, per-group toggle in group detail via `PATCH /v1/groups/{groupId}/members/{memberId}`, notifications screen shows real BE data. BE handles rate limiting (5/hr, 20/day) and coalescing (60s window). |
-| 24 | Deep link universal links not tested | Low | Open | 2026-03-06 | Requires AASA file hosted on splitr.app domain |
+| 24 | Deep link universal links not tested | Low | FE Done / BE Pending | 2026-03-12 | Domain updated to splitr.ai everywhere. AASA + assetlinks.json templates created in `well-known/`. **BE action**: host `well-known/apple-app-site-association` and `well-known/assetlinks.json` at `https://splitr.ai/.well-known/` with `Content-Type: application/json`. Replace `APPLE_TEAM_ID` in AASA and `REPLACE_WITH_SHA256_FINGERPRINT_OF_ANDROID_SIGNING_CERT` in assetlinks.json before deploying. |
 
 ## IMG.png Bug Report (2026-03-11)
 
@@ -96,7 +96,7 @@ Bugs reported via IMG.png bug tracker. All fixes include integration/unit tests.
 | B25 | ~~AI Chat — Core implementation~~ | ~~High~~ | **Done (FE)**: `app/chat.tsx` — SSE streaming chat with interactive cards (group selection, expense confirmation, create group). `POST /v1/chat` with conversationId. Quota system (`GET /v1/chat/quota`), unmount cleanup, double-send prevention, smart scroll, cache invalidation, offline awareness, stop generation, retry on failure. 17 tests. **BE pending**: endpoint implementation. |
 | B26 | Chat — Message timestamps | Low | **Done**: Timestamps with `formatMessageTime()` + smart grouping via `shouldShowTimestamp()` (5-min gap). Animated with `FadeIn.duration(200)`. |
 | B27 | ~~Chat — Typing indicator animation~~ | ~~Low~~ | **Done**: `TypingDotsIndicator` with 3 bouncing dots using Reanimated `withRepeat`/`withSequence`/`withTiming`. Staggered delays (0/150/300ms). |
-| B28 | Chat — Copy message | Low | Long-press to copy AI-generated text (balance summaries, explanations). |
+| B28 | ~~Chat — Copy message~~ | ~~Low~~ | **Done**: Long-press assistant messages → copies to clipboard, haptic + toast. Already implemented in `app/chat.tsx`. |
 | B29 | Chat — Suggested follow-ups | Low | Show contextual follow-up suggestions after actions (e.g., after expense: "Add another", "Check balance", "View group"). |
 | B30 | ~~Chat — Conversation persistence~~ | ~~Low~~ | **Done**: Messages + conversationId persisted to AsyncStorage with debounced save (500ms). New Chat button clears storage. Loaded on mount. |
 | B31 | ~~Chat — Bubble grouping~~ | ~~Low~~ | **Done**: `getBubblePosition()` detects consecutive same-role messages. Reduced vertical padding for middle bubbles. Bot avatar only on last/only. Border radius adjusted per position. |
@@ -112,7 +112,7 @@ Bugs reported via IMG.png bug tracker. All fixes include integration/unit tests.
 | B41 | ~~Chat — Send button animation~~ | ~~Low~~ | **Done**: `SendButton` component with spring pop on enable/disable state change and on press via `withSequence`/`withSpring`. |
 | B42 | ~~Chat — MentionDropdown animation~~ | ~~Low~~ | **Done**: `FadeIn.duration(150)` entering + `FadeOut.duration(100)` exiting on both empty state and list views. |
 | B43 | ~~Chat — Smooth keyboard~~ | ~~Medium~~ | **Done**: Replaced RN `KeyboardAvoidingView` with `react-native-keyboard-controller` (`KeyboardProvider` + `KBCKeyboardAvoidingView`) for 60fps keyboard-synced animations on native. Web fallback to plain View. |
-| B44 | Chat — Haptic feedback on actions | Low | Add haptic impact on send, on action card tap (confirm/edit), on group selection. Use `impactAsync(Light)` for taps, `notificationAsync(Success)` for confirmations. |
+| B44 | ~~Chat — Haptic feedback on actions~~ | ~~Low~~ | **Done**: `hapticLight()` on group select + edit expense; `hapticSuccess()` on confirm expense + confirm create group. |
 | B45 | ~~Chat — Swipe to reply~~ | ~~Medium~~ | **Done**: Pan gesture (react-native-gesture-handler) on messages — swipe right >50px triggers reply. Reply icon animates behind message during swipe. Reply preview bar above input shows quoted content with dismiss button. Quoted messages shown inline with teal left border. |
 | B46 | Chat — Message reactions | Low | Long-press message → emoji reaction picker (👍 ✅ ❓). Visual feedback only, not persisted. Low priority. |
 | B47 | ~~Chat — Scroll-to-bottom FAB~~ | ~~Low~~ | **Done**: Floating ChevronDown button appears when scrolled >300px from bottom. FadeIn/FadeOut animation, haptic on tap, scrolls to end. Positioned absolute bottom-right above input. 1 test. |

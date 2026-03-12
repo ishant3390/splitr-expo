@@ -135,6 +135,10 @@ export interface AddGuestMemberRequest {
   email?: string;
 }
 
+export interface InviteByEmailRequest {
+  email: string;
+}
+
 export interface UpdateMemberRequest {
   role?: string;
   displayName?: string;

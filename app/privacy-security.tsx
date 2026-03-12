@@ -235,7 +235,7 @@ export default function PrivacySecurityScreen() {
   const handleDeleteAccount = () => {
     setShowDeleteModal(false);
     hapticError();
-    toast.info("Please email support@splitr.app to request account deletion. We'll process it within 48 hours.");
+    toast.info("Please email support@splitr.ai to request account deletion. We'll process it within 48 hours.");
   };
 
   const formatSessionDevice = (session: SessionInfo) => {
@@ -514,14 +514,14 @@ export default function PrivacySecurityScreen() {
             </Text>
             <Card className="overflow-hidden">
               <Pressable
-                onPress={() => { hapticLight(); Linking.openURL("https://splitr.app/privacy"); }}
+                onPress={() => { hapticLight(); Linking.openURL("https://splitr.ai/privacy"); }}
                 className="flex-row items-center justify-between p-4 border-b border-border"
               >
                 <Text className="text-sm font-sans-medium text-card-foreground">Privacy Policy</Text>
                 <ExternalLink size={16} color="#94a3b8" />
               </Pressable>
               <Pressable
-                onPress={() => { hapticLight(); Linking.openURL("https://splitr.app/terms"); }}
+                onPress={() => { hapticLight(); Linking.openURL("https://splitr.ai/terms"); }}
                 className="flex-row items-center justify-between p-4"
               >
                 <Text className="text-sm font-sans-medium text-card-foreground">Terms of Service</Text>

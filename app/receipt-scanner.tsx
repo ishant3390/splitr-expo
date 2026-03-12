@@ -4,7 +4,7 @@ import {
   Text,
   ScrollView,
   useColorScheme,
-  Dimensions,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
@@ -39,8 +39,6 @@ import { useToast } from "@/components/ui/toast";
 import { expensesApi } from "@/lib/api";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import type { ReceiptScanResultDto, ReceiptScanResponseDto } from "@/lib/types";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 /** Animated scan line that sweeps vertically over the receipt image */
 function ScanAnimation() {
@@ -107,9 +105,9 @@ function ProcessingDots() {
 
   return (
     <View style={{ flexDirection: "row", gap: 6, justifyContent: "center" }}>
-      {[s1, s2, s3].map((s, i) => (
+      {([s1, s2, s3] as const).map((s, i) => (
         <Animated.View
-          key={i}
+          key={`dot-${i}`}
           style={[s, { width: 8, height: 8, borderRadius: 4, backgroundColor: "#0d9488" }]}
         />
       ))}
@@ -281,14 +279,16 @@ export default function ReceiptScannerScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(300).duration(400).springify()} className="w-full gap-3 mt-4">
-            <Button variant="default" size="lg" onPress={() => captureImage(true)} className="w-full">
-              <View className="flex-row items-center gap-2">
-                <Camera size={20} color="#ffffff" />
-                <Text className="text-base font-sans-semibold text-primary-foreground">
-                  Take Photo
-                </Text>
-              </View>
-            </Button>
+            {Platform.OS !== "web" && (
+              <Button variant="default" size="lg" onPress={() => captureImage(true)} className="w-full">
+                <View className="flex-row items-center gap-2">
+                  <Camera size={20} color="#ffffff" />
+                  <Text className="text-base font-sans-semibold text-primary-foreground">
+                    Take Photo
+                  </Text>
+                </View>
+              </Button>
+            )}
             <Button variant="outline" size="lg" onPress={() => captureImage(false)} className="w-full">
               <View className="flex-row items-center gap-2">
                 <ImageIcon size={20} color={iconColor} />
@@ -426,7 +426,7 @@ export default function ReceiptScannerScreen() {
                   </View>
                   {result.lineItems.map((item, idx) => (
                     <View
-                      key={idx}
+                      key={`${item.description}-${idx}`}
                       className={`flex-row items-center justify-between py-2 ${
                         idx < result.lineItems.length - 1 ? "border-b border-border" : ""
                       }`}

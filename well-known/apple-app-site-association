@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["APPLE_TEAM_ID.com.splitr.ai"],
+        "components": [
+          {
+            "/": "/invite/*",
+            "comment": "Matches any invite deep link"
+          }
+        ]
+      }
+    ]
+  }
+}

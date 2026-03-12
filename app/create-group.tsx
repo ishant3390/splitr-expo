@@ -77,7 +77,7 @@ const CURRENCIES = [
 ];
 
 function getInviteUrl(inviteCode: string) {
-  return `https://splitr.app/invite/${inviteCode}`;
+  return `https://splitr.ai/invite/${inviteCode}`;
 }
 
 export default function CreateGroupScreen() {

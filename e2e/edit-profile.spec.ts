@@ -3,7 +3,7 @@ import { test, expect } from "./auth.setup";
 test.describe("Edit Profile Flow", () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to Profile tab, then to Edit Profile
-    await page.getByRole("tab", { name: "Profile" }).click();
+    await page.getByRole("button", { name: "Profile" }).click();
     await expect(page.getByText("Edit Profile").first()).toBeVisible({
       timeout: 10000,
     });
