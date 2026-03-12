@@ -109,12 +109,14 @@ lib/
 
 ## Invite / Join Flow
 - Groups auto-generate an `inviteCode` on creation
-- Invite URL format: `https://splitr.app/invite/{inviteCode}`
+- Invite URL format: `https://splitr.ai/invite/{inviteCode}`
 - Share modal shows link first, QR code behind "Show QR Code" toggle
 - Deep links: iOS `associatedDomains` + Android `intentFilters` configured in `app.json`
 - Join screen handles error codes: ERR-301 (already member), ERR-300 (not found), ERR-401 (expired), ERR-402 (archived)
 - Guest-to-user promotion is automatic on backend when emails match
-- Members can be added by name only (no email required) — `AddGuestMemberRequest.email` is optional
+- Add Member modal: name (required) + email (optional); email provided → `POST /members/invite` (sends invite email); name only → `addGuestMember`
+- Email invite endpoint: `POST /v1/groups/{groupId}/members/invite { email }` — handles known users, unknown (guest), and already-member (ERR-409)
+- Universal link files: `well-known/apple-app-site-association` + `well-known/assetlinks.json` — BE must host at `https://splitr.ai/.well-known/` (fill in APPLE_TEAM_ID + Android SHA256 fingerprint)
 
 ## Push Notification Integration
 - **Token registration**: `POST /v1/users/me/push-tokens` with `{ token, deviceId, deviceName, platform }`
@@ -205,7 +207,7 @@ lib/
 
 ## Known Gaps (Not Yet Implemented)
 - Activity `details.categoryName` — confirm backend populates this for category filtering
-- Deep link testing: universal links require AASA file hosted on splitr.app domain
+- Deep link universal links — FE fully configured; BE must host `well-known/` files at `https://splitr.ai/.well-known/` (see `well-known/` directory in repo)
 
 ## Testing
 
