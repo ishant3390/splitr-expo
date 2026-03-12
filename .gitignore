@@ -43,3 +43,9 @@ test-results/
 telemetry-id
 /screenshots/index.html
 /design-system.html
+
+# Playwright debug artifacts
+add-expense.yaml
+
+# QA screenshots
+qa/

@@ -335,29 +335,24 @@ test("Issue 8 — group detail: has delete or archive option in screen", async (
 
   await page.screenshot({ path: path.join(SHOTS, "issue8-group-detail.png") });
 
-  // Check for a "⋮" more options menu, or explicit archive/delete buttons
-  const hasMore = await page.locator("[aria-label='More options']").isVisible().catch(() => false) ||
-                  await page.locator("button").filter({ hasText: /more|⋮|\.{3}/i }).first().isVisible().catch(() => false);
-  const hasDeleteInline = await page.getByText("Delete").isVisible().catch(() => false);
-  const hasArchiveInline = await page.getByText("Archive", { exact: true }).isVisible().catch(() => false);
+  // Check for a "More options" button (aria-label set on MoreVertical button in group detail header)
+  const hasMore = await page.locator("[aria-label='More options']").isVisible().catch(() => false);
 
-  console.log("Issue 8 — More options (⋮) button visible:", hasMore);
-  console.log("Issue 8 — Delete button inline:", hasDeleteInline);
-  console.log("Issue 8 — Archive button inline:", hasArchiveInline);
+  console.log("Issue 8 — More options button visible:", hasMore);
 
-  // Try clicking the more options button if it exists
   if (hasMore) {
-    await page.locator("button").filter({ hasText: /more|⋮/i }).first().click();
+    await page.locator("[aria-label='More options']").first().click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(SHOTS, "issue8-more-menu.png") });
     const hasArchiveInMenu = await page.getByText(/archive|delete/i).isVisible().catch(() => false);
     console.log("Issue 8 — Archive/Delete in more menu:", hasArchiveInMenu);
-  }
-
-  if (!hasDeleteInline && !hasArchiveInline && !hasMore) {
-    console.log("Issue 8 — STATUS: OPEN ✗ (no archive/delete option on group detail screen)");
+    if (hasArchiveInMenu) {
+      console.log("Issue 8 — STATUS: FIXED ✓ (archive/delete option in more menu)");
+    } else {
+      console.log("Issue 8 — STATUS: PARTIAL ⚠ (more menu opened but no archive/delete found)");
+    }
   } else {
-    console.log("Issue 8 — STATUS: FIXED ✓ (archive/delete option exists on group detail)");
+    console.log("Issue 8 — STATUS: OPEN ✗ (no more options button on group detail screen)");
   }
 });
 
@@ -368,24 +363,29 @@ test("Issue 9 — group list: delete group works without error", async ({ page }
 
   await page.screenshot({ path: path.join(SHOTS, "issue9-groups-list.png") });
 
-  // Long-press is not supported on web — test if there is an alternative delete path
-  // On web, long-press becomes right-click or contextmenu
-  const firstGroup = page.getByText("members").first();
-  const hasGroup = await firstGroup.isVisible().catch(() => false);
+  // Right-click triggers onContextMenu which opens the action sheet (web long-press equivalent)
+  const firstGroupCard = page.locator("[aria-label='Group actions']").first();
+  const hasGroup = await firstGroupCard.isVisible().catch(() => false);
   console.log("Issue 9 — Groups exist in list:", hasGroup);
 
   if (hasGroup) {
-    // Attempt right-click / context menu
-    await firstGroup.click({ button: "right" });
+    // Right-click the group card area to trigger contextmenu → action sheet
+    await firstGroupCard.click({ button: "right" });
     await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(SHOTS, "issue9-right-click.png") });
 
     const hasContextMenu = await page.getByText(/delete|remove|archive/i).first().isVisible().catch(() => false);
     console.log("Issue 9 — Context menu with delete option:", hasContextMenu);
 
-    if (!hasContextMenu) {
-      console.log("Issue 9 — Long-press required (web workaround: right-click didn't show delete)");
-      console.log("Issue 9 — STATUS: NEEDS NATIVE TEST (long-press not testable on web)");
+    if (hasContextMenu) {
+      console.log("Issue 9 — STATUS: FIXED ✓ (right-click opens action sheet with delete/archive)");
+    } else {
+      // Fallback: try the 3-dot button
+      await firstGroupCard.click();
+      await page.waitForTimeout(500);
+      const hasMenu = await page.getByText(/delete|archive/i).first().isVisible().catch(() => false);
+      console.log("Issue 9 — Via 3-dot button:", hasMenu);
+      console.log(hasMenu ? "Issue 9 — STATUS: FIXED ✓ (3-dot button opens action sheet)" : "Issue 9 — STATUS: OPEN ✗");
     }
   }
 });
@@ -397,36 +397,41 @@ test("Issue 10 — archive group: shows confirmation dialog", async ({ page }) =
 
   await page.screenshot({ path: path.join(SHOTS, "issue10-groups-list.png") });
 
-  const hasGroup = await page.getByText("members").first().isVisible().catch(() => false);
-  if (!hasGroup) {
-    console.log("Issue 10 — SKIPPED: no groups to archive");
+  // Use the "Group actions" (⋮) button that is now visible per group card on web
+  const actionsBtn = page.locator("[aria-label='Group actions']").first();
+  const hasActionsBtn = await actionsBtn.isVisible().catch(() => false);
+  console.log("Issue 10 — Group actions button visible:", hasActionsBtn);
+
+  if (!hasActionsBtn) {
+    console.log("Issue 10 — SKIPPED: no groups or actions button not found");
     return;
   }
 
-  // The archive action is currently behind a long-press action sheet
-  // On web we simulate this by right-clicking
-  await page.getByText("members").first().click({ button: "right" });
+  await actionsBtn.click();
   await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(SHOTS, "issue10-right-click.png") });
+  await page.screenshot({ path: path.join(SHOTS, "issue10-action-sheet.png") });
 
-  const hasArchiveOption = await page.getByText(/archive/i).first().isVisible().catch(() => false);
-  console.log("Issue 10 — Archive option visible after right-click:", hasArchiveOption);
+  const hasArchiveOption = await page.getByText("Archive Group").isVisible().catch(() => false);
+  console.log("Issue 10 — Archive Group option in action sheet:", hasArchiveOption);
 
   if (hasArchiveOption) {
-    await page.getByText(/archive/i).first().click();
-    await page.waitForTimeout(1000);
+    await page.getByText("Archive Group").click();
+    await page.waitForTimeout(800);
     await page.screenshot({ path: path.join(SHOTS, "issue10-after-archive-click.png") });
 
-    const hasConfirmation = await page.getByText(/confirm|are you sure|archive this group/i).isVisible().catch(() => false) ||
+    // ConfirmModal shows "Archive Group" title and a "Cancel" button
+    const hasConfirmation = await page.getByText("Cancel").isVisible().catch(() => false) ||
                             await page.getByRole("dialog").isVisible().catch(() => false);
     console.log("Issue 10 — Confirmation dialog appeared:", hasConfirmation);
 
     if (hasConfirmation) {
       console.log("Issue 10 — STATUS: FIXED ✓ (confirmation shown)");
+      // Dismiss the dialog without actually archiving
+      await page.getByText("Cancel").click().catch(() => {});
     } else {
       console.log("Issue 10 — STATUS: BROKEN ✗ (archives immediately without confirmation)");
     }
   } else {
-    console.log("Issue 10 — STATUS: NEEDS NATIVE TEST (long-press only, not testable via web right-click)");
+    console.log("Issue 10 — STATUS: NEEDS NATIVE TEST (Archive Group option not found in sheet)");
   }
 });

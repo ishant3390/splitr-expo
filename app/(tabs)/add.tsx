@@ -215,12 +215,18 @@ export default function AddExpenseScreen() {
       quality: 0.7,
       allowsEditing: true,
     };
-    const result = useCamera
-      ? await ImagePicker.launchCameraAsync(options)
-      : await ImagePicker.launchImageLibraryAsync(options);
-    if (!result.canceled && result.assets[0]) {
-      setReceiptUri(result.assets[0].uri);
-      hapticSuccess();
+    try {
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+      if (!result.canceled && result.assets[0]) {
+        setReceiptUri(result.assets[0].uri);
+        hapticSuccess();
+      }
+    } catch {
+      if (useCamera) {
+        toast.info("Camera unavailable. Use Gallery to pick an image.");
+      }
     }
   };
 
@@ -481,15 +487,13 @@ export default function AddExpenseScreen() {
             </View>
           ) : !isQuickMode ? (
             <View className="flex-row gap-2 mt-3">
-              {Platform.OS !== "web" && (
-                <Pressable
+              <Pressable
                   onPress={() => pickReceiptImage(true)}
                   className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"
                 >
                   <Camera size={14} color="#64748b" />
                   <Text className="text-xs font-sans-medium text-muted-foreground">Photo</Text>
                 </Pressable>
-              )}
               <Pressable
                 onPress={() => pickReceiptImage(false)}
                 className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"

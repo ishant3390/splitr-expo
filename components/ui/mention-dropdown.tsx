@@ -29,6 +29,8 @@ function ContactRow({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityLabel={`Mention ${contact.name}`}
+      accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
@@ -141,6 +143,8 @@ function GroupRow({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityLabel={`Mention group ${group.name}`}
+      accessibilityRole="button"
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",

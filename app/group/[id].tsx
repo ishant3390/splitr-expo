@@ -481,6 +481,7 @@ export default function GroupDetailScreen() {
             variant="ghost"
             size="icon"
             onPress={() => setShowShareModal(true)}
+            accessibilityLabel="Share"
           >
             <Share2 size={22} color="#0d9488" />
           </Button>
@@ -497,6 +498,7 @@ export default function GroupDetailScreen() {
             variant="ghost"
             size="icon"
             onPress={() => setShowGroupActions(true)}
+            accessibilityLabel="More options"
           >
             <MoreVertical size={22} color={isDark ? "#94a3b8" : "#64748b"} />
           </Button>

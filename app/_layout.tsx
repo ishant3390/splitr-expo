@@ -77,8 +77,11 @@ function AuthGate() {
 
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboarding = segments[0] === "onboarding";
+    // Invite/join routes are publicly accessible — unauthenticated users see the
+    // group preview and are prompted to sign in only when they tap "Join"
+    const inPublicRoute = segments[0] === "invite" || segments[0] === "join";
 
-    if (!isSignedIn && !inAuthGroup) {
+    if (!isSignedIn && !inAuthGroup && !inPublicRoute) {
       router.replace("/(auth)");
     } else if (isSignedIn && inAuthGroup) {
       if (needsOnboarding) {

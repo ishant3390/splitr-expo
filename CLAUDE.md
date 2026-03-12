@@ -3,6 +3,14 @@
 ## Overview
 Splitr is a mobile expense splitting app (Expo/React Native) competing with Splitwise. Users create groups, add expenses, split costs, settle debts, and track balances.
 
+## Platform Launch Order (IMPORTANT)
+**Web → iOS → Android**
+- Web is the primary launch platform — all features must work fully on web first
+- Never gate features behind `Platform.OS !== "web"` unless they are truly impossible on web (e.g., camera permissions, biometric hardware)
+- Prefer always-visible UI controls over gesture-only interactions (e.g., visible 3-dot menus instead of long-press-only)
+- Long-press and native gestures are secondary affordances — the primary action path must be click/tap accessible
+- When testing, run Playwright E2E against Expo web before native tests
+
 ## Tech Stack
 - **Framework**: Expo SDK 52, React Native 0.76, Expo Router v4 (file-based routing)
 - **Auth**: Clerk (`@clerk/clerk-expo`) — OAuth (Google, Apple, Facebook, Instagram) + email/phone OTP

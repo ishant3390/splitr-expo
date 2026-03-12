@@ -5,7 +5,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { hapticLight, hapticWarning, hapticSuccess, hapticSelection } from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw, AlertTriangle, Search } from "lucide-react-native";
+import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw, AlertTriangle, Search, MoreVertical } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -126,7 +126,9 @@ export default function GroupsScreen() {
       <View className="flex-row items-center justify-between px-5 pt-3 pb-1">
         <View>
           <Text className="text-2xl font-sans-bold text-foreground">Groups</Text>
-          <Text className="text-xs text-muted-foreground font-sans">Long press to archive or delete</Text>
+          <Text className="text-xs text-muted-foreground font-sans">
+            {Platform.OS === "web" ? "Tap ··· or right-click for options" : "Tap ··· or long-press for options"}
+          </Text>
         </View>
         <View className="flex-row items-center gap-2">
           <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
@@ -237,7 +239,7 @@ export default function GroupsScreen() {
                 icon={Archive}
                 iconColor="#94a3b8"
                 title="No archived groups"
-                subtitle="Long-press a group to archive it"
+                subtitle={Platform.OS === "web" ? "Tap ··· or right-click a group to archive it" : "Long-press or tap ··· on a group to archive it"}
               />
             )
           }
@@ -248,6 +250,9 @@ export default function GroupsScreen() {
                 onPress={() => { hapticLight(); router.push(`/group/${group.id}`); }}
                 onLongPress={() => handleLongPress(group)}
                 delayLongPress={400}
+                {...(Platform.OS === "web" ? {
+                  onContextMenu: (e: any) => { e.preventDefault(); handleLongPress(group); }
+                } : {})}
               >
                 <Card className="p-4">
                   <View className="flex-row items-center gap-3">
@@ -266,7 +271,17 @@ export default function GroupsScreen() {
                         {group.defaultCurrency ? ` \u00B7 ${group.defaultCurrency}` : ""}
                       </Text>
                     </View>
-                    <ChevronRight size={20} color="#94a3b8" />
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Pressable
+                        onPress={() => { hapticWarning(); handleLongPress(group); }}
+                        hitSlop={8}
+                        accessibilityLabel="Group actions"
+                        style={{ padding: 4 }}
+                      >
+                        <MoreVertical size={18} color="#94a3b8" />
+                      </Pressable>
+                      <ChevronRight size={20} color="#94a3b8" />
+                    </View>
                   </View>
                 </Card>
               </Pressable>

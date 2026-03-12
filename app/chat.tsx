@@ -634,6 +634,8 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
               {item.content ? (
                 <Pressable
                   onLongPress={onCopy ? () => onCopy(item.content) : undefined}
+                  accessibilityLabel={item.content}
+                  accessibilityHint={!isUser ? "Long press to copy" : undefined}
                 >
                   <View className={cn(getBubbleClasses(), "px-4 py-3")}>
                     {/* B49: Markdown rendering for assistant messages (native only) */}
@@ -1578,11 +1580,26 @@ export default function ChatScreen() {
   const handleConfirmCreateGroup = useCallback(
     (messageId: string) => {
       hapticSuccess();
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === messageId ? { ...m, actionHandled: true } : m
-        )
-      );
+      setMessages((prev) => {
+        const msg = prev.find((m) => m.id === messageId);
+        const groupName = msg?.actionRequired?.groupPreview?.name;
+        return prev.map((m) =>
+          m.id === messageId
+            ? {
+                ...m,
+                actionHandled: true,
+                // B29: follow-ups after group creation
+                followUps: groupName
+                  ? [
+                      `Add expense to ${groupName}`,
+                      "Invite members",
+                      "Check my balance",
+                    ]
+                  : ["Add an expense", "Check my balance"],
+              }
+            : m
+        );
+      });
       sendMessage("confirm", undefined, { deterministic: true });
     },
     [sendMessage]
@@ -1891,6 +1908,7 @@ export default function ChatScreen() {
                 size="sm"
                 variant="outline"
                 onPress={() => router.push("/(tabs)/add")}
+                accessibilityLabel="Add expense manually"
               >
                 <Text className="text-sm font-sans-medium text-foreground">
                   Add Expense Manually
@@ -1934,6 +1952,8 @@ export default function ChatScreen() {
               </View>
               <Pressable
                 onPress={() => setPendingImage(null)}
+                accessibilityLabel="Remove image"
+                accessibilityRole="button"
                 style={{
                   width: 24,
                   height: 24,
@@ -1994,6 +2014,8 @@ export default function ChatScreen() {
             </View>
             <Pressable
               onPress={() => setReplyTo(null)}
+              accessibilityLabel="Cancel reply"
+              accessibilityRole="button"
               style={{
                 width: 24,
                 height: 24,
