@@ -2,12 +2,23 @@ import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react-native";
 import EditProfileScreen from "@/app/edit-profile";
 
+const mockToast = { success: jest.fn(), error: jest.fn(), info: jest.fn() };
 jest.mock("@/components/ui/toast", () => ({
-  useToast: () => ({
-    success: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
+  useToast: () => mockToast,
+}));
+
+const mockRouterBack = jest.fn();
+const mockRouterReplace = jest.fn();
+jest.mock("expo-router", () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: mockRouterReplace,
+    back: mockRouterBack,
+    canGoBack: jest.fn(() => true),
   }),
+  useLocalSearchParams: () => ({}),
+  useSegments: () => [],
+  Link: "Link",
 }));
 
 const mockMe = jest.fn(() =>
@@ -87,6 +98,95 @@ describe("EditProfileScreen", () => {
     render(<EditProfileScreen />);
     await waitFor(() => {
       expect(mockMe).toHaveBeenCalled();
+    });
+  });
+
+  it("pre-fills form with user data from API", async () => {
+    render(<EditProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test User")).toBeTruthy();
+      expect(screen.getByDisplayValue("+1234567890")).toBeTruthy();
+    });
+  });
+
+  it("shows error when name is empty on save", async () => {
+    render(<EditProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test User")).toBeTruthy();
+    });
+    fireEvent.changeText(screen.getByDisplayValue("Test User"), "");
+    fireEvent.press(screen.getByText("Save Changes"));
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Name cannot be empty.");
+    });
+  });
+
+  it("shows error for invalid phone number on save", async () => {
+    render(<EditProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("+1234567890")).toBeTruthy();
+    });
+    fireEvent.changeText(screen.getByDisplayValue("+1234567890"), "abc");
+    fireEvent.press(screen.getByText("Save Changes"));
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Please enter a valid phone number.");
+    });
+  });
+
+  it("calls updateMe and navigates back on successful save", async () => {
+    render(<EditProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test User")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Save Changes"));
+    await waitFor(() => {
+      expect(mockUpdateMe).toHaveBeenCalledWith(
+        { name: "Test User", phone: "+1234567890", defaultCurrency: "USD" },
+        "mock-token"
+      );
+      expect(mockToast.success).toHaveBeenCalledWith("Your profile has been updated.");
+    });
+  });
+
+  it("handles save failure gracefully", async () => {
+    mockUpdateMe.mockRejectedValueOnce(new Error("Network error"));
+    render(<EditProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test User")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Save Changes"));
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Something went wrong. Try again later.");
+    });
+  });
+
+  it("selects a different currency", async () => {
+    render(<EditProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("EUR")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("EUR"));
+    fireEvent.press(screen.getByText("Save Changes"));
+    await waitFor(() => {
+      expect(mockUpdateMe).toHaveBeenCalledWith(
+        expect.objectContaining({ defaultCurrency: "EUR" }),
+        "mock-token"
+      );
+    });
+  });
+
+  it("falls back to Clerk name when API fails", async () => {
+    mockMe.mockRejectedValueOnce(new Error("API down"));
+    render(<EditProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test User")).toBeTruthy(); // Clerk fallback
+    });
+  });
+
+  it("renders Photo managed by Clerk text", async () => {
+    render(<EditProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Photo managed by Clerk")).toBeTruthy();
     });
   });
 });

@@ -2,7 +2,10 @@ import React, { useState, useCallback } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
-import { hapticLight, hapticSelection } from "@/lib/haptics";
+import { hapticLight, hapticSelection, hapticSuccess, hapticError } from "@/lib/haptics";
+import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@clerk/clerk-expo";
+import { groupsApi } from "@/lib/api";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useUser } from "@clerk/clerk-expo";
@@ -31,9 +34,9 @@ import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { SkeletonList } from "@/components/ui/skeleton";
-import { useUserActivity, useUserBalance } from "@/lib/hooks";
+import { useUserActivity, useUserBalance, useTopDebtor } from "@/lib/hooks";
 import { useNetwork } from "@/components/NetworkProvider";
-import { formatCents, formatDate, getInitials } from "@/lib/utils";
+import { cn, formatCents, formatDate, getInitials } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedPressable } from "@/components/ui/animated-pressable";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -77,8 +80,13 @@ const ACTIVITY_EMOJI_MAP: Record<string, string> = {
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useUser();
+  const { getToken } = useAuth();
   const { pendingCount } = useNetwork();
+  const toast = useToast();
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [nudging, setNudging] = useState(false);
+  const [nudged, setNudged] = useState(false);
 
   const {
     data: activity = [],
@@ -97,6 +105,31 @@ export default function HomeScreen() {
 
   const totalOwedCents = balanceData?.totalOwedCents ?? 0;
   const totalOwesCents = balanceData?.totalOwesCents ?? 0;
+
+  const topDebtor = useTopDebtor(balanceData);
+
+  const handleNudge = async () => {
+    if (!topDebtor || nudging) return;
+    setNudging(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await groupsApi.nudge(topDebtor.groupId, topDebtor.suggestion.fromUser!.id, token);
+      hapticSuccess();
+      toast.success("Reminder sent!");
+      setNudged(true);
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      if (msg.includes("429") || msg.toLowerCase().includes("cooldown")) {
+        toast.info("You already sent a reminder. Try again later.");
+      } else {
+        toast.error("Failed to send reminder.");
+      }
+      hapticError();
+    } finally {
+      setNudging(false);
+    }
+  };
 
   // Refetch on screen focus
   useFocusEffect(
@@ -252,6 +285,53 @@ export default function HomeScreen() {
                 </View>
               </Card>
             </Pressable>
+          )}
+
+          {/* Nudge Reminder Card */}
+          {totalOwedCents > 0 && topDebtor && !nudgeDismissed && !nudged && (
+            <Animated.View entering={FadeInDown.duration(300).springify()}>
+              <Card className="p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                <View className="flex-row items-start gap-3">
+                  <View className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center mt-0.5">
+                    <Bell size={18} color="#f59e0b" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-sans-semibold text-amber-900 dark:text-amber-100">
+                      {topDebtor.suggestion.fromUser?.name ?? "Someone"}{" "}
+                      {topDebtor.othersCount > 0
+                        ? `and ${topDebtor.othersCount} other${topDebtor.othersCount > 1 ? "s" : ""} owe you ${formatCents(totalOwedCents)}`
+                        : `owes you ${formatCents(topDebtor.suggestion.amount)}`}
+                    </Text>
+                    <Text className="text-xs font-sans text-amber-700 dark:text-amber-300 mt-0.5">
+                      Send a friendly reminder to settle up
+                    </Text>
+                    <View className="flex-row gap-2 mt-3">
+                      <Pressable
+                        onPress={handleNudge}
+                        disabled={nudging}
+                        className={cn(
+                          "flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-lg",
+                          nudging ? "bg-amber-200 dark:bg-amber-800" : "bg-amber-400 dark:bg-amber-700"
+                        )}
+                      >
+                        <Bell size={14} color="#ffffff" />
+                        <Text className="text-xs font-sans-semibold text-white">
+                          {nudging ? "Sending..." : "Send Reminder"}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setNudgeDismissed(true)}
+                        className="px-3.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900"
+                      >
+                        <Text className="text-xs font-sans-medium text-amber-700 dark:text-amber-300">
+                          Dismiss
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              </Card>
+            </Animated.View>
           )}
 
           {/* Airbnb-style Category Bar */}

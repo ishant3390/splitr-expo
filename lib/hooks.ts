@@ -479,6 +479,48 @@ export function useJoinGroup() {
   });
 }
 
+// ---- Top Debtor (for nudge reminder on Home screen) ----
+
+/**
+ * Finds the top person who owes the current user money.
+ * Picks the group with the highest positive balance, fetches settlement
+ * suggestions, and returns the suggestion where toUser matches current user.
+ */
+export function useTopDebtor(balanceData?: UserBalanceDto) {
+  const { user } = useUser();
+  const currentEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() ?? "";
+
+  // Find group where user is owed the most
+  const topGroup = useMemo(() => {
+    const groups = balanceData?.groupBalances ?? [];
+    const positive = groups.filter((g) => g.balanceCents > 0);
+    if (positive.length === 0) return null;
+    return positive.reduce((best, g) => (g.balanceCents > best.balanceCents ? g : best));
+  }, [balanceData?.groupBalances]);
+
+  const { data: suggestions } = useSettlementSuggestions(topGroup?.groupId ?? "");
+
+  // Find the suggestion where someone owes the current user
+  const topDebtor = useMemo(() => {
+    if (!suggestions || !currentEmail) return null;
+    // Find suggestions where the current user is the payee (toUser)
+    const owedToMe = suggestions.filter(
+      (s) => s.toUser?.email?.toLowerCase() === currentEmail
+    );
+    if (owedToMe.length === 0) return null;
+    // Sort by amount descending and pick top
+    const sorted = [...owedToMe].sort((a, b) => b.amount - a.amount);
+    return {
+      suggestion: sorted[0],
+      othersCount: sorted.length - 1,
+      groupId: topGroup!.groupId,
+      groupName: topGroup!.groupName,
+    };
+  }, [suggestions, currentEmail, topGroup]);
+
+  return topDebtor;
+}
+
 export function useRegenerateInvite(groupId: string) {
   const fetchToken = useTokenFetcher();
   const qc = useQueryClient();

@@ -57,7 +57,7 @@ import { useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
-import { hapticLight, hapticSuccess, hapticWarning, hapticSelection } from "@/lib/haptics";
+import { hapticLight, hapticSuccess, hapticWarning, hapticSelection, hapticError } from "@/lib/haptics";
 import { dedupeMembers, aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, resolvePayerName } from "@/lib/screen-helpers";
 import * as Clipboard from "expo-clipboard";
 import { SkeletonList } from "@/components/ui/skeleton";

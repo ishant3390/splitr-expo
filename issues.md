@@ -107,18 +107,18 @@ Bugs reported via IMG.png bug tracker. All fixes include integration/unit tests.
 | B36 | Smart split suggestions | Low | LLM suggests split ratios based on description (e.g., "hotel 2 nights" → split by nights). Niche use case. |
 | B37 | Recurring expense detection | Low | "You split dinner with Sarah last week too. Create recurring?" Needs historical analysis on BE. Medium effort. |
 | B38 | Expense auto-categorization | Low | LLM infers category from description during chat expense creation. Already partially possible. Low incremental value. |
-| B39 | Settlement nudge reminders | Low | "Mike has owed you $45 for 2 weeks. Send a reminder?" Ties into push notifications. Medium effort. |
+| B39 | ~~Settlement nudge reminders~~ | ~~Low~~ | **Done**: Proactive amber nudge card on Home screen when someone owes the user money. `useTopDebtor()` hook finds the highest debtor across groups. "Send Reminder" button calls `groupsApi.nudge()` with cooldown handling. Dismissible per session. 6 tests. |
 | B40 | ~~Chat — Message entrance animations~~ | ~~Medium~~ | **Done**: Messages slide in from right (user) or left (assistant) with `FadeInRight`/`FadeInLeft` spring physics (damping 18, stiffness 140). |
 | B41 | ~~Chat — Send button animation~~ | ~~Low~~ | **Done**: `SendButton` component with spring pop on enable/disable state change and on press via `withSequence`/`withSpring`. |
 | B42 | ~~Chat — MentionDropdown animation~~ | ~~Low~~ | **Done**: `FadeIn.duration(150)` entering + `FadeOut.duration(100)` exiting on both empty state and list views. |
 | B43 | ~~Chat — Smooth keyboard~~ | ~~Medium~~ | **Done**: Replaced RN `KeyboardAvoidingView` with `react-native-keyboard-controller` (`KeyboardProvider` + `KBCKeyboardAvoidingView`) for 60fps keyboard-synced animations on native. Web fallback to plain View. |
 | B44 | ~~Chat — Haptic feedback on actions~~ | ~~Low~~ | **Done**: `hapticLight()` on group select + edit expense; `hapticSuccess()` on confirm expense + confirm create group. |
 | B45 | ~~Chat — Swipe to reply~~ | ~~Medium~~ | **Done**: Pan gesture (react-native-gesture-handler) on messages — swipe right >50px triggers reply. Reply icon animates behind message during swipe. Reply preview bar above input shows quoted content with dismiss button. Quoted messages shown inline with teal left border. |
-| B46 | Chat — Message reactions | Low | Long-press message → emoji reaction picker (👍 ✅ ❓). Visual feedback only, not persisted. Low priority. |
+| B46 | ~~Chat — Message reactions~~ | ~~Low~~ | **Done**: Long-press any message → floating emoji picker (👍 ✅ ❓ 😂 ❤️ + 📋 copy for assistant). Reaction badge pill below bubble. Toggle on/off. Auto-dismiss on scroll. Haptic feedback. Visual only, not persisted. 2 tests. |
 | B47 | ~~Chat — Scroll-to-bottom FAB~~ | ~~Low~~ | **Done**: Floating ChevronDown button appears when scrolled >300px from bottom. FadeIn/FadeOut animation, haptic on tap, scrolls to end. Positioned absolute bottom-right above input. 1 test. |
-| B48 | Chat — Image preview modal | Low | Tap attached image to open full-screen preview with pinch-to-zoom. Currently images are inline-only. |
+| B48 | ~~Chat — Image preview modal~~ | ~~Low~~ | **Done**: Tap inline image → full-screen modal with dark background. Native: pinch-to-zoom (1x-4x), pan when zoomed, double-tap toggle. Web: full-size contain. Close button + spring animations. 4 tests. |
 | B49 | ~~Chat — Markdown rendering~~ | ~~Medium~~ | **Done**: Custom lightweight `ChatMarkdown` component — no external dependency. Supports **bold**, *italic*, `inline code`, ```code blocks```, bullet lists (- / *), numbered lists. Conditional rendering: only activates when markdown formatting detected in AI responses. 10 tests. |
-| B50 | Chat — Voice input | Low | Microphone button for speech-to-text input. Uses `expo-speech` or platform speech recognition. "Add $20 for lunch with Sarah" via voice. |
+| B50 | ~~Chat — Voice input~~ | ~~Low~~ | **Done**: `lib/speech.ts` wraps Web Speech API. Mic button in chat: tap to start recording (red pulsing indicator), tap again to stop. Interim results update input in real-time. Web-first (platform launch order); native shows "web only" toast. 12 tests. |
 | B-IMG3 | ~~Clarify Photo vs Gallery behavior on Add Expense~~ | ~~Low~~ | **Done**: Photo button now always visible on all platforms. `launchCameraAsync` wrapped in try-catch; on failure shows toast "Camera unavailable. Use Gallery to pick an image." Gallery (`launchImageLibraryAsync`) always works. Resolves confusion on web and simulator. |
 
 ## Notes

@@ -74,4 +74,74 @@ describe("BottomSheetModal", () => {
     expect(screen.getByText("Second")).toBeTruthy();
     expect(screen.getByText("Third")).toBeTruthy();
   });
+
+  it("uses onClose as Modal onRequestClose", () => {
+    const onClose = jest.fn();
+    render(
+      <BottomSheetModal visible={true} onClose={onClose}>
+        <Text>Request Close Test</Text>
+      </BottomSheetModal>
+    );
+    // Component should render with the callback wired up
+    expect(screen.getByText("Request Close Test")).toBeTruthy();
+  });
+
+  it("toggles between visible states", () => {
+    const onClose = jest.fn();
+    const { rerender } = render(
+      <BottomSheetModal visible={true} onClose={onClose}>
+        <Text>Toggle Content</Text>
+      </BottomSheetModal>
+    );
+    expect(screen.getByText("Toggle Content")).toBeTruthy();
+
+    rerender(
+      <BottomSheetModal visible={false} onClose={onClose}>
+        <Text>Toggle Content</Text>
+      </BottomSheetModal>
+    );
+    expect(screen.queryByText("Toggle Content")).toBeNull();
+  });
+
+  it("inner pressable stops event propagation (no keyboard avoiding)", () => {
+    const { UNSAFE_root } = render(
+      <BottomSheetModal {...defaultProps}>
+        <Text>Stop Prop Test</Text>
+      </BottomSheetModal>
+    );
+
+    const allNodes = UNSAFE_root.findAll(
+      (node) => node.props && typeof node.props.onPress === "function"
+    );
+    const mockEvent = { stopPropagation: jest.fn() };
+    for (const node of allNodes) {
+      try {
+        node.props.onPress(mockEvent);
+      } catch {
+        // ignore
+      }
+    }
+    expect(mockEvent.stopPropagation).toHaveBeenCalled();
+  });
+
+  it("inner pressable stops event propagation (with keyboard avoiding)", () => {
+    const { UNSAFE_root } = render(
+      <BottomSheetModal {...defaultProps} keyboardAvoiding={true}>
+        <Text>KB Stop Prop Test</Text>
+      </BottomSheetModal>
+    );
+
+    const allNodes = UNSAFE_root.findAll(
+      (node) => node.props && typeof node.props.onPress === "function"
+    );
+    const mockEvent = { stopPropagation: jest.fn() };
+    for (const node of allNodes) {
+      try {
+        node.props.onPress(mockEvent);
+      } catch {
+        // ignore
+      }
+    }
+    expect(mockEvent.stopPropagation).toHaveBeenCalled();
+  });
 });

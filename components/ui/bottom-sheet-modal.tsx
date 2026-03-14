@@ -58,12 +58,12 @@ export function BottomSheetModal({
       >
         {keyboardAvoiding ? (
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
-            <Pressable onPress={(e) => e.stopPropagation()}>
+            <Pressable onPress={(e) => e?.stopPropagation?.()}>
               {content}
             </Pressable>
           </KeyboardAvoidingView>
         ) : (
-          <Pressable onPress={(e) => e.stopPropagation()}>
+          <Pressable onPress={(e) => e?.stopPropagation?.()}>
             {content}
           </Pressable>
         )}

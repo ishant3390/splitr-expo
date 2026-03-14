@@ -55,11 +55,17 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ImagePreviewModal } from "@/components/ui/image-preview-modal";
 import { chatStream, chatApi } from "@/lib/api";
 import { useAuth } from "@clerk/clerk-expo";
 import { cn, formatCents } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSuccess, hapticLight } from "@/lib/haptics";
+import {
+  isSpeechRecognitionAvailable,
+  createSpeechRecognition,
+  SpeechRecognitionHandle,
+} from "@/lib/speech";
 import { useNetwork } from "@/components/NetworkProvider";
 import { useMergedContacts, useGroups } from "@/lib/hooks";
 import { trackMention } from "@/lib/mention-recency";
@@ -363,6 +369,9 @@ function getBubblePosition(
   return "only";
 }
 
+// ---- B46: Reaction emoji options ----
+const REACTION_EMOJIS = ["\u{1F44D}", "\u{2705}", "\u{2753}", "\u{1F602}", "\u{2764}\u{FE0F}"];
+
 // ---- B33: Extracted MessageItem (React.memo) ----
 
 interface MessageItemProps {
@@ -379,7 +388,12 @@ interface MessageItemProps {
   onFollowUp?: (text: string) => void;
   onCopy?: (text: string) => void;
   onReply?: (message: ChatMessage) => void;
+  onImagePress?: (uri: string) => void;
   previousMessage?: ChatMessage;
+  showReactions?: boolean;
+  reaction?: string;
+  onShowReactions?: (messageId: string) => void;
+  onReact?: (messageId: string, emoji: string) => void;
 }
 
 const MessageItem = React.memo(
@@ -397,7 +411,12 @@ const MessageItem = React.memo(
     onFollowUp,
     onCopy,
     onReply,
+    onImagePress,
     previousMessage,
+    showReactions: showReactionPicker,
+    reaction,
+    onShowReactions,
+    onReact,
   }: MessageItemProps) {
     const isUser = item.role === "user";
     const position = getBubblePosition(allMessages, index);
@@ -622,55 +641,141 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
               )}
               {/* Image attachment */}
               {item.imageUri && (
-                <View className="rounded-2xl overflow-hidden mb-1" style={{ width: 200, height: 150 }}>
-                  <Image
-                    source={{ uri: item.imageUri }}
-                    style={{ width: "100%", height: "100%" }}
-                    contentFit="cover"
-                  />
-                </View>
+                <Pressable
+                  onPress={() => onImagePress?.(item.imageUri!)}
+                  accessibilityLabel="View image full screen"
+                  accessibilityRole="button"
+                >
+                  <View className="rounded-2xl overflow-hidden mb-1" style={{ width: 200, height: 150 }}>
+                    <Image
+                      source={{ uri: item.imageUri }}
+                      style={{ width: "100%", height: "100%" }}
+                      contentFit="cover"
+                    />
+                  </View>
+                </Pressable>
               )}
               {/* Only render bubble if there is content */}
               {item.content ? (
-                <Pressable
-                  onLongPress={onCopy ? () => onCopy(item.content) : undefined}
-                  accessibilityLabel={item.content}
-                  accessibilityHint={!isUser ? "Long press to copy" : undefined}
-                >
-                  <View className={cn(getBubbleClasses(), "px-4 py-3")}>
-                    {/* B49: Markdown rendering for assistant messages (native only) */}
-                    {hasMarkdown ? (
-                      <ChatMarkdown content={item.content} isUser={false} />
-                    ) : (
-                    <Text
+                <View>
+                  {/* B46: Reaction picker */}
+                  {showReactionPicker && (
+                    <Animated.View
+                      entering={FadeIn.duration(150)}
                       style={{
-                        fontSize: 14,
-                        lineHeight: 20,
-                        fontFamily: "Inter_400Regular",
-                        color: isUser ? "#ffffff" : "#000000",
+                        flexDirection: "row",
+                        alignSelf: isUser ? "flex-end" : "flex-start",
+                        backgroundColor: isDark ? "#334155" : "#ffffff",
+                        borderRadius: 20,
+                        paddingHorizontal: 6,
+                        paddingVertical: 4,
+                        marginBottom: 4,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 6,
+                        elevation: 4,
+                        gap: 2,
                       }}
+                      accessibilityLabel="Reaction picker"
                     >
-                      {parseMentionsForDisplay(item.content).map((seg, i) =>
-                        seg.type === "mention" ? (
-                          <Text
-                            key={i}
-                            style={{
-                              color: isUser ? "#bbdefb" : "#0078fe",
-                              fontFamily: "Inter_600SemiBold",
-                            }}
-                          >
-                            {seg.mentionType}{seg.value}
-                          </Text>
-                        ) : (
-                          <Text key={i}>{seg.value}</Text>
-                        )
+                      {REACTION_EMOJIS.map((emoji) => (
+                        <Pressable
+                          key={emoji}
+                          onPress={() => onReact?.(item.id, emoji)}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: reaction === emoji ? (isDark ? "#475569" : "#e2e8f0") : "transparent",
+                          }}
+                          accessibilityLabel={`React with ${emoji}`}
+                          accessibilityRole="button"
+                        >
+                          <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                        </Pressable>
+                      ))}
+                      {/* Copy button for assistant messages */}
+                      {!isUser && onCopy && (
+                        <Pressable
+                          onPress={() => {
+                            onCopy(item.content);
+                            onReact?.(item.id, "");
+                          }}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                          accessibilityLabel="Copy message"
+                          accessibilityRole="button"
+                        >
+                          <Text style={{ fontSize: 20 }}>{"\u{1F4CB}"}</Text>
+                        </Pressable>
                       )}
-                    </Text>
-                    )}
-                  </View>
-                  {/* iMessage-style bubble tail */}
-                  <BubbleTail isUser={isUser} position={position} />
-                </Pressable>
+                    </Animated.View>
+                  )}
+                  <Pressable
+                    onLongPress={() => onShowReactions?.(item.id)}
+                    accessibilityLabel={item.content}
+                    accessibilityHint="Long press to react"
+                  >
+                    <View className={cn(getBubbleClasses(), "px-4 py-3")}>
+                      {/* B49: Markdown rendering for assistant messages (native only) */}
+                      {hasMarkdown ? (
+                        <ChatMarkdown content={item.content} isUser={false} />
+                      ) : (
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          lineHeight: 20,
+                          fontFamily: "Inter_400Regular",
+                          color: isUser ? "#ffffff" : "#000000",
+                        }}
+                      >
+                        {parseMentionsForDisplay(item.content).map((seg, i) =>
+                          seg.type === "mention" ? (
+                            <Text
+                              key={i}
+                              style={{
+                                color: isUser ? "#bbdefb" : "#0078fe",
+                                fontFamily: "Inter_600SemiBold",
+                              }}
+                            >
+                              {seg.mentionType}{seg.value}
+                            </Text>
+                          ) : (
+                            <Text key={i}>{seg.value}</Text>
+                          )
+                        )}
+                      </Text>
+                      )}
+                    </View>
+                    {/* iMessage-style bubble tail */}
+                    <BubbleTail isUser={isUser} position={position} />
+                  </Pressable>
+                  {/* B46: Reaction badge */}
+                  {reaction ? (
+                    <Animated.View
+                      entering={FadeIn.duration(150)}
+                      style={{
+                        alignSelf: isUser ? "flex-end" : "flex-start",
+                        backgroundColor: isDark ? "#334155" : "#f1f5f9",
+                        borderRadius: 12,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        marginTop: 2,
+                      }}
+                      accessibilityLabel={`Reaction: ${reaction}`}
+                    >
+                      <Text style={{ fontSize: 14 }}>{reaction}</Text>
+                    </Animated.View>
+                  ) : null}
+                </View>
               ) : null}
 
               {/* H6: Retry button on failed messages */}
@@ -958,7 +1063,9 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
     prevProps.loading === nextProps.loading &&
     prevProps.messages.length === nextProps.messages.length &&
     prevProps.messages[prevProps.index - 1]?.role === nextProps.messages[nextProps.index - 1]?.role &&
-    prevProps.messages[prevProps.index + 1]?.role === nextProps.messages[nextProps.index + 1]?.role
+    prevProps.messages[prevProps.index + 1]?.role === nextProps.messages[nextProps.index + 1]?.role &&
+    prevProps.showReactions === nextProps.showReactions &&
+    prevProps.reaction === nextProps.reaction
 );
 
 // ---- Component ----
@@ -984,6 +1091,7 @@ export default function ChatScreen() {
   const [isThinking, setIsThinking] = useState(false);
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [mentionState, setMentionState] = useState<{
     trigger: "@" | "#";
     query: string;
@@ -998,6 +1106,27 @@ export default function ChatScreen() {
   const mountedRef = useRef(true); // C1: unmount guard
   const isNearBottomRef = useRef(true); // H2: smart scroll
   const inputRef = useRef(""); // tracks latest input for handleSelectionChange
+  const speechRef = useRef<SpeechRecognitionHandle | null>(null);
+
+  // Pulsing animation for voice recording indicator
+  const recordingPulse = useSharedValue(1);
+  useEffect(() => {
+    if (isRecording) {
+      recordingPulse.value = withRepeat(
+        withSequence(
+          withTiming(0.5, { duration: 600 }),
+          withTiming(1, { duration: 600 })
+        ),
+        -1,
+        true
+      );
+    } else {
+      recordingPulse.value = withTiming(1, { duration: 200 });
+    }
+  }, [isRecording]);
+  const recordingPulseStyle = useAnimatedStyle(() => ({
+    opacity: recordingPulse.value,
+  }));
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(-1);
   const [replyTo, setReplyTo] = useState<{ id: string; content: string; role: "user" | "assistant" } | null>(null);
   const [showReactions, setShowReactions] = useState<string | null>(null);
@@ -1059,6 +1188,8 @@ export default function ChatScreen() {
       mountedRef.current = false;
       abortRef.current?.();
       abortRef.current = null;
+      speechRef.current?.stop();
+      speechRef.current = null;
     };
   }, []);
 
@@ -1632,15 +1763,48 @@ export default function ChatScreen() {
     }
   }, []);
 
-  // Voice input handler - placeholder for speech-to-text
-  const handleVoiceInput = useCallback(async () => {
+  // Voice input — Web Speech API on web, unavailable on native for now
+  const handleVoiceInput = useCallback(() => {
     if (isRecording) {
+      speechRef.current?.stop();
+      speechRef.current = null;
       setIsRecording(false);
       return;
     }
-    // Show toast that voice input is not yet implemented
-    // In production, integrate expo-speech or native speech recognition
-    toast.info("Voice input coming soon!");
+
+    if (!isSpeechRecognitionAvailable()) {
+      toast.info(
+        Platform.OS === "web"
+          ? "Voice input not supported in this browser"
+          : "Voice input available on web only"
+      );
+      return;
+    }
+
+    const recognition = createSpeechRecognition({
+      onResult: (transcript, _isFinal) => {
+        setInput(transcript);
+        inputRef.current = transcript;
+      },
+      onError: (error) => {
+        if (error !== "aborted") {
+          toast.error("Voice input failed. Try again.");
+        }
+        setIsRecording(false);
+        speechRef.current = null;
+      },
+      onEnd: () => {
+        setIsRecording(false);
+        speechRef.current = null;
+      },
+    });
+
+    if (recognition) {
+      speechRef.current = recognition;
+      setIsRecording(true);
+      hapticLight();
+      recognition.start();
+    }
   }, [isRecording, toast]);
 
   // H2: Smart scroll — only auto-scroll if user is near bottom
@@ -1651,6 +1815,8 @@ export default function ChatScreen() {
     isNearBottomRef.current = distanceFromBottom < 100;
     // B47: Show scroll-to-bottom FAB when scrolled up
     setShowScrollButton(distanceFromBottom > 300);
+    // B46: Dismiss reaction picker on scroll
+    setShowReactions(null);
   }, []);
 
   const handleContentSizeChange = useCallback(() => {
@@ -1697,6 +1863,36 @@ export default function ChatScreen() {
     });
   }, []);
 
+  // B46: Reaction handlers
+  const handleShowReactions = useCallback(
+    (messageId: string) => {
+      hapticLight();
+      setShowReactions((prev) => (prev === messageId ? null : messageId));
+    },
+    []
+  );
+
+  const handleReact = useCallback(
+    (messageId: string, emoji: string) => {
+      if (!emoji) {
+        setShowReactions(null);
+        return;
+      }
+      hapticLight();
+      setMessageReactions((prev) => {
+        const current = prev[messageId];
+        if (current === emoji) {
+          const next = { ...prev };
+          delete next[messageId];
+          return next;
+        }
+        return { ...prev, [messageId]: emoji };
+      });
+      setShowReactions(null);
+    },
+    []
+  );
+
   const renderMessageItem = useCallback(
     ({ item, index }: { item: ChatMessage; index: number }) => (
       <MessageItem
@@ -1713,10 +1909,15 @@ export default function ChatScreen() {
         onFollowUp={handleFollowUp}
         onCopy={handleCopyMessage}
         onReply={handleReply}
+        onImagePress={setPreviewImage}
         previousMessage={index > 0 ? messages[index - 1] : undefined}
+        showReactions={showReactions === item.id}
+        reaction={messageReactions[item.id]}
+        onShowReactions={handleShowReactions}
+        onReact={handleReact}
       />
     ),
-    [messages, isDark, loading, handleRetry, handleSelectGroup, handleConfirmExpense, handleEditExpense, handleConfirmCreateGroup, handleFollowUp, handleCopyMessage, handleReply]
+    [messages, isDark, loading, handleRetry, handleSelectGroup, handleConfirmExpense, handleEditExpense, handleConfirmCreateGroup, handleFollowUp, handleCopyMessage, handleReply, showReactions, messageReactions, handleShowReactions, handleReact]
   );
 
   // ---- Quota display ----
@@ -2059,7 +2260,7 @@ export default function ChatScreen() {
           <Pressable
             onPress={handleVoiceInput}
             disabled={loading || isQuotaExceeded || !isConnected}
-            accessibilityLabel="Voice input"
+            accessibilityLabel={isRecording ? "Stop recording" : "Voice input"}
             accessibilityRole="button"
             style={{
               width: 44,
@@ -2067,15 +2268,23 @@ export default function ChatScreen() {
               borderRadius: 22,
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: !loading && !isQuotaExceeded && isConnected
-                ? (isDark ? "#334155" : "#f1f5f9")
-                : (isDark ? "rgba(51,65,85,0.5)" : "rgba(241,245,249,0.5)"),
+              backgroundColor: isRecording
+                ? "#ef4444"
+                : !loading && !isQuotaExceeded && isConnected
+                  ? (isDark ? "#334155" : "#f1f5f9")
+                  : (isDark ? "rgba(51,65,85,0.5)" : "rgba(241,245,249,0.5)"),
             }}
           >
-            <Mic
-              size={20}
-              color={!loading && !isQuotaExceeded && isConnected ? (isDark ? "#f1f5f9" : "#64748b") : "#94a3b8"}
-            />
+            {isRecording ? (
+              <Animated.View style={recordingPulseStyle}>
+                <Mic size={20} color="#ffffff" />
+              </Animated.View>
+            ) : (
+              <Mic
+                size={20}
+                color={!loading && !isQuotaExceeded && isConnected ? (isDark ? "#f1f5f9" : "#64748b") : "#94a3b8"}
+              />
+            )}
           </Pressable>
           
           <View style={{ flex: 1 }}>
@@ -2113,6 +2322,13 @@ export default function ChatScreen() {
           />
         </View>
       </ChatKeyboardAvoidingView>
+
+      {/* B48: Image preview modal */}
+      <ImagePreviewModal
+        visible={!!previewImage}
+        imageUri={previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
     </SafeAreaView>
   );
 }

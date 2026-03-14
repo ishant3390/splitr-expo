@@ -182,6 +182,34 @@ describe("notifications.ts", () => {
       // Token should NOT be stored on failure
       expect(AsyncStorage.setItem).not.toHaveBeenCalled();
     });
+
+    it("returns null when push token is unavailable (e.g. simulator)", async () => {
+      (Device as any).isDevice = false;
+      const mockRegister = jest.fn();
+      const token = await registerPushToken(mockRegister);
+      expect(token).toBeNull();
+      expect(mockRegister).not.toHaveBeenCalled();
+      (Device as any).isDevice = true;
+    });
+
+    it("uses fallback deviceId when no projectId in config", async () => {
+      // Clear stored token so it goes through the full registration path
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+      const originalConfig = require("expo-constants").expoConfig;
+      require("expo-constants").expoConfig = { extra: {} }; // no eas.projectId
+
+      const mockRegister = jest.fn(() => Promise.resolve());
+      const token = await registerPushToken(mockRegister);
+      expect(token).toBe("ExponentPushToken[abc123]");
+      expect(mockRegister).toHaveBeenCalledWith(
+        "ExponentPushToken[abc123]",
+        expect.any(String),
+        expect.stringContaining("ios-"), // fallback format
+        expect.any(String)
+      );
+
+      require("expo-constants").expoConfig = originalConfig;
+    });
   });
 
   describe("unregisterPushToken", () => {
@@ -300,6 +328,89 @@ describe("notifications.ts", () => {
         NOTIFICATION_PREFS_KEY,
         JSON.stringify(prefs)
       );
+    });
+  });
+
+  describe("setupAndroidChannels", () => {
+    it("sets up channels on Android", async () => {
+      const originalOS = require("react-native").Platform.OS;
+      require("react-native").Platform.OS = "android";
+
+      await setupAndroidChannels();
+
+      expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledTimes(4);
+      expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+        "expenses",
+        expect.objectContaining({ name: "Expenses", sound: "default" })
+      );
+      expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+        "settlements",
+        expect.objectContaining({ name: "Settlements" })
+      );
+      expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+        "groups",
+        expect.objectContaining({ name: "Groups" })
+      );
+      expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+        "reminders",
+        expect.objectContaining({ name: "Reminders" })
+      );
+
+      require("react-native").Platform.OS = originalOS;
+    });
+  });
+
+  describe("getNotificationUrl — nudge and default types", () => {
+    it("constructs settle-up route for settlement_nudge_debtor", () => {
+      const response = {
+        notification: {
+          request: {
+            content: {
+              data: { type: "settlement_nudge_debtor", groupId: "grp_1" },
+            },
+          },
+        },
+      } as any;
+      expect(getNotificationUrl(response)).toBe("/settle-up?groupId=grp_1");
+    });
+
+    it("constructs settle-up route for settlement_nudge_manual", () => {
+      const response = {
+        notification: {
+          request: {
+            content: {
+              data: { type: "settlement_nudge_manual", groupId: "grp_2" },
+            },
+          },
+        },
+      } as any;
+      expect(getNotificationUrl(response)).toBe("/settle-up?groupId=grp_2");
+    });
+
+    it("constructs group route for settlement_nudge_creditor", () => {
+      const response = {
+        notification: {
+          request: {
+            content: {
+              data: { type: "settlement_nudge_creditor", groupId: "grp_3" },
+            },
+          },
+        },
+      } as any;
+      expect(getNotificationUrl(response)).toBe("/group/grp_3");
+    });
+
+    it("falls back to group route for unknown type", () => {
+      const response = {
+        notification: {
+          request: {
+            content: {
+              data: { type: "some_unknown_type", groupId: "grp_4" },
+            },
+          },
+        },
+      } as any;
+      expect(getNotificationUrl(response)).toBe("/group/grp_4");
     });
   });
 

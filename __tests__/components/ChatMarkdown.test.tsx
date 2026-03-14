@@ -80,4 +80,12 @@ describe("ChatMarkdown", () => {
     expect(tree).toContain("world");
     expect(tree).toContain("#ffffff");
   });
+
+  it("skips empty lines between blocks", () => {
+    const content = "Heading\n\n- Item one\n\n- Item two";
+    render(<ChatMarkdown content={content} />);
+    const bullets = screen.getAllByText("\u2022");
+    expect(bullets.length).toBe(2);
+    expect(screen.getByText("Heading")).toBeTruthy();
+  });
 });

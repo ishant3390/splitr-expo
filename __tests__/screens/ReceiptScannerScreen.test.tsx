@@ -224,4 +224,267 @@ describe("ReceiptScannerScreen", () => {
       },
     });
   });
+
+  it("shows error toast when camera permission is denied", async () => {
+    const ImagePicker = require("expo-image-picker");
+    ImagePicker.requestCameraPermissionsAsync.mockResolvedValueOnce({ status: "denied" });
+
+    render(<ReceiptScannerScreen />);
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Please allow camera access to scan receipts.");
+    });
+  });
+
+  it("shows error toast when media library permission is denied", async () => {
+    const ImagePicker = require("expo-image-picker");
+    ImagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValueOnce({ status: "denied" });
+
+    render(<ReceiptScannerScreen />);
+    fireEvent.press(screen.getByText("Choose from Gallery"));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Please allow access to your photo library.");
+    });
+  });
+
+  it("handles camera cancel (no image selected)", async () => {
+    const ImagePicker = require("expo-image-picker");
+    ImagePicker.launchCameraAsync.mockResolvedValueOnce({ canceled: true, assets: [] });
+
+    render(<ReceiptScannerScreen />);
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      // Should stay on capture screen
+      expect(screen.getByText("Scan a Receipt")).toBeTruthy();
+    });
+  });
+
+  it("handles gallery cancel (no image selected)", async () => {
+    const ImagePicker = require("expo-image-picker");
+    ImagePicker.launchImageLibraryAsync.mockResolvedValueOnce({ canceled: true, assets: [] });
+
+    render(<ReceiptScannerScreen />);
+    fireEvent.press(screen.getByText("Choose from Gallery"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Scan a Receipt")).toBeTruthy();
+    });
+  });
+
+  it("shows Try Again and New Photo buttons on error", async () => {
+    mockScanReceipt.mockRejectedValueOnce(new Error("API error"));
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Try Again")).toBeTruthy();
+      expect(screen.getByText("New Photo")).toBeTruthy();
+    });
+  });
+
+  it("retries scan on Try Again press", async () => {
+    mockScanReceipt.mockRejectedValueOnce(new Error("Fail"));
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Try Again")).toBeTruthy();
+    });
+
+    mockScanReceipt.mockResolvedValueOnce(MOCK_RESPONSE);
+    fireEvent.press(screen.getByText("Try Again"));
+
+    await waitFor(() => {
+      expect(mockScanReceipt).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("resets to capture screen on New Photo press", async () => {
+    mockScanReceipt.mockRejectedValueOnce(new Error("Fail"));
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("New Photo")).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText("New Photo"));
+    expect(screen.getByText("Scan a Receipt")).toBeTruthy();
+  });
+
+  it("shows daily limit reached when quota is exhausted", async () => {
+    mockScanReceipt.mockResolvedValueOnce({
+      receipt: MOCK_RECEIPT,
+      dailyScansUsed: 2,
+      dailyScanLimit: 2,
+    });
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Daily scan limit reached. Resets tomorrow.")).toBeTruthy();
+      expect(screen.queryByText("Scan Another")).toBeNull();
+    });
+  });
+
+  it("shows low overall confidence warning", async () => {
+    const lowConfResponse = {
+      receipt: {
+        ...MOCK_RECEIPT,
+        confidence: { ...MOCK_RECEIPT.confidence, overall: 0.65 },
+      },
+      dailyScansUsed: 1,
+      dailyScanLimit: 3,
+    };
+    mockScanReceipt.mockResolvedValueOnce(lowConfResponse);
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Some fields have low confidence/)).toBeTruthy();
+    });
+  });
+
+  it("shows subtotal, tax, and tip in results", async () => {
+    const withTipResponse = {
+      receipt: {
+        ...MOCK_RECEIPT,
+        tipCents: 300,
+      },
+      dailyScansUsed: 1,
+      dailyScanLimit: 3,
+    };
+    mockScanReceipt.mockResolvedValueOnce(withTipResponse);
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Subtotal")).toBeTruthy();
+      expect(screen.getByText("Tax")).toBeTruthy();
+      expect(screen.getByText("Tip")).toBeTruthy();
+    });
+  });
+
+  it("shows Scanned badge on the receipt image after scan", async () => {
+    mockScanReceipt.mockResolvedValueOnce(MOCK_RESPONSE);
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Scanned")).toBeTruthy();
+    });
+  });
+
+  it("shows currency badge when result has currency", async () => {
+    mockScanReceipt.mockResolvedValueOnce(MOCK_RESPONSE);
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("USD")).toBeTruthy();
+    });
+  });
+
+  it("handles not authenticated error", async () => {
+    mockGetToken.mockResolvedValueOnce(null);
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Scan Failed")).toBeTruthy();
+      expect(screen.getByText("Not authenticated")).toBeTruthy();
+    });
+  });
+
+  it("shows date in results", async () => {
+    mockScanReceipt.mockResolvedValueOnce(MOCK_RESPONSE);
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("2026-03-06")).toBeTruthy();
+    });
+  });
+
+  it("includes 'and X more' in chat message when >5 line items", async () => {
+    const manyItemsReceipt = {
+      ...MOCK_RECEIPT,
+      lineItems: [
+        { description: "Item 1", amountCents: 100, quantity: 1 },
+        { description: "Item 2", amountCents: 200, quantity: 1 },
+        { description: "Item 3", amountCents: 300, quantity: 1 },
+        { description: "Item 4", amountCents: 400, quantity: 1 },
+        { description: "Item 5", amountCents: 500, quantity: 1 },
+        { description: "Item 6", amountCents: 600, quantity: 1 },
+        { description: "Item 7", amountCents: 700, quantity: 1 },
+      ],
+    };
+    mockScanReceipt.mockResolvedValueOnce({
+      receipt: manyItemsReceipt,
+      dailyScansUsed: 1,
+      dailyScanLimit: 3,
+    });
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Split via Chat")).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText("Split via Chat"));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/chat",
+      params: {
+        receiptMessage: expect.stringContaining("and 2 more"),
+      },
+    });
+    // Should only include first 5 items
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/chat",
+      params: {
+        receiptMessage: expect.stringContaining("Item 5 $5.00"),
+      },
+    });
+    // Item 6 should NOT be in the message
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/chat",
+      params: {
+        receiptMessage: expect.not.stringContaining("Item 6"),
+      },
+    });
+  });
+
+  it("shows low confidence badge for merchant", async () => {
+    const lowMerchantConf = {
+      receipt: {
+        ...MOCK_RECEIPT,
+        confidence: { ...MOCK_RECEIPT.confidence, merchant: 0.6 },
+      },
+      dailyScansUsed: 1,
+      dailyScanLimit: 3,
+    };
+    mockScanReceipt.mockResolvedValueOnce(lowMerchantConf);
+    render(<ReceiptScannerScreen />);
+
+    fireEvent.press(screen.getByText("Take Photo"));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Verify").length).toBeGreaterThan(0);
+    });
+  });
 });

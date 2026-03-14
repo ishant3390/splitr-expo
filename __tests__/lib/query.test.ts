@@ -1,4 +1,15 @@
-import { queryKeys, staleTimes } from "@/lib/query";
+jest.unmock("@tanstack/react-query");
+
+import {
+  queryKeys,
+  staleTimes,
+  queryClient,
+  invalidateAfterExpenseChange,
+  invalidateAfterSettlementChange,
+  invalidateAfterGroupChange,
+  invalidateAfterMemberChange,
+  invalidateAfterProfileUpdate,
+} from "@/lib/query";
 
 describe("queryKeys", () => {
   it("user keys are stable", () => {
@@ -55,6 +66,88 @@ describe("staleTimes", () => {
     Object.values(staleTimes).forEach((t) => {
       expect(typeof t).toBe("number");
       expect(t).toBeGreaterThanOrEqual(0);
+    });
+  });
+});
+
+describe("queryClient", () => {
+  it("is a QueryClient instance with expected default options", () => {
+    expect(queryClient).toBeDefined();
+    const defaults = queryClient.getDefaultOptions();
+    expect(defaults.queries?.retry).toBe(1);
+    expect(defaults.queries?.staleTime).toBe(30_000);
+    expect(defaults.queries?.gcTime).toBe(5 * 60_000);
+    expect(defaults.queries?.refetchOnReconnect).toBe(false);
+    expect(defaults.queries?.refetchOnWindowFocus).toBe(false);
+    expect(defaults.mutations?.retry).toBe(0);
+  });
+});
+
+describe("invalidation helpers", () => {
+  let invalidateSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    invalidateSpy = jest.spyOn(queryClient, "invalidateQueries").mockImplementation(() => Promise.resolve());
+  });
+
+  afterEach(() => {
+    invalidateSpy.mockRestore();
+  });
+
+  describe("invalidateAfterExpenseChange", () => {
+    it("invalidates group expenses, balance, activity, settlements, and group", () => {
+      invalidateAfterExpenseChange("g1");
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.groupExpenses("g1") });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userBalance });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userActivity });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.settlementSuggestions("g1") });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.group("g1") });
+      expect(invalidateSpy).toHaveBeenCalledTimes(5);
+    });
+  });
+
+  describe("invalidateAfterSettlementChange", () => {
+    it("invalidates suggestions, history, balance, activity, and group", () => {
+      invalidateAfterSettlementChange("g2");
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.settlementSuggestions("g2") });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.settlementHistory("g2") });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userBalance });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userActivity });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.group("g2") });
+      expect(invalidateSpy).toHaveBeenCalledTimes(5);
+    });
+  });
+
+  describe("invalidateAfterGroupChange", () => {
+    it("invalidates groups list and balance", () => {
+      invalidateAfterGroupChange();
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["groups"] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userBalance });
+      expect(invalidateSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("invalidateAfterMemberChange", () => {
+    it("invalidates members, group, balance, and contacts", () => {
+      invalidateAfterMemberChange("g3");
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.groupMembers("g3") });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.group("g3") });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userBalance });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.contacts });
+      expect(invalidateSpy).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  describe("invalidateAfterProfileUpdate", () => {
+    it("invalidates user queries", () => {
+      invalidateAfterProfileUpdate();
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.user });
+      expect(invalidateSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

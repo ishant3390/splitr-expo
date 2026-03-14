@@ -434,4 +434,9 @@ describe("parseMentionsForDisplay", () => {
     expect(result[0].type).toBe("mention");
     expect(result[1].type).toBe("mention");
   });
+
+  it("returns single text segment for empty string", () => {
+    const result = parseMentionsForDisplay("");
+    expect(result).toEqual([{ type: "text", value: "" }]);
+  });
 });

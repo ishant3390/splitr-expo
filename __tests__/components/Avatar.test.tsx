@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react-native";
+import { render, screen, fireEvent } from "@testing-library/react-native";
 import { Avatar } from "@/components/ui/avatar";
 
 describe("Avatar", () => {
@@ -10,8 +10,15 @@ describe("Avatar", () => {
 
   it("renders fallback text when image fails", () => {
     render(<Avatar src="https://broken.com/img.png" fallback="AB" />);
-    // Initially tries to render image, but fallback should be available
-    // on error
+    // Simulate the image error to trigger the onError handler
+    const image = screen.UNSAFE_queryAllByType(
+      require("expo-image").Image
+    );
+    if (image.length > 0) {
+      fireEvent(image[0], "error");
+    }
+    // After error, fallback text should appear
+    expect(screen.getByText("AB")).toBeTruthy();
   });
 
   it("renders different sizes without crashing", () => {

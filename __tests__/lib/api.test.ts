@@ -8,6 +8,7 @@ import {
   expensesApi,
   settlementsApi,
   chatStream,
+  chatApi,
 } from "@/lib/api";
 
 // Mock global fetch
@@ -833,5 +834,644 @@ describe("chatStream", () => {
     const abort = chatStream("Hi", null, "token", jest.fn(), jest.fn(), jest.fn());
 
     expect(typeof abort).toBe("function");
+  });
+
+  it("sends image and deterministic options in request body", async () => {
+    mockFetch.mockResolvedValue(mockSSEResponse(["data: [DONE]\n\n"]));
+
+    chatStream("Hi", null, "token", jest.fn(), jest.fn(), jest.fn(), {
+      image: "base64data",
+      deterministic: true,
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/chat"),
+      expect.objectContaining({
+        body: JSON.stringify({
+          conversationId: null,
+          message: "Hi",
+          image: "base64data",
+          deterministic: true,
+        }),
+      })
+    );
+  });
+
+  it("calls onError when response body is null", async () => {
+    const onError = jest.fn();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: null,
+    });
+
+    chatStream("Hi", null, "token", jest.fn(), jest.fn(), onError);
+
+    await new Promise((r) => setTimeout(r, 100));
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+    expect(onError.mock.calls[0][0].message).toContain("No response body");
+  });
+
+  it("calls onDone when stream ends without [DONE]", async () => {
+    const onDone = jest.fn();
+    const onEvent = jest.fn();
+
+    mockFetch.mockResolvedValue(
+      mockSSEResponse([
+        'data: {"type":"text","content":"Hi","conversationId":"c1"}\n\n',
+        // stream ends without [DONE]
+      ])
+    );
+
+    chatStream("Hi", null, "token", onEvent, onDone, jest.fn());
+
+    await new Promise((r) => setTimeout(r, 100));
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onDone).toHaveBeenCalled();
+  });
+});
+
+describe("chatStream XHR path", () => {
+  beforeAll(() => {
+    (Platform as any).OS = "ios";
+  });
+  afterAll(() => {
+    (Platform as any).OS = originalPlatformOS;
+  });
+
+  let xhrInstances: any[];
+  let originalXHR: any;
+
+  function createMockXHR() {
+    const xhr: any = {
+      open: jest.fn(),
+      send: jest.fn(),
+      abort: jest.fn(),
+      setRequestHeader: jest.fn(),
+      responseText: "",
+      onprogress: null as any,
+      onload: null as any,
+      onerror: null as any,
+      ontimeout: null as any,
+      timeout: 0,
+    };
+    xhrInstances.push(xhr);
+    return xhr;
+  }
+
+  beforeEach(() => {
+    xhrInstances = [];
+    originalXHR = (global as any).XMLHttpRequest;
+    (global as any).XMLHttpRequest = jest.fn(() => createMockXHR());
+  });
+
+  afterEach(() => {
+    (global as any).XMLHttpRequest = originalXHR;
+  });
+
+  it("opens XHR with correct URL and headers", () => {
+    chatStream("Hi", null, "token", jest.fn(), jest.fn(), jest.fn());
+
+    const xhr = xhrInstances[0];
+    expect(xhr.open).toHaveBeenCalledWith("POST", expect.stringContaining("/v1/chat"));
+    expect(xhr.setRequestHeader).toHaveBeenCalledWith("Content-Type", "application/json");
+    expect(xhr.setRequestHeader).toHaveBeenCalledWith("Authorization", "Bearer token");
+    expect(xhr.send).toHaveBeenCalledWith(
+      JSON.stringify({ conversationId: null, message: "Hi" })
+    );
+    expect(xhr.timeout).toBe(60000);
+  });
+
+  it("parses SSE events from XHR onprogress", () => {
+    const onEvent = jest.fn();
+    const onDone = jest.fn();
+
+    chatStream("Hi", null, "token", onEvent, onDone, jest.fn());
+
+    const xhr = xhrInstances[0];
+    xhr.responseText = 'data: {"type":"text","content":"Hello","conversationId":"c1"}\n\n';
+    xhr.onprogress();
+
+    expect(onEvent).toHaveBeenCalledWith({
+      type: "text",
+      content: "Hello",
+      conversationId: "c1",
+    });
+  });
+
+  it("handles [DONE] in XHR onprogress", () => {
+    const onDone = jest.fn();
+
+    chatStream("Hi", null, "token", jest.fn(), onDone, jest.fn());
+
+    const xhr = xhrInstances[0];
+    xhr.responseText = "data: [DONE]\n\n";
+    xhr.onprogress();
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles incremental data in onprogress", () => {
+    const onEvent = jest.fn();
+
+    chatStream("Hi", null, "token", onEvent, jest.fn(), jest.fn());
+
+    const xhr = xhrInstances[0];
+    // First chunk
+    xhr.responseText = 'data: {"type":"text","content":"A","conversationId":"c1"}\n\n';
+    xhr.onprogress();
+    expect(onEvent).toHaveBeenCalledTimes(1);
+
+    // Second chunk appended
+    xhr.responseText += 'data: {"type":"text","content":"B","conversationId":"c1"}\n\n';
+    xhr.onprogress();
+    expect(onEvent).toHaveBeenCalledTimes(2);
+  });
+
+  it("calls onDone on XHR onload when not already completed", () => {
+    const onDone = jest.fn();
+
+    chatStream("Hi", null, "token", jest.fn(), onDone, jest.fn());
+
+    const xhr = xhrInstances[0];
+    xhr.responseText = "";
+    xhr.onload();
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("processes remaining buffer on XHR onload", () => {
+    const onEvent = jest.fn();
+    const onDone = jest.fn();
+
+    chatStream("Hi", null, "token", onEvent, onDone, jest.fn());
+
+    const xhr = xhrInstances[0];
+    // Simulate partial data in onprogress (no trailing newline)
+    xhr.responseText = 'data: {"type":"text","content":"leftover","conversationId":"c1"}';
+    xhr.onprogress();
+    // Not parsed yet (no newline)
+    expect(onEvent).not.toHaveBeenCalled();
+
+    // onload processes the remaining buffer
+    xhr.onload();
+    expect(onEvent).toHaveBeenCalledWith({
+      type: "text",
+      content: "leftover",
+      conversationId: "c1",
+    });
+  });
+
+  it("skips onload/onprogress/onerror/ontimeout after completion", () => {
+    const onDone = jest.fn();
+    const onError = jest.fn();
+
+    chatStream("Hi", null, "token", jest.fn(), onDone, onError);
+
+    const xhr = xhrInstances[0];
+    xhr.responseText = "data: [DONE]\n\n";
+    xhr.onprogress(); // completes
+    expect(onDone).toHaveBeenCalledTimes(1);
+
+    // Subsequent calls should be no-ops
+    xhr.onprogress();
+    xhr.onload();
+    xhr.onerror();
+    xhr.ontimeout();
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("calls onError on XHR onerror", () => {
+    const onError = jest.fn();
+
+    chatStream("Hi", null, "token", jest.fn(), jest.fn(), onError);
+
+    const xhr = xhrInstances[0];
+    xhr.onerror();
+
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+    expect(onError.mock.calls[0][0].message).toContain("Chat API request failed");
+  });
+
+  it("calls onError on XHR ontimeout", () => {
+    const onError = jest.fn();
+
+    chatStream("Hi", null, "token", jest.fn(), jest.fn(), onError);
+
+    const xhr = xhrInstances[0];
+    xhr.ontimeout();
+
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+    expect(onError.mock.calls[0][0].message).toContain("Chat API timeout");
+  });
+
+  it("returns an abort function that calls xhr.abort", () => {
+    chatStream("Hi", null, "token", jest.fn(), jest.fn(), jest.fn());
+
+    const xhr = xhrInstances[0];
+    const abort = chatStream("Hi", null, "token", jest.fn(), jest.fn(), jest.fn());
+
+    const xhrForAbort = xhrInstances[1];
+    if (abort) abort();
+    expect(xhrForAbort.abort).toHaveBeenCalled();
+  });
+
+  it("abort is no-op after completion", () => {
+    const abort = chatStream("Hi", null, "token", jest.fn(), jest.fn(), jest.fn());
+
+    const xhr = xhrInstances[0];
+    xhr.responseText = "data: [DONE]\n\n";
+    xhr.onprogress(); // marks completed
+
+    if (abort) abort();
+    expect(xhr.abort).not.toHaveBeenCalled();
+  });
+
+  it("processes [DONE] in remaining buffer on onload", () => {
+    const onDone = jest.fn();
+    const onEvent = jest.fn();
+
+    chatStream("Hi", null, "token", onEvent, onDone, jest.fn());
+
+    const xhr = xhrInstances[0];
+    // Simulate data arriving with [DONE] but no trailing newline in onprogress
+    xhr.responseText = "data: [DONE]";
+    xhr.onprogress();
+    // Not processed yet (no newline termination)
+    expect(onDone).not.toHaveBeenCalled();
+
+    // onload processes remaining buffer with added newline
+    xhr.onload();
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores empty onprogress data", () => {
+    const onEvent = jest.fn();
+
+    chatStream("Hi", null, "token", onEvent, jest.fn(), jest.fn());
+
+    const xhr = xhrInstances[0];
+    xhr.responseText = "";
+    xhr.onprogress();
+    expect(onEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("usersApi - push tokens and notifications", () => {
+  it("registerPushToken sends POST with token data", async () => {
+    const tokenData = { token: "expo-token", deviceId: "d1", deviceName: "iPhone", platform: "ios" };
+    mockFetch.mockResolvedValue(mockResponse({ id: "pt1", ...tokenData }));
+
+    await usersApi.registerPushToken(tokenData as any, "auth-token");
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/users/me/push-tokens"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(tokenData),
+      })
+    );
+  });
+
+  it("listPushTokens sends GET", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await usersApi.listPushTokens("auth-token");
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/users/me/push-tokens"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer auth-token",
+        }),
+      })
+    );
+  });
+
+  it("unregisterPushToken sends DELETE with encoded tokenId", async () => {
+    mockFetch.mockResolvedValue(mockResponse(""));
+
+    await usersApi.unregisterPushToken("token/with+special", "auth-token");
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/users/me/push-tokens/token%2Fwith%2Bspecial"),
+      expect.objectContaining({ method: "DELETE" })
+    );
+  });
+
+  it("notifications returns data array from { data: [] } response", async () => {
+    const notifs = [{ id: "n1", type: "expense_created" }];
+    mockFetch.mockResolvedValue(mockResponse({ data: notifs }));
+
+    const result = await usersApi.notifications("token");
+    expect(result).toEqual(notifs);
+  });
+
+  it("notifications returns content array from Spring Boot Page response", async () => {
+    const notifs = [{ id: "n1" }];
+    mockFetch.mockResolvedValue(mockResponse({ content: notifs, totalElements: 1 }));
+
+    const result = await usersApi.notifications("token");
+    expect(result).toEqual(notifs);
+  });
+
+  it("notifications returns array response directly", async () => {
+    const notifs = [{ id: "n1" }];
+    mockFetch.mockResolvedValue(mockResponse(notifs));
+
+    const result = await usersApi.notifications("token");
+    expect(result).toEqual(notifs);
+  });
+
+  it("notifications returns empty array for non-array response", async () => {
+    mockFetch.mockResolvedValue(mockResponse({ unexpected: "format" }));
+
+    const result = await usersApi.notifications("token");
+    expect(result).toEqual([]);
+  });
+
+  it("notifications passes page and limit params", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await usersApi.notifications("token", { page: 2, limit: 10 });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("?page=2&limit=10"),
+      expect.anything()
+    );
+  });
+
+  it("notifications defaults to page=0&limit=20", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await usersApi.notifications("token");
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("?page=0&limit=20"),
+      expect.anything()
+    );
+  });
+});
+
+describe("usersApi.activity — no params branch", () => {
+  it("sends request without query string when params are omitted", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await usersApi.activity("token");
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("/v1/users/me/activity");
+    expect(calledUrl).not.toContain("?page=");
+  });
+});
+
+describe("groupsApi.activity — params branches", () => {
+  it("sends request without query string when params are omitted", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await groupsApi.activity("g1", "token");
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("/v1/groups/g1/activity");
+    expect(calledUrl).not.toContain("?page=");
+  });
+
+  it("sends request with page and limit params", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await groupsApi.activity("g1", "token", { page: 2, limit: 10 });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("?page=2&limit=10");
+  });
+
+  it("returns content array from Spring Boot Page response", async () => {
+    const items = [{ id: "a1" }];
+    mockFetch.mockResolvedValue(mockResponse({ content: items, totalElements: 1 }));
+
+    const result = await groupsApi.activity("g1", "token");
+    expect(result).toEqual(items);
+  });
+});
+
+describe("settlementsApi.list — params and content branches", () => {
+  it("sends request without query string when params omitted", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await settlementsApi.list("g1", "token");
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("/v1/groups/g1/settlements");
+    expect(calledUrl).not.toContain("?page=");
+  });
+
+  it("sends request with page and limit params", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await settlementsApi.list("g1", "token", { page: 1, limit: 5 });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("?page=1&limit=5");
+  });
+
+  it("returns content array from Spring Boot Page response", async () => {
+    const items = [{ id: "s1" }];
+    mockFetch.mockResolvedValue(mockResponse({ content: items, totalElements: 1 }));
+
+    const result = await settlementsApi.list("g1", "token");
+    expect(result).toEqual(items);
+  });
+
+  it("returns empty array for non-array non-page response", async () => {
+    mockFetch.mockResolvedValue(mockResponse({ unexpected: true }));
+
+    const result = await settlementsApi.list("g1", "token");
+    expect(result).toEqual([]);
+  });
+});
+
+describe("usersApi.activity - Spring Boot Page response", () => {
+  it("returns content array from Spring Boot Page", async () => {
+    const items = [{ id: "a1" }];
+    mockFetch.mockResolvedValue(mockResponse({ content: items, totalElements: 1 }));
+
+    const result = await usersApi.activity("token");
+    expect(result).toEqual(items);
+  });
+
+  it("passes page and limit params", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await usersApi.activity("token", { page: 1, limit: 10 });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("?page=1&limit=10"),
+      expect.anything()
+    );
+  });
+});
+
+describe("groupsApi - additional coverage", () => {
+  it("inviteByEmail sends POST to /members/invite", async () => {
+    mockFetch.mockResolvedValue(mockResponse({ id: "m1" }));
+
+    await groupsApi.inviteByEmail("g1", { email: "alice@test.com" }, "token");
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/groups/g1/members/invite"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ email: "alice@test.com" }),
+      })
+    );
+  });
+
+  it("nudge sends POST with targetUserId", async () => {
+    mockFetch.mockResolvedValue(mockResponse({ sent: true, message: "Nudge sent" }));
+
+    const result = await groupsApi.nudge("g1", "u2", "token");
+
+    expect(result).toEqual({ sent: true, message: "Nudge sent" });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/groups/g1/nudge"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ targetUserId: "u2" }),
+      })
+    );
+  });
+
+  it("activity returns content from Spring Boot Page", async () => {
+    const items = [{ id: "a1" }];
+    mockFetch.mockResolvedValue(mockResponse({ content: items }));
+
+    const result = await groupsApi.activity("g1", "token");
+    expect(result).toEqual(items);
+  });
+
+  it("activity passes page and limit params", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await groupsApi.activity("g1", "token", { page: 1, limit: 10 });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("?page=1&limit=10"),
+      expect.anything()
+    );
+  });
+});
+
+describe("expensesApi - scanReceipt", () => {
+  it("sends POST with base64 image and returns receipt data", async () => {
+    const receiptData = {
+      receipt: { merchant: "Store", totalCents: 1500 },
+      dailyScansUsed: 1,
+      dailyScanLimit: 5,
+    };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(receiptData),
+    });
+
+    const result = await expensesApi.scanReceipt("base64image", "token");
+
+    expect(result).toEqual(receiptData);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/receipts/scan"),
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer token",
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify({ image: "base64image" }),
+      })
+    );
+  });
+
+  it("throws on error response", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: () => Promise.resolve("Bad request"),
+    });
+
+    await expect(expensesApi.scanReceipt("bad", "token")).rejects.toThrow("API 400: Bad request");
+  });
+
+  it("throws 'Unknown error' when text() fails on error", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.reject(new Error("fail")),
+    });
+
+    await expect(expensesApi.scanReceipt("bad", "token")).rejects.toThrow("API 500: Unknown error");
+  });
+});
+
+describe("expensesApi.uploadReceipt - text() fail on error", () => {
+  it("throws 'Unknown error' when text() fails", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.reject(new Error("fail")),
+    });
+
+    const formData = new FormData();
+    await expect(
+      expensesApi.uploadReceipt("e1", formData, "token")
+    ).rejects.toThrow("API 500: Unknown error");
+  });
+});
+
+describe("settlementsApi - additional coverage", () => {
+  it("list returns content from Spring Boot Page response", async () => {
+    const settlements = [{ id: "s1" }];
+    mockFetch.mockResolvedValue(mockResponse({ content: settlements, totalElements: 1 }));
+
+    const result = await settlementsApi.list("g1", "token");
+    expect(result).toEqual(settlements);
+  });
+
+  it("list returns empty array for non-array response", async () => {
+    mockFetch.mockResolvedValue(mockResponse({ unexpected: "format" }));
+
+    const result = await settlementsApi.list("g1", "token");
+    expect(result).toEqual([]);
+  });
+
+  it("list passes pagination params", async () => {
+    mockFetch.mockResolvedValue(mockResponse([]));
+
+    await settlementsApi.list("g1", "token", { page: 1, limit: 10 });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("?page=1&limit=10"),
+      expect.anything()
+    );
+  });
+});
+
+describe("chatApi", () => {
+  it("quota fetches chat quota", async () => {
+    const quota = { dailyUsed: 3, dailyLimit: 15, resetsAt: "2026-03-14", tier: "free" };
+    mockFetch.mockResolvedValue(mockResponse(quota));
+
+    const result = await chatApi.quota("token");
+
+    expect(result).toEqual(quota);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/chat/quota"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer token",
+        }),
+      })
+    );
   });
 });

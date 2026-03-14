@@ -441,7 +441,7 @@ export default function SettleUpScreen() {
                           {currentUser && s.toUser?.id === currentUser.id && s.fromUser && (
                             <Pressable
                               onPress={(e) => {
-                                e.stopPropagation();
+                                e?.stopPropagation?.();
                                 handleNudge(s.fromUser!.id);
                               }}
                               disabled={nudgingUserId === s.fromUser.id || nudgedUserIds.has(s.fromUser.id)}

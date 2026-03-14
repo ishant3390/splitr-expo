@@ -730,3 +730,85 @@ describe("computeBalancesFromMembers", () => {
     expect(computeBalancesFromMembers(members, "me@test.com")).toEqual({ owed: 0, owes: 0 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Branch coverage: validateFixedSplit with undefined amountCents
+// ---------------------------------------------------------------------------
+describe("validateFixedSplit — edge branches", () => {
+  it("treats non-numeric fixed values as 0", () => {
+    const result = validateFixedSplit({ a: "", b: "abc" }, 100);
+    expect(result.totalFixed).toBe(0);
+    expect(result.valid).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Branch coverage: dedupeMembers with non-array input
+// ---------------------------------------------------------------------------
+describe("dedupeMembers — non-array input", () => {
+  it("returns empty array for non-array input", () => {
+    expect(dedupeMembers(null as any)).toEqual([]);
+    expect(dedupeMembers(undefined as any)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Branch coverage: aggregateByCategory with undefined amountCents
+// ---------------------------------------------------------------------------
+describe("aggregateByCategory — undefined amountCents", () => {
+  it("treats undefined amountCents as 0", () => {
+    const expenses = [
+      { category: { name: "Food" } },
+    ];
+    const result = aggregateByCategory(expenses);
+    expect(result).toEqual([["Food", 0]]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Branch coverage: aggregateByMonth — skips expenses without date/createdAt
+// ---------------------------------------------------------------------------
+describe("aggregateByMonth — no date or createdAt", () => {
+  it("skips expenses with neither date nor createdAt", () => {
+    const expenses = [
+      { amountCents: 100 },
+      { date: "2026-01-15", amountCents: 200 },
+    ];
+    const result = aggregateByMonth(expenses);
+    expect(result).toEqual([{ month: "2026-01", total: 200 }]);
+  });
+
+  it("treats undefined amountCents as 0", () => {
+    const expenses = [
+      { date: "2026-05-10" },
+    ];
+    const result = aggregateByMonth(expenses);
+    expect(result).toEqual([{ month: "2026-05", total: 0 }]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Branch coverage: sortExpenses — amount with undefined amountCents
+// ---------------------------------------------------------------------------
+describe("sortExpenses — undefined amountCents", () => {
+  it("treats undefined amountCents as 0 when sorting by amount", () => {
+    const expenses = [
+      { description: "No amount" },
+      { description: "Has amount", amountCents: 500 },
+    ];
+    const result = sortExpenses(expenses, "amount");
+    expect(result[0].description).toBe("Has amount");
+    expect(result[1].description).toBe("No amount");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Branch coverage: resolvePayerName — guest member fallback to "Member"
+// ---------------------------------------------------------------------------
+describe("resolvePayerName — guest member with no name or displayName", () => {
+  it("falls back to 'Member' when guest member found but has no name or displayName", () => {
+    const payer = { guestUser: { id: "g1" } };
+    const members = [{ guestUser: { id: "g1" } }];
+    expect(resolvePayerName(payer, members)).toBe("Member");
+  });
+});

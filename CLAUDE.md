@@ -239,10 +239,23 @@ lib/
 - Test file naming: `<module>.test.ts` or `<Component>.test.tsx`
 - For screen helpers (e.g., notification formatters), extract pure functions and test separately
 
-### Coverage Targets
-- `lib/` (utils, api): 90%+
-- `components/ui/`: 80%+
-- Screen helpers: 80%+
+### Coverage Targets — 100% (MANDATORY)
+- **Target 100% statement coverage on ALL files** — lib/, components/ui/, screens, helpers
+- Every new file MUST ship with tests that cover all branches and edge cases
+- Every bug fix MUST include a regression test that would have caught the bug
+- Coverage regressions are treated as test failures — never merge code that lowers coverage
+- Use `npm run test:coverage` to verify before committing; flag any file below 95%
+- **Current baseline (825 tests, 59 suites)**: `lib/` at 98%, `components/ui/` at 91%, screens improving
+
+### Test Quality Standards
+- **Test behavior, not implementation** — assert what the user sees, not internal state
+- **One assertion theme per test** — each test should verify one logical behavior
+- **Descriptive test names** — read like a specification: "shows error toast when API returns 429"
+- **No snapshot tests** — they rot fast and catch nothing meaningful
+- **Mock at boundaries** — mock APIs, native modules, navigation; never mock the component under test
+- **Edge cases matter** — empty states, error states, loading states, boundary values, offline
+- **Async tests use waitFor** — never use arbitrary delays or fake timers in screen tests with data loading
+- **Tests must be deterministic** — no reliance on timing, order, or external state
 
 ### E2E Testing (Playwright)
 - **Framework**: Playwright targeting Expo web (`react-native-web`)

@@ -76,4 +76,17 @@ describe("biometrics.ts", () => {
       disableDeviceFallback: false,
     });
   });
+
+  it("returns 'iris' label for IRIS authentication type", () => {
+    expect(getBiometricLabel([LocalAuthentication.AuthenticationType.IRIS])).toBe("iris");
+  });
+
+  it("returns 'biometrics' label for empty authentication types", () => {
+    expect(getBiometricLabel([])).toBe("biometrics");
+  });
+
+  it("persists biometric lock disabled", async () => {
+    await setBiometricLockEnabled(false);
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(BIOMETRIC_LOCK_KEY, "false");
+  });
 });

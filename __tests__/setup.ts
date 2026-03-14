@@ -100,13 +100,22 @@ jest.mock("react-native-svg", () => ({
 // Mock react-native-gesture-handler
 jest.mock("react-native-gesture-handler", () => {
   const RN = require("react-native");
+  function chainableGesture(): any {
+    const g: any = {};
+    const methods = [
+      "activeOffsetX", "failOffsetY", "onUpdate", "onEnd", "onStart",
+      "numberOfTaps", "minPointers", "maxPointers", "enabled",
+    ];
+    for (const m of methods) g[m] = () => g;
+    return g;
+  }
   const GestureMock = {
-    Pan: () => ({
-      activeOffsetX: () => GestureMock.Pan(),
-      failOffsetY: () => GestureMock.Pan(),
-      onUpdate: () => GestureMock.Pan(),
-      onEnd: () => GestureMock.Pan(),
-    }),
+    Pan: () => chainableGesture(),
+    Pinch: () => chainableGesture(),
+    Tap: () => chainableGesture(),
+    Simultaneous: (..._gestures: any[]) => chainableGesture(),
+    Race: (..._gestures: any[]) => chainableGesture(),
+    Exclusive: (..._gestures: any[]) => chainableGesture(),
   };
   return {
     Gesture: GestureMock,
@@ -311,6 +320,20 @@ jest.mock("@/components/ui/confetti", () => ({
   Confetti: () => null,
 }));
 
+// Mock image preview modal
+jest.mock("@/components/ui/image-preview-modal", () => {
+  const RN = require("react-native");
+  return {
+    ImagePreviewModal: ({ visible, imageUri, onClose }: { visible: boolean; imageUri: string | null; onClose: () => void }) => {
+      if (!visible) return null;
+      return RN.createElement(RN.View, { testID: "image-preview-modal" },
+        RN.createElement(RN.Text, null, imageUri),
+        RN.createElement(RN.Pressable, { onPress: onClose, accessibilityLabel: "Close image preview" })
+      );
+    },
+  };
+});
+
 // Mock @tanstack/react-query
 jest.mock("@tanstack/react-query", () => ({
   useQuery: jest.fn(() => ({ data: undefined, isLoading: false, error: null, refetch: jest.fn() })),
@@ -344,4 +367,10 @@ jest.mock("expo-quick-actions", () => ({
 jest.mock("expo-quick-actions/router", () => ({
   useQuickActionRouting: jest.fn(),
   isRouterAction: jest.fn(() => false),
+}));
+
+// Mock @/lib/speech
+jest.mock("@/lib/speech", () => ({
+  isSpeechRecognitionAvailable: jest.fn(() => false),
+  createSpeechRecognition: jest.fn(() => null),
 }));

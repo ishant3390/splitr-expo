@@ -7,7 +7,7 @@
  */
 
 import { renderHook } from "@testing-library/react-native";
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import { queryKeys, staleTimes } from "@/lib/query";
 
 // Mock API modules
@@ -17,6 +17,7 @@ jest.mock("@/lib/api", () => ({
     balance: jest.fn(),
     activity: jest.fn(),
     updateMe: jest.fn(),
+    notifications: jest.fn(),
   },
   groupsApi: {
     list: jest.fn(),
@@ -60,6 +61,7 @@ jest.mock("@/lib/query", () => ({
     settlementSuggestions: (id: string) => ["settlements", id, "suggestions"],
     settlementHistory: (id: string) => ["settlements", id, "history"],
     contacts: ["contacts"],
+    notifications: ["notifications"],
     invitePreview: (code: string) => ["invite", code],
   },
   staleTimes: {
@@ -71,6 +73,7 @@ jest.mock("@/lib/query", () => ({
     activity: 30_000,
     user: 120_000,
     categories: 300_000,
+    notifications: 30_000,
     invitePreview: 60_000,
   },
   invalidateAfterExpenseChange: jest.fn(),
@@ -83,6 +86,18 @@ jest.mock("@/lib/query", () => ({
 jest.mock("@/lib/screen-helpers", () => ({
   dedupeMembers: jest.fn((arr: any[]) => arr),
   computeBalancesFromMembers: jest.fn(() => ({ owed: 100, owes: 50 })),
+}));
+
+jest.mock("@/lib/mention-utils", () => ({
+  membersToContacts: jest.fn((members: any[]) =>
+    members.map((m: any) => ({ userId: m.userId, name: m.displayName, email: m.email }))
+  ),
+  dedupeContacts: jest.fn((contacts: any[]) => contacts),
+  mergeWithRecency: jest.fn((contacts: any[], _recents: any[]) => contacts),
+}));
+
+jest.mock("@/lib/mention-recency", () => ({
+  getRecentMentions: jest.fn(() => Promise.resolve([])),
 }));
 
 import {
@@ -103,10 +118,14 @@ import {
   invalidateAfterProfileUpdate,
 } from "@/lib/query";
 
+import { membersToContacts, dedupeContacts, mergeWithRecency } from "@/lib/mention-utils";
+import { getRecentMentions } from "@/lib/mention-recency";
+
 import {
   useUserProfile,
   useUserBalance,
   useUserActivity,
+  useNotifications,
   useGroups,
   useGroup,
   useGroupMembers,
@@ -115,6 +134,7 @@ import {
   useSettlementSuggestions,
   useSettlementHistory,
   useContacts,
+  useMergedContacts,
   useInvitePreview,
   useCreateExpense,
   useUpdateExpense,
@@ -129,12 +149,14 @@ import {
   useUpdateProfile,
   useJoinGroup,
   useRegenerateInvite,
+  useTopDebtor,
 } from "@/lib/hooks";
 
 const mockUseQuery = useQuery as jest.Mock;
 const mockUseInfiniteQuery = useInfiniteQuery as jest.Mock;
 const mockUseMutation = useMutation as jest.Mock;
 const mockUseQueryClient = useQueryClient as jest.Mock;
+const mockUseQueries = useQueries as jest.Mock;
 
 /** Helper: render a hook and return the config passed to useQuery */
 function renderQueryHook(hookFn: () => any) {
@@ -833,6 +855,325 @@ describe("hooks.ts", () => {
       const oldGroup = { id: "g1", name: "Trip", inviteCode: "old-code" };
       expect(updater(oldGroup)).toEqual({ ...oldGroup, inviteCode: "new-code" });
       expect(updater(undefined)).toBeUndefined();
+    });
+  });
+
+  // ---- Hooks for uncovered lines ----
+
+  describe("useNotifications", () => {
+    it("calls useInfiniteQuery with notifications queryKey", () => {
+      const config = renderInfiniteQueryHook(() => useNotifications());
+      expect(config.queryKey).toEqual(queryKeys.notifications ?? ["notifications"]);
+      expect(config.initialPageParam).toBe(0);
+    });
+
+    it("queryFn fetches notifications with page param", async () => {
+      const config = renderInfiniteQueryHook(() => useNotifications());
+
+      const notifs = Array.from({ length: 20 }, (_, i) => ({ id: `n${i}` }));
+      (usersApi.notifications as jest.Mock).mockResolvedValue(notifs);
+
+      const result = await config.queryFn({ pageParam: 0 });
+      expect(usersApi.notifications).toHaveBeenCalledWith("mock-token", { page: 0, limit: 20 });
+      expect(result).toHaveLength(20);
+    });
+
+    it("getNextPageParam returns next page when full page received", () => {
+      const config = renderInfiniteQueryHook(() => useNotifications());
+      const fullPage = Array.from({ length: 20 }, (_, i) => ({ id: `n${i}` }));
+      expect(config.getNextPageParam(fullPage, [fullPage])).toBe(1);
+    });
+
+    it("getNextPageParam returns undefined when last page is partial", () => {
+      const config = renderInfiniteQueryHook(() => useNotifications());
+      const partialPage = [{ id: "n1" }];
+      expect(config.getNextPageParam(partialPage, [partialPage])).toBeUndefined();
+    });
+
+    it("flattens pages into data array", () => {
+      mockUseInfiniteQuery.mockReturnValue({
+        data: { pages: [[{ id: "n1" }], [{ id: "n2" }]], pageParams: [0, 1] },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+      });
+
+      const { result } = renderHook(() => useNotifications());
+      expect(result.current.data).toEqual([{ id: "n1" }, { id: "n2" }]);
+    });
+
+    it("returns empty data when no pages", () => {
+      mockUseInfiniteQuery.mockReturnValue({
+        data: undefined,
+        isLoading: true,
+        error: null,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+      });
+
+      const { result } = renderHook(() => useNotifications());
+      expect(result.current.data).toEqual([]);
+    });
+  });
+
+  describe("useMergedContacts", () => {
+    it("returns contacts from API when available", () => {
+      const apiContacts = [
+        { userId: "u1", name: "Alice", email: "alice@test.com" },
+        { userId: "u2", name: "Bob", email: "bob@test.com" },
+      ];
+
+      // useContacts returns data via useQuery
+      let queryCallCount = 0;
+      mockUseQuery.mockImplementation((config: any) => {
+        queryCallCount++;
+        if (config.queryKey[0] === "contacts") {
+          return { data: apiContacts, isLoading: false, error: null, refetch: jest.fn() };
+        }
+        if (config.queryKey[0] === "groups") {
+          return { data: [], isLoading: false, error: null, refetch: jest.fn() };
+        }
+        return { data: undefined, isLoading: false, error: null, refetch: jest.fn() };
+      });
+
+      // useQueries for member fallback
+      mockUseQueries.mockReturnValue([]);
+
+      const { result } = renderHook(() => useMergedContacts());
+      // Should exclude current user (test@example.com from Clerk mock)
+      // and return merged contacts
+      expect(result.current.data).toBeDefined();
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it("falls back to group members when contacts API is empty", () => {
+      let queryCallCount = 0;
+      mockUseQuery.mockImplementation((config: any) => {
+        queryCallCount++;
+        if (config.queryKey[0] === "contacts") {
+          return { data: [], isLoading: false, error: null, refetch: jest.fn() };
+        }
+        if (config.queryKey[0] === "groups") {
+          return {
+            data: [{ id: "g1", name: "Trip" }],
+            isLoading: false,
+            error: null,
+            refetch: jest.fn(),
+          };
+        }
+        return { data: undefined, isLoading: false, error: null, refetch: jest.fn() };
+      });
+
+      const memberData = [{ userId: "u2", displayName: "Bob", email: "bob@test.com" }];
+      mockUseQueries.mockReturnValue([
+        { data: memberData, isLoading: false, error: null },
+      ]);
+
+      const { result } = renderHook(() => useMergedContacts());
+      expect(membersToContacts).toHaveBeenCalled();
+      expect(dedupeContacts).toHaveBeenCalled();
+      expect(mergeWithRecency).toHaveBeenCalled();
+    });
+
+    it("provides a refreshRecents callback that reloads recents", async () => {
+      mockUseQuery.mockReturnValue({ data: [], isLoading: false, error: null, refetch: jest.fn() });
+      mockUseQueries.mockReturnValue([]);
+
+      const { result } = renderHook(() => useMergedContacts());
+      expect(typeof result.current.refreshRecents).toBe("function");
+
+      // Call refreshRecents — should invoke getRecentMentions
+      (getRecentMentions as jest.Mock).mockResolvedValue([{ id: "userId:u1", name: "Alice" }]);
+      result.current.refreshRecents();
+      expect(getRecentMentions).toHaveBeenCalled();
+    });
+
+    it("executes member queryFn in fallback path", async () => {
+      // Setup: contacts empty, groups available → needsFallback = true
+      mockUseQuery.mockImplementation((config: any) => {
+        if (config.queryKey[0] === "contacts") {
+          return { data: [], isLoading: false, error: null, refetch: jest.fn() };
+        }
+        if (config.queryKey[0] === "groups") {
+          return {
+            data: [{ id: "g1", name: "Trip" }],
+            isLoading: false,
+            error: null,
+            refetch: jest.fn(),
+          };
+        }
+        return { data: undefined, isLoading: false, error: null, refetch: jest.fn() };
+      });
+
+      // Capture the queries config passed to useQueries
+      let queriesConfig: any[] = [];
+      mockUseQueries.mockImplementation((opts: any) => {
+        queriesConfig = opts.queries;
+        return queriesConfig.map(() => ({
+          data: [],
+          isLoading: false,
+          error: null,
+        }));
+      });
+
+      renderHook(() => useMergedContacts());
+
+      // Verify that useQueries was called with enabled=true (needsFallback=true)
+      expect(queriesConfig.length).toBe(1);
+      expect(queriesConfig[0].enabled).toBe(true);
+
+      // Execute the queryFn to cover lines 292-294
+      const memberData = [{ id: "m1", userId: "u1", displayName: "Alice" }];
+      (groupsApi.listMembers as jest.Mock).mockResolvedValue(memberData);
+      const result = await queriesConfig[0].queryFn();
+      expect(groupsApi.listMembers).toHaveBeenCalledWith("g1", "mock-token");
+      expect(dedupeMembers).toHaveBeenCalledWith(memberData);
+    });
+
+    it("reports isLoading when contacts are loading", () => {
+      mockUseQuery.mockImplementation((config: any) => {
+        if (config.queryKey[0] === "contacts") {
+          return { data: undefined, isLoading: true, error: null, refetch: jest.fn() };
+        }
+        return { data: [], isLoading: false, error: null, refetch: jest.fn() };
+      });
+      mockUseQueries.mockReturnValue([]);
+
+      const { result } = renderHook(() => useMergedContacts());
+      expect(result.current.isLoading).toBe(true);
+    });
+  });
+
+  describe("useTopDebtor", () => {
+    it("returns null when no balance data", () => {
+      mockUseQuery.mockReturnValue({ data: undefined, isLoading: false, error: null, refetch: jest.fn() });
+
+      const { result } = renderHook(() => useTopDebtor(undefined));
+      expect(result.current).toBeNull();
+    });
+
+    it("returns null when no positive group balances", () => {
+      mockUseQuery.mockReturnValue({ data: [], isLoading: false, error: null, refetch: jest.fn() });
+
+      const balanceData = {
+        totalOwedCents: 0,
+        totalOwesCents: 0,
+        netBalanceCents: 0,
+        groupBalances: [
+          { groupId: "g1", groupName: "Trip", balanceCents: -500 },
+        ],
+      };
+
+      const { result } = renderHook(() => useTopDebtor(balanceData));
+      expect(result.current).toBeNull();
+    });
+
+    it("returns null when no groupBalances at all", () => {
+      mockUseQuery.mockReturnValue({ data: [], isLoading: false, error: null, refetch: jest.fn() });
+
+      const balanceData = {
+        totalOwedCents: 0,
+        totalOwesCents: 0,
+        netBalanceCents: 0,
+      };
+
+      const { result } = renderHook(() => useTopDebtor(balanceData as any));
+      expect(result.current).toBeNull();
+    });
+
+    it("selects the group with highest positive balance for suggestions query", () => {
+      mockUseQuery.mockReturnValue({ data: [], isLoading: false, error: null, refetch: jest.fn() });
+
+      const balanceData = {
+        totalOwedCents: 3000,
+        totalOwesCents: 0,
+        netBalanceCents: 3000,
+        groupBalances: [
+          { groupId: "g1", groupName: "Trip", balanceCents: 1000 },
+          { groupId: "g2", groupName: "Home", balanceCents: 2000 },
+        ],
+      };
+
+      renderHook(() => useTopDebtor(balanceData));
+
+      // useSettlementSuggestions should be called with "g2" (highest balance)
+      const queryConfigs = mockUseQuery.mock.calls;
+      const lastConfig = queryConfigs[queryConfigs.length - 1][0];
+      expect(lastConfig.queryKey).toEqual(queryKeys.settlementSuggestions("g2"));
+    });
+
+    it("returns top debtor when suggestions match current user email", () => {
+      const suggestions = [
+        {
+          fromUser: { email: "debtor@test.com", name: "Debtor" },
+          toUser: { email: "test@example.com", name: "Test User" },
+          amount: 500,
+        },
+        {
+          fromUser: { email: "other@test.com", name: "Other" },
+          toUser: { email: "test@example.com", name: "Test User" },
+          amount: 300,
+        },
+      ];
+
+      mockUseQuery.mockImplementation((config: any) => {
+        if (config.queryKey[0] === "settlements") {
+          return { data: suggestions, isLoading: false, error: null, refetch: jest.fn() };
+        }
+        return { data: undefined, isLoading: false, error: null, refetch: jest.fn() };
+      });
+
+      const balanceData = {
+        totalOwedCents: 800,
+        totalOwesCents: 0,
+        netBalanceCents: 800,
+        groupBalances: [
+          { groupId: "g1", groupName: "Trip", balanceCents: 800 },
+        ],
+      };
+
+      const { result } = renderHook(() => useTopDebtor(balanceData));
+
+      expect(result.current).toEqual({
+        suggestion: suggestions[0], // highest amount
+        othersCount: 1,
+        groupId: "g1",
+        groupName: "Trip",
+      });
+    });
+
+    it("returns null when no suggestions match current user as payee", () => {
+      const suggestions = [
+        {
+          fromUser: { email: "test@example.com", name: "Test User" },
+          toUser: { email: "other@test.com", name: "Other" },
+          amount: 500,
+        },
+      ];
+
+      mockUseQuery.mockImplementation((config: any) => {
+        if (config.queryKey[0] === "settlements") {
+          return { data: suggestions, isLoading: false, error: null, refetch: jest.fn() };
+        }
+        return { data: undefined, isLoading: false, error: null, refetch: jest.fn() };
+      });
+
+      const balanceData = {
+        totalOwedCents: 500,
+        totalOwesCents: 0,
+        netBalanceCents: 500,
+        groupBalances: [
+          { groupId: "g1", groupName: "Trip", balanceCents: 500 },
+        ],
+      };
+
+      const { result } = renderHook(() => useTopDebtor(balanceData));
+      expect(result.current).toBeNull();
     });
   });
 });
