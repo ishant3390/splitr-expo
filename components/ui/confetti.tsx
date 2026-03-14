@@ -54,7 +54,7 @@ export function Confetti({ visible }: { visible: boolean }) {
   if (!visible) return null;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       {Array.from({ length: PARTICLE_COUNT }).map((_, i) => (
         <Particle key={i} index={i} total={PARTICLE_COUNT} />
       ))}

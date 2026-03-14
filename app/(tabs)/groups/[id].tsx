@@ -62,7 +62,8 @@ import { dedupeMembers, aggregateByPerson, aggregateByCategory, aggregateByMonth
 import * as Clipboard from "expo-clipboard";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
-import type { GroupDto, GroupMemberDto, ExpenseDto, ExpenseCategory, ContactDto } from "@/lib/types";
+import { formatActivityTitle } from "@/lib/screen-helpers";
+import type { GroupDto, GroupMemberDto, ExpenseDto, ExpenseCategory, ContactDto, ActivityLogDto } from "@/lib/types";
 
 const iconMap: Record<ExpenseCategory, typeof Utensils> = {
   food: Utensils,
@@ -90,6 +91,7 @@ export default function GroupDetailScreen() {
   const [group, setGroup] = useState<GroupDto | null>(null);
   const [members, setMembers] = useState<GroupMemberDto[]>([]);
   const [expenses, setExpenses] = useState<ExpenseDto[]>([]);
+  const [activityItems, setActivityItems] = useState<ActivityLogDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Pull-to-refresh
@@ -147,10 +149,11 @@ export default function GroupDetailScreen() {
   const loadData = async () => {
     try {
       const token = await getToken();
-      const [groupData, membersData, expensesResponse] = await Promise.all([
+      const [groupData, membersData, expensesResponse, activityData] = await Promise.all([
         groupsApi.get(id, token!),
         groupsApi.listMembers(id, token!),
         groupsApi.listExpenses(id, token!, { limit: "20" }),
+        groupsApi.activity(id, token!, { limit: 50 }).catch(() => [] as ActivityLogDto[]),
       ]);
       setGroup(groupData);
       const dedupedMembers = dedupeMembers(membersData);
@@ -158,6 +161,9 @@ export default function GroupDetailScreen() {
       setExpenses(expensesResponse.data ?? []);
       setExpenseCursor(expensesResponse.pagination?.nextCursor);
       setHasMoreExpenses(expensesResponse.pagination?.hasMore ?? false);
+      // Keep only non-expense activity (settlements, member joins, etc.)
+      // Expense items come from the expenses endpoint which has full DTOs
+      setActivityItems(activityData.filter((a: ActivityLogDto) => !a.activityType.startsWith("expense_")));
 
       // Initialize per-group notification preference from current user's member record
       const myEmail = clerkUser?.primaryEmailAddress?.emailAddress;
@@ -792,10 +798,10 @@ export default function GroupDetailScreen() {
           </View>
         )}
 
-        {/* Expenses header with search & sort */}
+        {/* Activity header with search & sort */}
         <View className="flex-row items-center justify-between mb-3">
           <Text className="text-sm font-sans-semibold text-muted-foreground">
-            EXPENSES ({expenses.length})
+            ACTIVITY ({expenses.length + activityItems.length})
           </Text>
           <View className="flex-row items-center gap-2">
             <Pressable onPress={() => { hapticLight(); setShowSearch(!showSearch); }}>
@@ -820,7 +826,7 @@ export default function GroupDetailScreen() {
           <View className="mb-3 flex-row items-center bg-muted rounded-xl px-3 py-2 gap-2">
             <Search size={16} color="#94a3b8" />
             <TextInput
-              placeholder="Search expenses..."
+              placeholder="Search activity..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
@@ -835,19 +841,61 @@ export default function GroupDetailScreen() {
           </View>
         )}
 
-        {expenses.length === 0 ? (
+        {expenses.length === 0 && activityItems.length === 0 ? (
           <EmptyState
             icon={Receipt}
             iconColor="#0d9488"
-            title={isArchived ? "No expenses" : "No expenses yet"}
-            subtitle={isArchived ? "This archived group has no expense history" : "Add your first expense to start tracking"}
+            title={isArchived ? "No activity" : "No activity yet"}
+            subtitle={isArchived ? "This archived group has no history" : "Add your first expense to start tracking"}
             actionLabel={isArchived ? undefined : "Add Expense"}
             onAction={isArchived ? undefined : () => router.push({ pathname: "/(tabs)/add", params: { returnGroupId: id } })}
           />
         ) : (() => {
-          const filtered = filterExpenses(expenses, searchQuery) as ExpenseDto[];
+          // Merge expenses and activity items into a unified chronological list
+          type UnifiedItem =
+            | { kind: "expense"; data: ExpenseDto; sortDate: number }
+            | { kind: "activity"; data: ActivityLogDto; sortDate: number };
 
-          if (filtered.length === 0) {
+          const filteredExpenses = (searchQuery ? filterExpenses(expenses, searchQuery) : expenses) as ExpenseDto[];
+          const filteredActivity = searchQuery
+            ? activityItems.filter((a) => {
+                const q = searchQuery.toLowerCase();
+                const actor = (a.actorUserName ?? a.actorGuestName ?? "").toLowerCase();
+                const desc = ((a.details?.description ?? "") as string).toLowerCase();
+                const type = a.activityType.replace(/_/g, " ").toLowerCase();
+                return actor.includes(q) || desc.includes(q) || type.includes(q);
+              })
+            : activityItems;
+
+          const unified: UnifiedItem[] = [
+            ...filteredExpenses.map((e): UnifiedItem => ({
+              kind: "expense",
+              data: e,
+              sortDate: new Date(e.date || e.createdAt).getTime(),
+            })),
+            ...filteredActivity.map((a): UnifiedItem => ({
+              kind: "activity",
+              data: a,
+              sortDate: new Date(a.createdAt).getTime(),
+            })),
+          ];
+
+          // Sort: date desc by default, amount desc if selected (activity items without amount go to end)
+          if (sortBy === "amount") {
+            unified.sort((a, b) => {
+              const amtA = a.kind === "expense"
+                ? (a.data.amountCents ?? 0)
+                : ((a.data.details?.amount ?? a.data.details?.amountCents ?? 0) as number);
+              const amtB = b.kind === "expense"
+                ? (b.data.amountCents ?? 0)
+                : ((b.data.details?.amount ?? b.data.details?.amountCents ?? 0) as number);
+              return amtB - amtA;
+            });
+          } else {
+            unified.sort((a, b) => b.sortDate - a.sortDate);
+          }
+
+          if (unified.length === 0) {
             return (
               <EmptyState
                 icon={Search}
@@ -858,12 +906,11 @@ export default function GroupDetailScreen() {
             );
           }
 
-          const sorted = sortExpenses(filtered, sortBy) as ExpenseDto[];
-
           return (
           <View className="gap-2">
-            {sorted
-              .map((expense, idx) => {
+            {unified.map((item, idx) => {
+              if (item.kind === "expense") {
+                const expense = item.data;
                 const categoryKey = (expense.category?.icon ??
                   expense.category?.name ??
                   "other") as ExpenseCategory;
@@ -875,8 +922,8 @@ export default function GroupDetailScreen() {
 
                 return (
                   <Animated.View
-                    key={expense.id}
-                    entering={FadeInDown.delay(idx * 50).duration(300).springify()}
+                    key={`expense-${expense.id}`}
+                    entering={FadeInDown.delay(Math.min(idx, 10) * 50).duration(300).springify()}
                   >
                   <SwipeableRow
                     onEdit={isArchived ? undefined : () => {
@@ -928,7 +975,57 @@ export default function GroupDetailScreen() {
                   </SwipeableRow>
                   </Animated.View>
                 );
-              })}
+              }
+
+              // Activity item (settlement, member join, etc.)
+              const actItem = item.data;
+              const title = formatActivityTitle(actItem, clerkUser?.id);
+              const displayAmount = (actItem.details?.amount ?? actItem.details?.amountCents) as number | undefined;
+              const isSettlement = actItem.activityType.startsWith("settlement_");
+
+              return (
+                <Animated.View
+                  key={`activity-${actItem.id}`}
+                  entering={FadeInDown.delay(Math.min(idx, 10) * 50).duration(300).springify()}
+                >
+                  <Pressable
+                    onPress={isSettlement ? () => {
+                      hapticLight();
+                      router.push({ pathname: "/settle-up", params: { groupId: id } });
+                    } : undefined}
+                    disabled={!isSettlement}
+                  >
+                    <Card className="p-4">
+                      <View className="flex-row items-center gap-3">
+                        <View className={cn(
+                          "w-10 h-10 rounded-xl items-center justify-center",
+                          isSettlement ? "bg-emerald-500/10" : "bg-primary/10"
+                        )}>
+                          {isSettlement ? (
+                            <HandCoins size={20} color="#10b981" />
+                          ) : (
+                            <User size={20} color="#0d9488" />
+                          )}
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-sm font-sans-semibold text-card-foreground">
+                            {title}
+                          </Text>
+                          <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                            {formatDate(actItem.createdAt)}
+                          </Text>
+                        </View>
+                        {displayAmount != null && (
+                          <Text className="text-sm font-sans-semibold text-success">
+                            {formatCents(displayAmount)}
+                          </Text>
+                        )}
+                      </View>
+                    </Card>
+                  </Pressable>
+                </Animated.View>
+              );
+            })}
 
             {/* Load More */}
             {hasMoreExpenses && !searchQuery && (
@@ -941,7 +1038,7 @@ export default function GroupDetailScreen() {
                   <ActivityIndicator size="small" color="#0d9488" />
                 ) : (
                   <Text className="text-sm font-sans-semibold text-primary">
-                    Load more expenses
+                    Load more
                   </Text>
                 )}
               </Pressable>

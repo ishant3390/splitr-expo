@@ -227,7 +227,7 @@ export default function CreateGroupScreen() {
   const handleDismissShare = () => {
     setShowShareSheet(false);
     if (createdGroup) {
-      router.replace(`/group/${createdGroup.id}`);
+      router.replace(`/(tabs)/groups/${createdGroup.id}`);
     }
   };
 

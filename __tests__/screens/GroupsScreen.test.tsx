@@ -177,7 +177,7 @@ describe("GroupsScreen", () => {
       expect(screen.getByText("Trip to Paris")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Trip to Paris"));
-    expect(mockPush).toHaveBeenCalledWith("/group/g1");
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/groups/g1");
   });
 
   // --- Navigate to create group (line 142) ---
@@ -646,7 +646,7 @@ describe("GroupsScreen", () => {
       expect(screen.getByText("Roommates")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Roommates"));
-    expect(mockPush).toHaveBeenCalledWith("/group/g2");
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/groups/g2");
   });
 
   // --- Action sheet options (lines 295-300): archive option opens confirm ---

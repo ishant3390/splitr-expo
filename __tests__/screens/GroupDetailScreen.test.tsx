@@ -72,6 +72,7 @@ const mockInviteByEmail = jest.fn(() => Promise.resolve());
 const mockDeleteExpense = jest.fn(() => Promise.resolve());
 const mockListContacts = jest.fn(() => Promise.resolve([]));
 const mockRegenerate = jest.fn(() => Promise.resolve({ inviteCode: "new-code", id: "g1", name: "Trip to Paris" }));
+const mockGroupActivity = jest.fn(() => Promise.resolve([]));
 const mockArchiveMutateAsync = jest.fn(() => Promise.resolve());
 const mockDeleteMutateAsync = jest.fn(() => Promise.resolve());
 
@@ -85,6 +86,7 @@ jest.mock("@/lib/api", () => ({
     removeMember: (...args: any[]) => mockRemoveMember(...args),
     updateMember: (...args: any[]) => mockUpdateMember(...args),
     inviteByEmail: (...args: any[]) => mockInviteByEmail(...args),
+    activity: (...args: any[]) => mockGroupActivity(...args),
   },
   contactsApi: {
     list: (...args: any[]) => mockListContacts(...args),
@@ -120,6 +122,18 @@ jest.mock("@/lib/screen-helpers", () => ({
   },
   sortExpenses: (exps: any[], by: string) => exps,
   resolvePayerName: () => "Alice",
+  formatActivityTitle: (activity: any, _userId: any) => {
+    const actor = activity.actorUserName ?? activity.actorGuestName ?? "Someone";
+    const verbMap: Record<string, string> = {
+      settlement_created: "settled up",
+      settlement_updated: "updated settlement",
+      settlement_deleted: "deleted settlement",
+      member_joined: "joined",
+      group_created: "created group",
+    };
+    const verb = verbMap[activity.activityType] ?? activity.activityType;
+    return `${actor} ${verb}`;
+  },
 }));
 
 jest.mock("@clerk/clerk-expo", () => ({
@@ -137,7 +151,7 @@ jest.mock("@clerk/clerk-expo", () => ({
   }),
 }));
 
-import GroupDetailScreen from "@/app/group/[id]";
+import GroupDetailScreen from "@/app/(tabs)/groups/[id]";
 
 // Fix: window.dispatchEvent is not a function in test env (react-test-renderer error reporting)
 const origDispatchEvent = typeof window !== "undefined" ? window.dispatchEvent : undefined;
@@ -168,6 +182,7 @@ beforeEach(() => {
     { id: "m2", user: { id: "u2", name: "Bob", email: "bob@test.com", avatarUrl: null }, guestUser: null, displayName: "Bob", notificationsEnabled: true, balance: -2500 },
   ]);
   mockListExpenses.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+  mockGroupActivity.mockResolvedValue([]);
 });
 
 describe("GroupDetailScreen", () => {
@@ -211,7 +226,7 @@ describe("GroupDetailScreen", () => {
   it("shows empty expense state", async () => {
     render(<GroupDetailScreen />);
     await waitFor(() => {
-      expect(screen.getByText("No expenses yet")).toBeTruthy();
+      expect(screen.getByText("No activity yet")).toBeTruthy();
     });
   });
 
@@ -260,7 +275,7 @@ describe("GroupDetailScreen", () => {
     render(<GroupDetailScreen />);
     await waitFor(() => {
       expect(screen.getByText("Lunch")).toBeTruthy();
-      expect(screen.getByText(/EXPENSES/)).toBeTruthy();
+      expect(screen.getByText(/ACTIVITY/)).toBeTruthy();
     });
   });
 
@@ -283,13 +298,13 @@ describe("GroupDetailScreen", () => {
     });
     render(<GroupDetailScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Load more expenses")).toBeTruthy();
+      expect(screen.getByText("Load more")).toBeTruthy();
     });
     mockListExpenses.mockResolvedValueOnce({
       data: [],
       pagination: { hasMore: false },
     });
-    fireEvent.press(screen.getByText("Load more expenses"));
+    fireEvent.press(screen.getByText("Load more"));
     await waitFor(() => {
       expect(mockListExpenses).toHaveBeenCalledTimes(2);
     });
@@ -464,7 +479,7 @@ describe("GroupDetailScreen", () => {
   it("shows expenses section header with count", async () => {
     render(<GroupDetailScreen />);
     await waitFor(() => {
-      expect(screen.getByText("EXPENSES (0)")).toBeTruthy();
+      expect(screen.getByText("ACTIVITY (0)")).toBeTruthy();
     });
   });
 
@@ -610,7 +625,7 @@ describe("GroupDetailScreen", () => {
     });
     const { unmount } = render(<GroupDetailScreen />);
     await waitFor(() => {
-      expect(screen.getByText("EXPENSES (1)")).toBeTruthy();
+      expect(screen.getByText("ACTIVITY (1)")).toBeTruthy();
     });
     unmount();
   });
@@ -996,7 +1011,7 @@ describe("GroupDetailScreen", () => {
     });
     render(<GroupDetailScreen />);
     await waitFor(() => {
-      expect(screen.getByText("EXPENSES (1)")).toBeTruthy();
+      expect(screen.getByText("ACTIVITY (1)")).toBeTruthy();
     });
   });
 
@@ -1130,7 +1145,7 @@ describe("GroupDetailScreen", () => {
   it("shows Add Expense action in empty state", async () => {
     render(<GroupDetailScreen />);
     await waitFor(() => {
-      expect(screen.getByText("No expenses yet")).toBeTruthy();
+      expect(screen.getByText("No activity yet")).toBeTruthy();
       expect(screen.getByText("Add Expense")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Add Expense"));
@@ -1158,6 +1173,53 @@ describe("GroupDetailScreen", () => {
     expect(screen.queryByText("Settle Up")).toBeNull();
     // The "Add" button for members should also be hidden
     // Empty expense state shows different text for archived
-    expect(screen.getByText("No expenses")).toBeTruthy();
+    expect(screen.getByText("No activity")).toBeTruthy();
+  });
+
+  it("shows settlement in unified activity list", async () => {
+    mockGroupActivity.mockResolvedValue([
+      {
+        id: "act1",
+        groupId: "g1",
+        activityType: "settlement_created",
+        actorUserId: "u1",
+        actorUserName: "Alice",
+        details: { amount: 2500 },
+        createdAt: "2026-03-10T12:00:00Z",
+      },
+    ]);
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("ACTIVITY (1)")).toBeTruthy();
+    });
+    expect(screen.getByText("$25.00")).toBeTruthy();
+    expect(screen.getByText(/Alice settled up/i)).toBeTruthy();
+  });
+
+  it("shows expenses and settlements sorted by date in unified list", async () => {
+    mockListExpenses.mockResolvedValue({
+      data: [
+        { id: "e1", description: "Dinner", amountCents: 5000, createdAt: "2026-03-08T10:00:00Z", date: "2026-03-08", category: null, payers: [], splits: [] },
+      ],
+      pagination: { hasMore: false },
+    });
+    mockGroupActivity.mockResolvedValue([
+      {
+        id: "act1",
+        groupId: "g1",
+        activityType: "settlement_created",
+        actorUserId: "u1",
+        actorUserName: "Alice",
+        details: { amount: 2500 },
+        createdAt: "2026-03-10T12:00:00Z",
+      },
+    ]);
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("ACTIVITY (2)")).toBeTruthy();
+    });
+    // Both items should be visible
+    expect(screen.getByText("Dinner")).toBeTruthy();
+    expect(screen.getByText(/Alice settled up/i)).toBeTruthy();
   });
 });

@@ -132,7 +132,7 @@ describe("JoinGroupScreen", () => {
     fireEvent.press(screen.getByText("Join Group"));
     await waitFor(() => {
       expect(mockToast.info).toHaveBeenCalledWith("You're already in this group.");
-      expect(mockRouterReplace).toHaveBeenCalledWith("/group/g1");
+      expect(mockRouterReplace).toHaveBeenCalledWith("/(tabs)/groups/g1");
     });
   });
 

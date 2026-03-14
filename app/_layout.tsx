@@ -115,7 +115,6 @@ function AuthGate() {
       <Stack.Screen name="receipt-scanner" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="chat" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="create-group" options={{ animation: "slide_from_right" }} />
-      <Stack.Screen name="group/[id]" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="edit-profile" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="pending-expenses" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="help-support" options={{ animation: "slide_from_right" }} />

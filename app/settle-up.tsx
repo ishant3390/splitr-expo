@@ -21,7 +21,7 @@ import {
   Trash2,
   X,
 } from "lucide-react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { settlementsApi, groupsApi } from "@/lib/api";
 import { useUserProfile } from "@/lib/hooks";
+import { invalidateAfterSettlementChange } from "@/lib/query";
 import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
@@ -78,6 +79,9 @@ export default function SettleUpScreen() {
   const [paymentReference, setPaymentReference] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Success overlay
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Delete state
   const [settlementToDelete, setSettlementToDelete] = useState<SettlementDto | null>(null);
@@ -221,9 +225,13 @@ export default function SettleUpScreen() {
         token!
       );
       hapticSuccess();
-      toast.success("Settlement recorded!");
       setShowCreate(false);
-      await loadData();
+      setShowSuccess(true);
+      setTimeout(async () => {
+        setShowSuccess(false);
+        await loadData();
+        invalidateAfterSettlementChange(groupId);
+      }, 800);
     } catch {
       hapticError();
       toast.error("Failed to record settlement.");
@@ -719,6 +727,30 @@ export default function SettleUpScreen() {
 
       {/* Confetti when all settled */}
       <Confetti visible={!loading && suggestions.length === 0 && activeTab === "suggestions"} />
+
+      {/* Success overlay */}
+      {showSuccess && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(13, 148, 136, 0.95)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Animated.View entering={FadeInDown.duration(400).springify()}>
+            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Check size={40} color="#ffffff" />
+            </View>
+            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#ffffff", textAlign: "center" }}>Settled Up!</Text>
+          </Animated.View>
+        </Animated.View>
+      )}
 
       {/* Delete Confirmation */}
       <ConfirmModal

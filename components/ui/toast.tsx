@@ -153,8 +153,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={ctx}>
       {children}
       <View
-        pointerEvents="box-none"
         style={{
+          pointerEvents: "box-none",
           position: "absolute",
           top: 60,
           left: 16,

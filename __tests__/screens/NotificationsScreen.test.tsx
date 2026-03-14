@@ -350,7 +350,7 @@ describe("NotificationsScreen", () => {
     });
 
     fireEvent.press(screen.getByText("Test Nav"));
-    expect(mockPush).toHaveBeenCalledWith("/group/g1");
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/groups/g1");
     Date.now = realDateNow;
   });
 
@@ -419,7 +419,7 @@ describe("NotificationsScreen", () => {
     });
 
     fireEvent.press(screen.getByText("Fallback Route"));
-    expect(mockPush).toHaveBeenCalledWith("/group/g-fallback");
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/groups/g-fallback");
     Date.now = realDateNow;
   });
 

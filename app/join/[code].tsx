@@ -65,14 +65,14 @@ export default function JoinGroupScreen() {
       setJoined(true);
       toast.success(`Joined "${preview!.name}"!`);
       setTimeout(() => {
-        router.replace(`/group/${preview!.groupId}`);
+        router.replace(`/(tabs)/groups/${preview!.groupId}`);
       }, 1000);
     } catch (err: any) {
       hapticError();
       const parsed = getErrorMessage(err);
       if (parsed.code === "ALREADY_MEMBER" && preview) {
         toast.info(parsed.message);
-        router.replace(`/group/${preview.groupId}`);
+        router.replace(`/(tabs)/groups/${preview.groupId}`);
       } else {
         toast.error(parsed.message);
       }

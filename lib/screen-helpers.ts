@@ -245,6 +245,102 @@ export function resolvePayerName(
   return createdBy?.name ?? "Someone";
 }
 
+// --- Activity feed descriptive titles ---
+
+import type { ActivityLogDto } from "./types";
+
+const ACTIVITY_VERB_MAP: Record<string, string> = {
+  expense_created: "added",
+  expense_updated: "updated",
+  expense_deleted: "deleted",
+  settlement_created: "settled up",
+  member_joined: "joined",
+  group_created: "created",
+};
+
+export function formatActivityTitle(
+  activity: ActivityLogDto,
+  currentUserId: string | null | undefined
+): string {
+  const isYou = !!(currentUserId && activity.actorUserId === currentUserId);
+  const actorName = isYou
+    ? "You"
+    : activity.actorUserName ?? activity.actorGuestName ?? "Someone";
+
+  const verb = ACTIVITY_VERB_MAP[activity.activityType];
+  if (!verb) {
+    // Fallback for unknown types
+    const label = activity.activityType
+      .replace(/_/g, " ")
+      .replace(/^\w/, (c) => c.toUpperCase());
+    return `${actorName}: ${label}`;
+  }
+
+  const description =
+    (activity.details?.newDescription as string) ??
+    (activity.details?.description as string) ??
+    "";
+
+  switch (activity.activityType) {
+    case "expense_created":
+    case "expense_updated":
+    case "expense_deleted":
+      return description
+        ? `${actorName} ${verb} ${description}`
+        : `${actorName} ${verb} an expense`;
+    case "settlement_created":
+      return `${actorName} ${verb}`;
+    case "member_joined":
+      return `${actorName} ${verb} ${activity.groupName ?? ""}`.trim();
+    case "group_created":
+      return `${actorName} ${verb} ${activity.groupName ?? ""}`.trim();
+    default:
+      return `${actorName}: ${verb}`;
+  }
+}
+
+// --- Activity feed involvement indicators ---
+
+export interface ActivityInvolvement {
+  /** null = not an expense activity or no involvement data from BE */
+  text: string | null;
+  /** Tailwind-friendly color token */
+  color: "teal" | "red" | "muted" | null;
+}
+
+/**
+ * Returns involvement text + color for an activity item.
+ * BE sends `yourShareCents` (absent = not involved) and `involvedCount` on expense activities.
+ */
+export function formatActivityInvolvement(
+  activity: ActivityLogDto
+): ActivityInvolvement {
+  const isExpense = activity.activityType.startsWith("expense_");
+  if (!isExpense) return { text: null, color: null };
+
+  const involvedCount = activity.details?.involvedCount as number | undefined;
+  if (involvedCount == null) return { text: null, color: null };
+
+  const yourShareCents = activity.details?.yourShareCents as number | undefined;
+
+  if (yourShareCents == null) {
+    return { text: "Not involved", color: "muted" };
+  }
+
+  // Negative share means you're owed, positive means you owe
+  // But yourShareCents is always the user's split amount (positive),
+  // so we just show their share
+  return {
+    text: formatCentsForInvolvement(yourShareCents),
+    color: "teal",
+  };
+}
+
+function formatCentsForInvolvement(cents: number): string {
+  const dollars = Math.abs(cents) / 100;
+  return `-$${dollars.toFixed(2)}`;
+}
+
 // --- From index.tsx (home screen balance) ---
 
 interface MemberBalanceLike {

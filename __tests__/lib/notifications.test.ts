@@ -253,7 +253,7 @@ describe("notifications.ts", () => {
           },
         },
       } as any;
-      expect(getNotificationUrl(response)).toBe("/group/grp_abc123");
+      expect(getNotificationUrl(response)).toBe("/(tabs)/groups/grp_abc123");
     });
 
     it("constructs settle-up route for settlement_created", () => {
@@ -279,7 +279,7 @@ describe("notifications.ts", () => {
           },
         },
       } as any;
-      expect(getNotificationUrl(response)).toBe("/group/grp_123");
+      expect(getNotificationUrl(response)).toBe("/(tabs)/groups/grp_123");
     });
 
     it("returns null when no groupId in data", () => {
@@ -397,7 +397,7 @@ describe("notifications.ts", () => {
           },
         },
       } as any;
-      expect(getNotificationUrl(response)).toBe("/group/grp_3");
+      expect(getNotificationUrl(response)).toBe("/(tabs)/groups/grp_3");
     });
 
     it("falls back to group route for unknown type", () => {
@@ -410,7 +410,7 @@ describe("notifications.ts", () => {
           },
         },
       } as any;
-      expect(getNotificationUrl(response)).toBe("/group/grp_4");
+      expect(getNotificationUrl(response)).toBe("/(tabs)/groups/grp_4");
     });
   });
 

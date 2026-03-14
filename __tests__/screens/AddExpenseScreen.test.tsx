@@ -601,15 +601,15 @@ describe("AddExpenseScreen", () => {
     spy.mockRestore();
   });
 
-  // --- goBack with returnGroupId ---
-  it("replaces to group when returnGroupId is set", async () => {
+  // --- goBack with returnGroupId uses router.back() when canGoBack ---
+  it("calls router.back when returnGroupId is set and canGoBack", async () => {
     const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ returnGroupId: "g1" });
     render(<AddExpenseScreen />);
     await waitFor(() => {
       expect(screen.getByText("Cancel")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Cancel"));
-    expect(mockReplace).toHaveBeenCalledWith("/group/g1");
+    expect(mockBack).toHaveBeenCalled();
     spy.mockRestore();
   });
 

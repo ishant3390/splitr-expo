@@ -3,6 +3,12 @@
 ## Overview
 Splitr is a mobile expense splitting app (Expo/React Native) competing with Splitwise. Users create groups, add expenses, split costs, settle debts, and track balances.
 
+## MVP Scope (Day 1)
+- **Core features only**: Groups, expenses, splits, settlements, balances
+- **Deferred to post-MVP (Day 2)**: AI Chat (`app/chat.tsx`), Receipt Scanning (`app/receipt-scanner.tsx`), 3D Touch Quick Actions for AI features
+- Backend AI endpoints are disabled; frontend routes still exist but are not linked from navigation
+- The FAB (plus button) in the tab bar is the primary entry point for adding expenses
+
 ## Platform Launch Order (IMPORTANT)
 **Web → iOS → Android**
 - Web is the primary launch platform — all features must work fully on web first

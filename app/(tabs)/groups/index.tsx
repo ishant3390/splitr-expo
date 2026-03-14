@@ -220,7 +220,7 @@ export default function GroupsScreen() {
         <FlatList
           data={filteredGroups}
           keyExtractor={(item) => item.id}
-          contentContainerClassName="px-5 pb-6 gap-3"
+          contentContainerClassName="px-5 pb-24 gap-3"
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="automatic"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
@@ -247,7 +247,7 @@ export default function GroupsScreen() {
             return (
               <Animated.View entering={FadeInDown.delay(index * 60).duration(300).springify()}>
               <Pressable
-                onPress={() => { hapticLight(); router.push(`/group/${group.id}`); }}
+                onPress={() => { hapticLight(); router.push(`/(tabs)/groups/${group.id}`); }}
                 onLongPress={() => handleLongPress(group)}
                 delayLongPress={400}
                 {...(Platform.OS === "web" ? {

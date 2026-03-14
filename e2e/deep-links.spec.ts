@@ -203,7 +203,7 @@ authTest.describe("Deep Links (authenticated)", () => {
       // Option B: preview shown with "Join Group" disabled or "You're already a member"
       // Option C: preview shown normally (user can re-join = no-op on backend)
       const redirectedToGroup =
-        page.url().includes("/group/") && !page.url().includes("/invite/");
+        page.url().includes("/groups/") && !page.url().includes("/invite/");
       const showsPreview = await page
         .getByText("You've been invited")
         .isVisible()

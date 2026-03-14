@@ -29,7 +29,7 @@ function getNotifRoute(notif: NotificationDto): string | null {
     case "settlement_created":
       return `/settle-up?groupId=${groupId}`;
     default:
-      return `/group/${groupId}`;
+      return `/(tabs)/groups/${groupId}`;
   }
 }
 

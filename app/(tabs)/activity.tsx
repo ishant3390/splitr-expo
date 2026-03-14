@@ -3,6 +3,7 @@ import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl, 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
+import { useUser } from "@clerk/clerk-expo";
 import { Clock, AlertTriangle, Search, X } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
@@ -10,10 +11,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity } from "@/lib/hooks";
 import { formatCents, formatDate, getInitials } from "@/lib/utils";
+import { formatActivityTitle, formatActivityInvolvement } from "@/lib/screen-helpers";
 import type { ActivityLogDto } from "@/lib/types";
 
 export default function ActivityScreen() {
   const router = useRouter();
+  const { user } = useUser();
   const isDark = useColorScheme() === "dark";
   const { data: activity = [], isLoading: loading, error: activityError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useUserActivity();
   const [refreshing, setRefreshing] = useState(false);
@@ -144,13 +147,10 @@ export default function ActivityScreen() {
           )}
           renderItem={({ item }) => {
             const actorName = item.actorUserName ?? item.actorGuestName ?? "Someone";
-            const description = item.activityType
-              .replace(/_/g, " ")
-              .replace(/^\w/, (c) => c.toUpperCase());
+            const title = formatActivityTitle(item, user?.id);
             const groupName = item.groupName ?? (item.details?.groupName as string) ?? "";
 
             const isExpenseUpdated = item.activityType === "expense_updated";
-            const expenseName = (item.details?.newDescription ?? item.details?.description) as string | undefined;
             const oldAmount = item.details?.oldAmount as number | undefined;
             const newAmount = item.details?.newAmount as number | undefined;
             const amountChanged = oldAmount != null && newAmount != null && oldAmount !== newAmount;
@@ -158,16 +158,15 @@ export default function ActivityScreen() {
             const newDesc = item.details?.newDescription as string | undefined;
             const descChanged = oldDesc != null && newDesc != null && oldDesc !== newDesc;
 
-            const isExpenseCreated = item.activityType === "expense_created";
-            const createdExpenseName = (item.details?.description) as string | undefined;
             const isMemberJoined = item.activityType === "member_joined";
             const memberRole = (item.details?.role as string) ?? "";
             const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
+            const involvement = formatActivityInvolvement(item);
 
             const destination = item.expenseId
               ? { pathname: `/edit-expense/${item.expenseId}` as const, params: { groupId: item.groupId } }
               : item.groupId
-              ? { pathname: `/group/${item.groupId}` as const }
+              ? { pathname: `/(tabs)/groups/${item.groupId}` as const }
               : null;
 
             return (
@@ -181,13 +180,8 @@ export default function ActivityScreen() {
                     <Avatar fallback={getInitials(actorName)} size="md" />
                     <View className="flex-1">
                       <Text className="text-sm font-sans-semibold text-card-foreground">
-                        {description}
+                        {title}
                       </Text>
-                      {isExpenseUpdated && expenseName ? (
-                        <Text className="text-xs text-foreground font-sans-medium mt-0.5">
-                          {expenseName}
-                        </Text>
-                      ) : null}
                       {isExpenseUpdated && amountChanged ? (
                         <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                           {formatCents(oldAmount!)} {"\u2192"} {formatCents(newAmount!)}
@@ -196,11 +190,6 @@ export default function ActivityScreen() {
                       {isExpenseUpdated && descChanged ? (
                         <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                           "{oldDesc}" {"\u2192"} "{newDesc}"
-                        </Text>
-                      ) : null}
-                      {isExpenseCreated && createdExpenseName ? (
-                        <Text className="text-xs text-foreground font-sans-medium mt-0.5">
-                          {createdExpenseName}
                         </Text>
                       ) : null}
                       {isMemberJoined ? (
@@ -217,6 +206,17 @@ export default function ActivityScreen() {
                       {displayAmount != null && (
                         <Text className="text-sm font-sans-semibold text-foreground">
                           {formatCents(displayAmount)}
+                        </Text>
+                      )}
+                      {involvement.text != null && (
+                        <Text
+                          className={`text-xs font-sans-medium mt-0.5 ${
+                            involvement.color === "teal"
+                              ? "text-primary"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {involvement.text}
                         </Text>
                       )}
                       <Text className="text-xs text-muted-foreground font-sans">

@@ -79,8 +79,7 @@ describe("ActivityScreen", () => {
 
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Expense created")).toBeTruthy();
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
   });
 
@@ -190,8 +189,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Expense updated")).toBeTruthy();
-      expect(screen.getByText("Updated Lunch")).toBeTruthy();
+      expect(screen.getByText("Bob updated Updated Lunch")).toBeTruthy();
     });
   });
 
@@ -221,7 +219,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Expense updated")).toBeTruthy();
+      expect(screen.getByText("Bob updated Lunch")).toBeTruthy();
     });
   });
 
@@ -252,7 +250,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Expense updated")).toBeTruthy();
+      expect(screen.getByText("Carol updated New Name")).toBeTruthy();
     });
   });
 
@@ -279,8 +277,8 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Member joined")).toBeTruthy();
-      expect(screen.getByText(/Dave joined Road Trip as admin/)).toBeTruthy();
+      expect(screen.getAllByText(/Dave joined Road Trip/).length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText(/as admin/)).toBeTruthy();
     });
   });
 
@@ -307,7 +305,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Dave joined Road Trip$/)).toBeTruthy();
+      expect(screen.getAllByText(/Dave joined Road Trip/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -335,9 +333,9 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Dinner"));
+    fireEvent.press(screen.getByText("Alice added Dinner"));
     expect(mockPush).toHaveBeenCalled();
   });
 
@@ -364,9 +362,9 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Group created")).toBeTruthy();
+      expect(screen.getByText("Alice created Trip")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Group created"));
+    fireEvent.press(screen.getByText("Alice created Trip"));
     expect(mockPush).toHaveBeenCalled();
   });
 
@@ -392,9 +390,9 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Settlement created")).toBeTruthy();
+      expect(screen.getByText("Alice settled up")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Settlement created"));
+    fireEvent.press(screen.getByText("Alice settled up"));
     expect(mockPush).not.toHaveBeenCalled();
   });
 
@@ -420,7 +418,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
   });
 
@@ -447,7 +445,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/GuestUser joined Trip/)).toBeTruthy();
+      expect(screen.getAllByText(/GuestUser joined Trip/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -489,8 +487,8 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
-      expect(screen.getByText("Lunch")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
+      expect(screen.getByText("Bob added Lunch")).toBeTruthy();
     });
   });
 
@@ -516,7 +514,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
     // hasNextPage is true — onEndReached would call fetchNextPage
   });
@@ -543,6 +541,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
+      expect(screen.getByText("Alice added Coffee")).toBeTruthy();
       expect(screen.getByText("Java Club")).toBeTruthy();
     });
   });
@@ -577,8 +576,8 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
-      expect(screen.getByText("Lunch")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
+      expect(screen.getByText("Bob added Lunch")).toBeTruthy();
     });
     // Find and press the search toggle (the Pressable wrapping the Search icon)
     // The search icon is inside a Pressable after the "Activity" header
@@ -620,7 +619,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
   });
 
@@ -646,7 +645,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
     // The SectionList's onEndReached calls fetchNextPage when hasNextPage=true
     // This covers the onEndReached branch at line 130
@@ -674,7 +673,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
     // The RefreshControl is wired with onRefresh which calls refetch
     // The component renders — this covers the rendering path
@@ -702,7 +701,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
     // The ListFooterComponent renders ActivityIndicator when isFetchingNextPage
   });
@@ -730,7 +729,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Settlement created")).toBeTruthy();
+      expect(screen.getByText("Alice settled up")).toBeTruthy();
     });
   });
 
@@ -756,11 +755,11 @@ describe("ActivityScreen", () => {
     render(<ActivityScreen />);
     await waitFor(() => {
       expect(screen.getByText("Recent")).toBeTruthy();
-      expect(screen.getByText("Coffee")).toBeTruthy();
+      expect(screen.getByText("Alice added Coffee")).toBeTruthy();
     });
   });
 
-  // --- "Someone" fallback for actor name (line 146) ---
+  // --- "Someone" fallback for actor name ---
   it("shows 'Someone' when both actor names are null", async () => {
     mockUseUserActivity.mockReturnValue({
       data: [
@@ -784,7 +783,114 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Someone joined Trip/)).toBeTruthy();
+      expect(screen.getAllByText(/Someone joined Trip/).length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  // --- Involvement indicators (Phase 2) ---
+
+  it("shows your share when yourShareCents is present", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amountCents: 6000, involvedCount: 3, yourShareCents: 2000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    });
+    render(<ActivityScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("-$20.00")).toBeTruthy();
+    });
+  });
+
+  it("shows 'Not involved' when yourShareCents is absent but involvedCount exists", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Bob",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Uber", amountCents: 3000, involvedCount: 2 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    });
+    render(<ActivityScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Not involved")).toBeTruthy();
+    });
+  });
+
+  it("does not show involvement for non-expense activity", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "settlement_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { amountCents: 5000 },
+          groupId: "g1",
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    });
+    render(<ActivityScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Alice settled up")).toBeTruthy();
+    });
+    expect(screen.queryByText("Not involved")).toBeNull();
+    expect(screen.queryByText(/^-\$/)).toBeNull();
+  });
+
+  it("does not show involvement when involvedCount is missing (old BE data)", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amountCents: 5000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    });
+    render(<ActivityScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
+    });
+    expect(screen.queryByText("Not involved")).toBeNull();
+    expect(screen.queryByText(/^-\$/)).toBeNull();
   });
 });

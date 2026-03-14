@@ -70,6 +70,10 @@ jest.mock("@/lib/hooks", () => ({
   useUserProfile: () => ({ data: { id: "u2", name: "Bob" } }),
 }));
 
+jest.mock("@/lib/query", () => ({
+  invalidateAfterSettlementChange: jest.fn(),
+}));
+
 import SettleUpScreen from "@/app/settle-up";
 
 beforeEach(() => {
@@ -230,7 +234,9 @@ describe("SettleUpScreen", () => {
     fireEvent.press(submitButtons[submitButtons.length - 1]);
     await waitFor(() => {
       expect(mockCreateSettlement).toHaveBeenCalled();
-      expect(mockToast.success).toHaveBeenCalledWith("Settlement recorded!");
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Settled Up!")).toBeTruthy();
     });
   });
 

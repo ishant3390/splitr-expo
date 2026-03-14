@@ -203,18 +203,18 @@ export function getNotificationUrl(
     case "expense_updated":
     case "expense_deleted":
     case "coalesced_expenses":
-      return `/group/${groupId}`;
+      return `/(tabs)/groups/${groupId}`;
     case "settlement_created":
       return `/settle-up?groupId=${groupId}`;
     case "settlement_nudge_debtor":
     case "settlement_nudge_manual":
       return `/settle-up?groupId=${groupId}`;
     case "settlement_nudge_creditor":
-      return `/group/${groupId}`;
+      return `/(tabs)/groups/${groupId}`;
     case "member_joined_via_invite":
-      return `/group/${groupId}`;
+      return `/(tabs)/groups/${groupId}`;
     default:
-      return `/group/${groupId}`;
+      return `/(tabs)/groups/${groupId}`;
   }
 }
 

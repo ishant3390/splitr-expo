@@ -84,12 +84,11 @@ describe("HomeScreen", () => {
     });
   });
 
-  it("shows quick action buttons", async () => {
+  it("does not show quick action buttons (removed for MVP)", async () => {
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Scan")).toBeTruthy();
-      expect(screen.getByText("Chat")).toBeTruthy();
-      expect(screen.getByText("Add")).toBeTruthy();
+      expect(screen.queryByText("Scan")).toBeNull();
+      expect(screen.queryByText("Chat")).toBeNull();
     });
   });
 
@@ -527,8 +526,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Expense created")).toBeTruthy();
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
       expect(screen.getByText("Trip")).toBeTruthy();
     });
   });
@@ -557,8 +555,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Expense updated")).toBeTruthy();
-      expect(screen.getByText("Updated Lunch")).toBeTruthy();
+      expect(screen.getByText("Bob updated Updated Lunch")).toBeTruthy();
     });
   });
 
@@ -585,7 +582,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Expense updated")).toBeTruthy();
+      expect(screen.getByText("Carol updated New Name")).toBeTruthy();
     });
   });
 
@@ -608,8 +605,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Member joined")).toBeTruthy();
-      expect(screen.getByText(/Dave joined Road Trip/)).toBeTruthy();
+      expect(screen.getAllByText(/Dave joined Road Trip/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -633,9 +629,9 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Dinner"));
+    fireEvent.press(screen.getByText("Alice added Dinner"));
     expect(mockPush).toHaveBeenCalled();
   });
 
@@ -658,9 +654,9 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Group created")).toBeTruthy();
+      expect(screen.getByText("Alice created Trip")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Group created"));
+    fireEvent.press(screen.getByText("Alice created Trip"));
     expect(mockPush).toHaveBeenCalled();
   });
 
@@ -691,14 +687,14 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Pizza")).toBeTruthy();
-      expect(screen.getByText("Taxi ride")).toBeTruthy();
+      expect(screen.getByText("Alice added Pizza")).toBeTruthy();
+      expect(screen.getByText("Bob added Taxi ride")).toBeTruthy();
     });
     // Press "Food" category
     fireEvent.press(screen.getByText("Food"));
     await waitFor(() => {
-      expect(screen.getByText("Pizza")).toBeTruthy();
-      expect(screen.queryByText("Taxi ride")).toBeNull();
+      expect(screen.getByText("Alice added Pizza")).toBeTruthy();
+      expect(screen.queryByText("Bob added Taxi ride")).toBeNull();
     });
   });
 
@@ -720,7 +716,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Pizza")).toBeTruthy();
+      expect(screen.getByText("Alice added Pizza")).toBeTruthy();
     });
     // Press "Travel" category — no matching items
     fireEvent.press(screen.getByText("Travel"));
@@ -759,7 +755,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Dinner")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
   });
 
@@ -783,7 +779,7 @@ describe("HomeScreen", () => {
     render(<HomeScreen />);
     await waitFor(() => {
       // The food emoji should be rendered
-      expect(screen.getByText("Expense created")).toBeTruthy();
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
   });
 
@@ -875,6 +871,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
+      expect(screen.getByText("Alice added Coffee")).toBeTruthy();
       expect(screen.getByText("Caffeine Club")).toBeTruthy();
     });
   });
@@ -898,10 +895,10 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Settlement created")).toBeTruthy();
+      expect(screen.getByText("Alice settled up")).toBeTruthy();
     });
     // Pressing should not crash
-    fireEvent.press(screen.getByText("Settlement created"));
+    fireEvent.press(screen.getByText("Alice settled up"));
     // No navigation should have occurred for this item
   });
 
@@ -924,7 +921,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Expense deleted")).toBeTruthy();
+      expect(screen.getByText("Alice deleted Old Expense")).toBeTruthy();
       expect(screen.getByText("Trip")).toBeTruthy();
     });
   });
@@ -955,8 +952,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Expense updated")).toBeTruthy();
-      expect(screen.getByText("Team Lunch")).toBeTruthy();
+      expect(screen.getByText("Eve updated Team Lunch")).toBeTruthy();
       // Both amount and description changes contain →
       expect(screen.getAllByText(/→/).length).toBeGreaterThanOrEqual(2);
       // Description change line
@@ -986,7 +982,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Updated Dinner")).toBeTruthy();
+      expect(screen.getByText("Frank updated Updated Dinner")).toBeTruthy();
     });
   });
 
@@ -1010,7 +1006,77 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/GuestDave joined Road Trip/)).toBeTruthy();
+      expect(screen.getAllByText(/GuestDave joined Road Trip/).length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  // --- Involvement indicators (Phase 2) ---
+
+  it("shows your share on expense activity when yourShareCents is present", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amountCents: 6000, involvedCount: 3, yourShareCents: 2000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("-$20.00")).toBeTruthy();
+    });
+  });
+
+  it("shows 'Not involved' when yourShareCents is absent", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Bob",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Uber", amountCents: 3000, involvedCount: 2 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Not involved")).toBeTruthy();
+    });
+  });
+
+  it("does not show involvement for settlement activity", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "settlement_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { amountCents: 5000 },
+          groupId: "g1",
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Alice settled up")).toBeTruthy();
+    });
+    expect(screen.queryByText("Not involved")).toBeNull();
   });
 });

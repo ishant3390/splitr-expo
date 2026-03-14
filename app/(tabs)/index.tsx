@@ -10,9 +10,6 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useUser } from "@clerk/clerk-expo";
 import {
-  ScanLine,
-  MessageCircle,
-  PlusCircle,
   ArrowDownLeft,
   ArrowUpRight,
   Bell,
@@ -32,11 +29,11 @@ import {
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useUserBalance, useTopDebtor } from "@/lib/hooks";
 import { useNetwork } from "@/components/NetworkProvider";
 import { cn, formatCents, formatDate, getInitials } from "@/lib/utils";
+import { formatActivityTitle, formatActivityInvolvement } from "@/lib/screen-helpers";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedPressable } from "@/components/ui/animated-pressable";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -172,42 +169,6 @@ export default function HomeScreen() {
         </View>
 
         <View className="px-5 gap-4">
-          {/* Quick Actions */}
-          <View className="flex-row gap-3">
-            <Button
-              variant="outline"
-              onPress={() => router.push("/receipt-scanner")}
-              className="flex-1 h-auto py-4 flex-col items-center gap-2"
-            >
-              <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-                <ScanLine size={20} color="#0d9488" />
-              </View>
-              <Text className="text-xs font-sans-medium text-foreground">Scan</Text>
-            </Button>
-
-            <Button
-              variant="outline"
-              onPress={() => router.push("/chat")}
-              className="flex-1 h-auto py-4 flex-col items-center gap-2"
-            >
-              <View className="w-10 h-10 rounded-full bg-accent/20 items-center justify-center">
-                <MessageCircle size={20} color="#14b8a6" />
-              </View>
-              <Text className="text-xs font-sans-medium text-foreground">Chat</Text>
-            </Button>
-
-            <Button
-              variant="outline"
-              onPress={() => router.push("/(tabs)/add")}
-              className="flex-1 h-auto py-4 flex-col items-center gap-2"
-            >
-              <View className="w-10 h-10 rounded-full bg-success/20 items-center justify-center">
-                <PlusCircle size={20} color="#10b981" />
-              </View>
-              <Text className="text-xs font-sans-medium text-foreground">Add</Text>
-            </Button>
-          </View>
-
           {/* Balance Card */}
           <Card className="p-5 bg-primary border-0 overflow-hidden">
             <View className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2" />
@@ -426,28 +387,23 @@ export default function HomeScreen() {
               <View className="gap-2">
                 {filtered.map((item, idx) => {
                   const actorName = item.actorUserName ?? item.actorGuestName ?? "?";
-                  const description = item.activityType
-                    .replace(/_/g, " ")
-                    .replace(/^\w/, (c) => c.toUpperCase());
+                  const title = formatActivityTitle(item, user?.id);
                   const groupName = item.groupName ?? (item.details?.groupName as string) ?? "";
                   const isExpenseUpdated = item.activityType === "expense_updated";
-                  const expenseName = (item.details?.newDescription ?? item.details?.description) as string | undefined;
                   const oldAmount = item.details?.oldAmount as number | undefined;
                   const newAmount = item.details?.newAmount as number | undefined;
                   const amountChanged = oldAmount != null && newAmount != null && oldAmount !== newAmount;
                   const oldDesc = item.details?.oldDescription as string | undefined;
                   const newDesc = item.details?.newDescription as string | undefined;
                   const descChanged = oldDesc != null && newDesc != null && oldDesc !== newDesc;
-                  const isExpenseCreated = item.activityType === "expense_created";
-                  const createdExpenseName = (item.details?.description) as string | undefined;
-                  const createdAmountCents = item.details?.amountCents as number | undefined;
                   const isMemberJoined = item.activityType === "member_joined";
                   const memberRole = (item.details?.role as string) ?? "";
                   const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
+                  const involvement = formatActivityInvolvement(item);
                   const destination = item.expenseId
                     ? { pathname: `/edit-expense/${item.expenseId}` as const, params: { groupId: item.groupId } }
                     : item.groupId
-                    ? { pathname: `/group/${item.groupId}` as const }
+                    ? { pathname: `/(tabs)/groups/${item.groupId}` as const }
                     : null;
 
                   // Get emoji for this activity item
@@ -473,13 +429,8 @@ export default function HomeScreen() {
                           </View>
                           <View className="flex-1">
                             <Text className="text-sm font-sans-semibold text-card-foreground">
-                              {description}
+                              {title}
                             </Text>
-                            {isExpenseUpdated && expenseName ? (
-                              <Text className="text-xs text-foreground font-sans-medium mt-0.5">
-                                {expenseName}
-                              </Text>
-                            ) : null}
                             {isExpenseUpdated && amountChanged ? (
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                                 {formatCents(oldAmount!)} → {formatCents(newAmount!)}
@@ -488,11 +439,6 @@ export default function HomeScreen() {
                             {isExpenseUpdated && descChanged ? (
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                                 "{oldDesc}" → "{newDesc}"
-                              </Text>
-                            ) : null}
-                            {isExpenseCreated && createdExpenseName ? (
-                              <Text className="text-xs text-foreground font-sans-medium mt-0.5">
-                                {createdExpenseName}
                               </Text>
                             ) : null}
                             {isMemberJoined ? (
@@ -509,6 +455,17 @@ export default function HomeScreen() {
                             {displayAmount != null && (
                               <Text className="text-sm font-sans-semibold text-foreground">
                                 {formatCents(displayAmount)}
+                              </Text>
+                            )}
+                            {involvement.text != null && (
+                              <Text
+                                className={`text-xs font-sans-medium mt-0.5 ${
+                                  involvement.color === "teal"
+                                    ? "text-primary"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                {involvement.text}
                               </Text>
                             )}
                             <Text className="text-xs text-muted-foreground font-sans">

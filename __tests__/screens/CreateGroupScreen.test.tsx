@@ -337,7 +337,7 @@ describe("CreateGroupScreen", () => {
       expect(screen.getByText("Go to Group")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Go to Group"));
-    expect(mockReplace).toHaveBeenCalledWith("/group/g1");
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/groups/g1");
   });
 
   it("navigates back via goBack", async () => {
@@ -445,7 +445,7 @@ describe("CreateGroupScreen", () => {
       expect(screen.getByText("Go to Group")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Go to Group"));
-    expect(mockReplace).toHaveBeenCalledWith("/group/g1");
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/groups/g1");
   });
 
   it("changes name placeholder for each group type", async () => {

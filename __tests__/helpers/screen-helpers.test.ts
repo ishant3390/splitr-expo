@@ -14,7 +14,10 @@ import {
   sortExpenses,
   resolvePayerName,
   computeBalancesFromMembers,
+  formatActivityTitle,
+  formatActivityInvolvement,
 } from "../../lib/screen-helpers";
+import type { ActivityLogDto } from "../../lib/types";
 
 // ---------------------------------------------------------------------------
 // getCategoryEmoji
@@ -810,5 +813,323 @@ describe("resolvePayerName — guest member with no name or displayName", () => 
     const payer = { guestUser: { id: "g1" } };
     const members = [{ guestUser: { id: "g1" } }];
     expect(resolvePayerName(payer, members)).toBe("Member");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatActivityTitle
+// ---------------------------------------------------------------------------
+
+function makeActivity(overrides: Partial<ActivityLogDto>): ActivityLogDto {
+  return {
+    id: "a1",
+    activityType: "expense_created",
+    createdAt: "2026-03-05T10:00:00Z",
+    ...overrides,
+  };
+}
+
+describe("formatActivityTitle", () => {
+  // expense_created
+  it("returns 'You added Dinner' when current user is the actor", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "me",
+      actorUserName: "Ajay",
+      details: { description: "Dinner" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You added Dinner");
+  });
+
+  it("returns 'Sean added Dinner' when someone else is the actor", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "u2",
+      actorUserName: "Sean",
+      details: { description: "Dinner" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Sean added Dinner");
+  });
+
+  // expense_updated
+  it("returns 'You updated Lunch' for expense_updated by current user", () => {
+    const a = makeActivity({
+      activityType: "expense_updated",
+      actorUserId: "me",
+      actorUserName: "Ajay",
+      details: { newDescription: "Lunch" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You updated Lunch");
+  });
+
+  it("returns 'Bob updated Lunch' for expense_updated by another user", () => {
+    const a = makeActivity({
+      activityType: "expense_updated",
+      actorUserId: "u2",
+      actorUserName: "Bob",
+      details: { newDescription: "Lunch" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Bob updated Lunch");
+  });
+
+  // expense_deleted
+  it("returns 'You deleted Coffee' for expense_deleted by current user", () => {
+    const a = makeActivity({
+      activityType: "expense_deleted",
+      actorUserId: "me",
+      details: { description: "Coffee" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You deleted Coffee");
+  });
+
+  it("returns 'Alice deleted Coffee' for expense_deleted by someone else", () => {
+    const a = makeActivity({
+      activityType: "expense_deleted",
+      actorUserId: "u3",
+      actorUserName: "Alice",
+      details: { description: "Coffee" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Alice deleted Coffee");
+  });
+
+  // settlement_created
+  it("returns 'You settled up' for settlement_created by current user", () => {
+    const a = makeActivity({
+      activityType: "settlement_created",
+      actorUserId: "me",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You settled up");
+  });
+
+  it("returns 'Carol settled up' for settlement_created by someone else", () => {
+    const a = makeActivity({
+      activityType: "settlement_created",
+      actorUserId: "u4",
+      actorUserName: "Carol",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Carol settled up");
+  });
+
+  // member_joined
+  it("returns 'You joined Road Trip' for member_joined by current user", () => {
+    const a = makeActivity({
+      activityType: "member_joined",
+      actorUserId: "me",
+      groupName: "Road Trip",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You joined Road Trip");
+  });
+
+  it("returns 'Dave joined Road Trip' for member_joined by someone else", () => {
+    const a = makeActivity({
+      activityType: "member_joined",
+      actorUserId: "u5",
+      actorUserName: "Dave",
+      groupName: "Road Trip",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Dave joined Road Trip");
+  });
+
+  // group_created
+  it("returns 'You created Weekend' for group_created by current user", () => {
+    const a = makeActivity({
+      activityType: "group_created",
+      actorUserId: "me",
+      groupName: "Weekend",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You created Weekend");
+  });
+
+  it("returns 'Eve created Weekend' for group_created by someone else", () => {
+    const a = makeActivity({
+      activityType: "group_created",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+      groupName: "Weekend",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve created Weekend");
+  });
+
+  // Fallback for unknown types
+  it("returns fallback format for unknown activity type", () => {
+    const a = makeActivity({
+      activityType: "group_updated",
+      actorUserId: "u7",
+      actorUserName: "Frank",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Frank: Group updated");
+  });
+
+  it("returns 'You: ...' for unknown type when current user is actor", () => {
+    const a = makeActivity({
+      activityType: "member_left",
+      actorUserId: "me",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You: Member left");
+  });
+
+  // Actor name fallbacks
+  it("uses actorGuestName when actorUserName is null", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "u8",
+      actorGuestName: "GuestBob",
+      details: { description: "Tacos" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("GuestBob added Tacos");
+  });
+
+  it("uses 'Someone' when both actor names are null", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { description: "Pizza" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Someone added Pizza");
+  });
+
+  // No description fallback
+  it("returns 'You added an expense' when description is missing", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "me",
+      details: {},
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You added an expense");
+  });
+
+  // Null/undefined currentUserId
+  it("never shows 'You' when currentUserId is null", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "u1",
+      actorUserName: "Alice",
+      details: { description: "Dinner" },
+    });
+    expect(formatActivityTitle(a, null)).toBe("Alice added Dinner");
+  });
+
+  it("never shows 'You' when currentUserId is undefined", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "u1",
+      actorUserName: "Alice",
+      details: { description: "Dinner" },
+    });
+    expect(formatActivityTitle(a, undefined)).toBe("Alice added Dinner");
+  });
+
+  // Prefers newDescription over description
+  it("prefers newDescription over description for expense_created", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "u1",
+      actorUserName: "Alice",
+      details: { description: "Old Name", newDescription: "New Name" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Alice added New Name");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatActivityInvolvement
+// ---------------------------------------------------------------------------
+
+describe("formatActivityInvolvement", () => {
+  it("returns null for non-expense activity types", () => {
+    const a = makeActivity({ activityType: "settlement_created" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
+  it("returns null for member_joined", () => {
+    const a = makeActivity({ activityType: "member_joined" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
+  it("returns null for group_created", () => {
+    const a = makeActivity({ activityType: "group_created" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
+  it("returns null when involvedCount is missing (old BE data)", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { description: "Dinner", amountCents: 5000 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
+  it("returns 'Not involved' when yourShareCents is absent", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { description: "Dinner", amountCents: 5000, involvedCount: 3 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "Not involved", color: "muted" });
+  });
+
+  it("returns formatted share when yourShareCents is present", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { description: "Dinner", amountCents: 6000, involvedCount: 3, yourShareCents: 2000 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "-$20.00", color: "teal" });
+  });
+
+  it("formats small cents correctly", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { amountCents: 300, involvedCount: 2, yourShareCents: 150 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "-$1.50", color: "teal" });
+  });
+
+  it("handles yourShareCents of 0 as involved", () => {
+    // Edge case: 0 cents share (e.g., payer pays full, split is 0 for them)
+    // 0 is a number so it IS present — user is technically involved
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { amountCents: 5000, involvedCount: 2, yourShareCents: 0 },
+    });
+    // 0 is falsy but !== undefined, so should show as involved
+    expect(formatActivityInvolvement(a)).toEqual({ text: "-$0.00", color: "teal" });
+  });
+
+  it("works for expense_updated", () => {
+    const a = makeActivity({
+      activityType: "expense_updated",
+      details: { newDescription: "Lunch", involvedCount: 4, yourShareCents: 1250 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "-$12.50", color: "teal" });
+  });
+
+  it("works for expense_deleted", () => {
+    const a = makeActivity({
+      activityType: "expense_deleted",
+      details: { description: "Coffee", involvedCount: 2 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "Not involved", color: "muted" });
+  });
+
+  it("returns share for expense_deleted when involved", () => {
+    const a = makeActivity({
+      activityType: "expense_deleted",
+      details: { description: "Coffee", involvedCount: 2, yourShareCents: 350 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "-$3.50", color: "teal" });
+  });
+
+  it("handles penny amounts", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { involvedCount: 3, yourShareCents: 1 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "-$0.01", color: "teal" });
+  });
+
+  it("handles large amounts", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { involvedCount: 5, yourShareCents: 150000 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "-$1500.00", color: "teal" });
   });
 });

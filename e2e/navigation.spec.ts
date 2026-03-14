@@ -147,7 +147,7 @@ test.describe("Cross-Screen Navigation", () => {
     page,
   }) => {
     // Try navigating to a non-existent group
-    await page.goto("/group/invalid-group-id-12345");
+    await page.goto("/groups/invalid-group-id-12345");
     await page.waitForTimeout(3000);
 
     // Should either show an error, redirect to groups, or show empty state

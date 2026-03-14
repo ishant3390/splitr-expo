@@ -55,10 +55,10 @@ export default function AddExpenseScreen() {
   const returnGroupId = Array.isArray(params.returnGroupId) ? params.returnGroupId[0] : params.returnGroupId;
   const isQuickMode = params.quick === "true";
   const goBack = () => {
-    if (returnGroupId) {
-      router.replace(`/group/${returnGroupId}`);
-    } else if (router.canGoBack()) {
+    if (router.canGoBack()) {
       router.back();
+    } else if (returnGroupId) {
+      router.replace(`/(tabs)/groups/${returnGroupId}`);
     } else {
       router.replace("/(tabs)");
     }

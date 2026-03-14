@@ -25,7 +25,7 @@ jest.mock("@/lib/notifications", () => {
     await callback("push-token-123");
   });
   const clearBadgeFn = jest.fn();
-  const getNotificationUrlFn = jest.fn(() => "/group/g1");
+  const getNotificationUrlFn = jest.fn(() => "/(tabs)/groups/g1");
   const setupNotificationCategoriesFn = jest.fn();
   const configureForegroundHandlerFn = jest.fn();
 
@@ -120,7 +120,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockIsSignedIn = true;
   notificationResponseCallback = null;
-  notifMocks.getNotificationUrl.mockReturnValue("/group/g1");
+  notifMocks.getNotificationUrl.mockReturnValue("/(tabs)/groups/g1");
   mockUseLastNotificationResponse.mockReturnValue(null);
 });
 
@@ -296,7 +296,7 @@ describe("NotificationProvider", () => {
     }
 
     expect(notifMocks.getNotificationUrl).toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith("/group/g1");
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/groups/g1");
   });
 
   it("deduplicates notification taps with same identifier", () => {
@@ -358,7 +358,7 @@ describe("NotificationProvider", () => {
     jest.advanceTimersByTime(600);
 
     expect(notifMocks.getNotificationUrl).toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith("/group/g1");
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/groups/g1");
 
     jest.useRealTimers();
   });
