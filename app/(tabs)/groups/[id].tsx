@@ -52,10 +52,10 @@ import { groupsApi, contactsApi, inviteApi, expensesApi } from "@/lib/api";
 import { useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
 import { invalidateAfterGroupChange } from "@/lib/query";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatCents, formatDate, getInitials, cn } from "@/lib/utils";
+import { formatCents, formatDate, formatRelativeTime, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticLight, hapticSuccess, hapticWarning, hapticSelection, hapticError } from "@/lib/haptics";
-import { dedupeMembers, aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, resolvePayerName } from "@/lib/screen-helpers";
+import { dedupeMembers, aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, resolvePayerName, hasUnsettledBalances } from "@/lib/screen-helpers";
 import * as Clipboard from "expo-clipboard";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
@@ -115,6 +115,7 @@ export default function GroupDetailScreen() {
   // Group action (archive/delete) state
   const [showGroupActions, setShowGroupActions] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [archiveHasBalances, setArchiveHasBalances] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const archiveMutation = useArchiveGroup();
   const deleteMutation = useDeleteGroup();
@@ -1070,7 +1071,7 @@ export default function GroupDetailScreen() {
                             {title}
                           </Text>
                           <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                            {formatDate(actItem.createdAt)}
+                            {formatRelativeTime(actItem.createdAt)}
                           </Text>
                         </View>
                         {displayAmount != null && (
@@ -1407,7 +1408,7 @@ export default function GroupDetailScreen() {
           </Pressable>
         ) : (
           <Pressable
-            onPress={() => { setShowGroupActions(false); setShowArchiveConfirm(true); }}
+            onPress={() => { setShowGroupActions(false); setArchiveHasBalances(hasUnsettledBalances(members)); setShowArchiveConfirm(true); }}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: isDark ? "#334155" : "#f1f5f9" }}
           >
             <Archive size={20} color="#f59e0b" />
@@ -1432,8 +1433,12 @@ export default function GroupDetailScreen() {
       <ConfirmModal
         visible={showArchiveConfirm}
         title="Archive Group"
-        message={`Archive "${group?.name}"? No new expenses or settlements can be added while archived. Balances are preserved and you can restore it anytime.`}
-        confirmLabel="Archive"
+        message={
+          archiveHasBalances
+            ? `This group has outstanding balances. Archiving will prevent new expenses and settlements until you restore it.\n\nYou can restore the group at any time to settle up.`
+            : `Archive "${group?.name}"? No new expenses can be added while archived. You can restore it anytime.`
+        }
+        confirmLabel={archiveHasBalances ? "Archive Anyway" : "Archive"}
         cancelLabel="Cancel"
         onConfirm={async () => {
           try {
@@ -1443,9 +1448,10 @@ export default function GroupDetailScreen() {
             toast.error("Failed to archive group.");
           } finally {
             setShowArchiveConfirm(false);
+            setArchiveHasBalances(false);
           }
         }}
-        onCancel={() => setShowArchiveConfirm(false)}
+        onCancel={() => { setShowArchiveConfirm(false); setArchiveHasBalances(false); }}
       />
 
       {/* Delete Group Confirmation */}

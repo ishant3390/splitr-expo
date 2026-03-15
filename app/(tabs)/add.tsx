@@ -93,6 +93,7 @@ export default function AddExpenseScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const userPickedCategoryRef = useRef(false);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Load groups and categories on mount; auto-create "Personal" group if none exist
   useEffect(() => {
@@ -514,7 +515,13 @@ export default function AddExpenseScreen() {
           {!isQuickMode && <Animated.View entering={FadeInDown.delay(150).duration(400).springify()}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Date</Text>
             <Pressable
-              onPress={() => setShowDatePicker(true)}
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  dateInputRef.current?.showPicker();
+                } else {
+                  setShowDatePicker(true);
+                }
+              }}
               className="flex-row items-center gap-3 bg-muted rounded-xl px-4 py-3.5"
             >
               <Calendar size={18} color="#64748b" />
@@ -525,7 +532,21 @@ export default function AddExpenseScreen() {
                 <Text className="text-xs font-sans-medium text-primary">Today</Text>
               )}
             </Pressable>
-            {showDatePicker && (
+            {Platform.OS === 'web' && (
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={expenseDate.toISOString().split('T')[0]}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setExpenseDate(new Date(e.target.value + 'T00:00:00'));
+                  }
+                }}
+                style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+              />
+            )}
+            {Platform.OS !== 'web' && showDatePicker && (
               <DateTimePicker
                 value={expenseDate}
                 mode="date"

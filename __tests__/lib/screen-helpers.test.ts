@@ -1,4 +1,52 @@
-import { inferCategoryFromDescription } from "@/lib/screen-helpers";
+import { inferCategoryFromDescription, hasUnsettledBalances } from "@/lib/screen-helpers";
+import type { GroupMemberDto } from "@/lib/types";
+
+describe("hasUnsettledBalances", () => {
+  it("returns false for empty members array", () => {
+    expect(hasUnsettledBalances([])).toBe(false);
+  });
+
+  it("returns false when all balances are zero", () => {
+    const members: GroupMemberDto[] = [
+      { id: "m1", balance: 0, joinedAt: "2026-01-01" },
+      { id: "m2", balance: 0, joinedAt: "2026-01-01" },
+    ];
+    expect(hasUnsettledBalances(members)).toBe(false);
+  });
+
+  it("returns false when all balances are undefined", () => {
+    const members: GroupMemberDto[] = [
+      { id: "m1", joinedAt: "2026-01-01" },
+      { id: "m2", joinedAt: "2026-01-01" },
+    ];
+    expect(hasUnsettledBalances(members)).toBe(false);
+  });
+
+  it("returns true when a member has positive balance", () => {
+    const members: GroupMemberDto[] = [
+      { id: "m1", balance: 500, joinedAt: "2026-01-01" },
+      { id: "m2", balance: 0, joinedAt: "2026-01-01" },
+    ];
+    expect(hasUnsettledBalances(members)).toBe(true);
+  });
+
+  it("returns true when a member has negative balance", () => {
+    const members: GroupMemberDto[] = [
+      { id: "m1", balance: 0, joinedAt: "2026-01-01" },
+      { id: "m2", balance: -300, joinedAt: "2026-01-01" },
+    ];
+    expect(hasUnsettledBalances(members)).toBe(true);
+  });
+
+  it("returns true with mix of positive, negative, and zero balances", () => {
+    const members: GroupMemberDto[] = [
+      { id: "m1", balance: 500, joinedAt: "2026-01-01" },
+      { id: "m2", balance: -500, joinedAt: "2026-01-01" },
+      { id: "m3", balance: 0, joinedAt: "2026-01-01" },
+    ];
+    expect(hasUnsettledBalances(members)).toBe(true);
+  });
+});
 
 const categories = [
   { id: "cat-food", name: "Food & Drink" },

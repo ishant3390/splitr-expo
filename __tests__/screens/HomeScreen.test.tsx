@@ -383,7 +383,7 @@ describe("HomeScreen", () => {
     });
   });
 
-  it("navigates to groups on settle-up press", async () => {
+  it("navigates to settle-up screen on settle-up press", async () => {
     mockUseUserBalance.mockReturnValue({
       data: { totalOwedCents: 0, totalOwesCents: 3500, netBalanceCents: -3500 },
       error: null,
@@ -394,7 +394,7 @@ describe("HomeScreen", () => {
       expect(screen.getByText(/Settle up/)).toBeTruthy();
     });
     fireEvent.press(screen.getByText(/Settle up/));
-    expect(mockPush).toHaveBeenCalledWith("/(tabs)/groups");
+    expect(mockPush).toHaveBeenCalledWith("/settle-up");
   });
 
   // --- Pending expenses banner (lines 263-288) ---

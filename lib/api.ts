@@ -60,6 +60,12 @@ async function request<T>(
   return text ? JSON.parse(text) : ({} as T);
 }
 
+/** Check if an API error is a version conflict (HTTP 409 / ERR-302) */
+export function isVersionConflict(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes("409") || msg.includes("ERR-302");
+}
+
 /** Flatten `{ key: T[] }` map responses into a flat `T[]`. */
 function flattenMap<T>(data: Record<string, T[]> | T[]): T[] {
   if (Array.isArray(data)) return data;

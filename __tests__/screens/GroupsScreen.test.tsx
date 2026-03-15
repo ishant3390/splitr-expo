@@ -40,6 +40,13 @@ jest.mock("@/lib/hooks", () => ({
   useDeleteGroup: () => ({ mutateAsync: mockDeleteMutateAsync, isPending: false }),
 }));
 
+const mockListMembers = jest.fn(() => Promise.resolve([]));
+jest.mock("@/lib/api", () => ({
+  groupsApi: {
+    listMembers: (...args: any[]) => mockListMembers(...args),
+  },
+}));
+
 const sampleGroups = [
   {
     id: "g1",
@@ -258,8 +265,12 @@ describe("GroupsScreen", () => {
     });
   });
 
-  // --- Archive flow (lines 67-81, 306-325) ---
-  it("shows archive confirmation when Archive Group is pressed", async () => {
+  // --- Archive flow with balance check ---
+  it("shows standard archive confirmation when no balances", async () => {
+    mockListMembers.mockResolvedValueOnce([
+      { id: "m1", balance: 0 },
+      { id: "m2", balance: 0 },
+    ]);
     mockUseGroups.mockReturnValue({
       data: [sampleGroups[0]],
       isLoading: false,
@@ -270,20 +281,45 @@ describe("GroupsScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Trip to Paris")).toBeTruthy();
     });
-    // Open action sheet
     fireEvent(screen.getByText("Trip to Paris"), "onLongPress");
     await waitFor(() => {
       expect(screen.getByText("Archive Group")).toBeTruthy();
     });
-    // Press archive
     fireEvent.press(screen.getByText("Archive Group"));
     await waitFor(() => {
-      expect(screen.getByText("Archive")).toBeTruthy();
       expect(screen.getByText(/Archive "Trip to Paris"/)).toBeTruthy();
+      expect(screen.getByText("Archive")).toBeTruthy();
     });
   });
 
-  it("archives group on confirm", async () => {
+  it("shows balance warning when group has unsettled balances", async () => {
+    mockListMembers.mockResolvedValueOnce([
+      { id: "m1", balance: 500 },
+      { id: "m2", balance: -500 },
+    ]);
+    mockUseGroups.mockReturnValue({
+      data: [sampleGroups[0]],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Trip to Paris")).toBeTruthy();
+    });
+    fireEvent(screen.getByText("Trip to Paris"), "onLongPress");
+    await waitFor(() => {
+      expect(screen.getByText("Archive Group")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Archive Group"));
+    await waitFor(() => {
+      expect(screen.getByText(/outstanding balances/)).toBeTruthy();
+      expect(screen.getByText("Archive Anyway")).toBeTruthy();
+    });
+  });
+
+  it("archives group on confirm with no balances", async () => {
+    mockListMembers.mockResolvedValueOnce([]);
     mockUseGroups.mockReturnValue({
       data: [sampleGroups[0]],
       isLoading: false,
@@ -299,7 +335,6 @@ describe("GroupsScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Archive")).toBeTruthy();
     });
-    // Confirm archive
     fireEvent.press(screen.getByText("Archive"));
     await waitFor(() => {
       expect(mockArchiveMutateAsync).toHaveBeenCalledWith({
@@ -311,7 +346,37 @@ describe("GroupsScreen", () => {
     });
   });
 
+  it("archives group on Archive Anyway confirm with balances", async () => {
+    mockListMembers.mockResolvedValueOnce([
+      { id: "m1", balance: 100 },
+    ]);
+    mockUseGroups.mockReturnValue({
+      data: [sampleGroups[0]],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+    render(<GroupsScreen />);
+    fireEvent(screen.getByText("Trip to Paris"), "onLongPress");
+    await waitFor(() => {
+      expect(screen.getByText("Archive Group")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Archive Group"));
+    await waitFor(() => {
+      expect(screen.getByText("Archive Anyway")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Archive Anyway"));
+    await waitFor(() => {
+      expect(mockArchiveMutateAsync).toHaveBeenCalledWith({
+        groupId: "g1",
+        version: 1,
+        archive: true,
+      });
+    });
+  });
+
   it("shows error toast when archive fails", async () => {
+    mockListMembers.mockResolvedValueOnce([]);
     mockArchiveMutateAsync.mockRejectedValueOnce(new Error("Failed"));
     mockUseGroups.mockReturnValue({
       data: [sampleGroups[0]],
@@ -334,8 +399,29 @@ describe("GroupsScreen", () => {
     });
   });
 
-  // --- Cancel archive (line 374) ---
+  it("falls back to no-balance message when listMembers fails", async () => {
+    mockListMembers.mockRejectedValueOnce(new Error("Network error"));
+    mockUseGroups.mockReturnValue({
+      data: [sampleGroups[0]],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+    render(<GroupsScreen />);
+    fireEvent(screen.getByText("Trip to Paris"), "onLongPress");
+    await waitFor(() => {
+      expect(screen.getByText("Archive Group")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Archive Group"));
+    await waitFor(() => {
+      expect(screen.getByText(/Archive "Trip to Paris"/)).toBeTruthy();
+      expect(screen.getByText("Archive")).toBeTruthy();
+    });
+  });
+
+  // --- Cancel archive ---
   it("cancels archive confirmation", async () => {
+    mockListMembers.mockResolvedValueOnce([]);
     mockUseGroups.mockReturnValue({
       data: [sampleGroups[0]],
       isLoading: false,
@@ -630,6 +716,76 @@ describe("GroupsScreen", () => {
     fireEvent.press(screen.getByText("Archived"));
     await waitFor(() => {
       expect(screen.getByText("No archived groups")).toBeTruthy();
+    });
+  });
+
+  // --- Join Group modal ---
+  it("renders Join button in header", async () => {
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Join")).toBeTruthy();
+    });
+  });
+
+  it("opens join modal on Join button press", async () => {
+    render(<GroupsScreen />);
+    fireEvent.press(screen.getByText("Join"));
+    await waitFor(() => {
+      expect(screen.getByText("Join a Group")).toBeTruthy();
+      expect(screen.getByPlaceholderText("Invite code or link")).toBeTruthy();
+      expect(screen.getByText("Continue")).toBeTruthy();
+    });
+  });
+
+  it("shows error on empty join submit", async () => {
+    render(<GroupsScreen />);
+    fireEvent.press(screen.getByText("Join"));
+    await waitFor(() => {
+      expect(screen.getByText("Continue")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Continue"));
+    await waitFor(() => {
+      expect(screen.getByText("Please enter an invite code")).toBeTruthy();
+    });
+  });
+
+  it("navigates to /join/{code} with raw code", async () => {
+    render(<GroupsScreen />);
+    fireEvent.press(screen.getByText("Join"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Invite code or link")).toBeTruthy();
+    });
+    fireEvent.changeText(screen.getByPlaceholderText("Invite code or link"), "abc123");
+    fireEvent.press(screen.getByText("Continue"));
+    expect(mockPush).toHaveBeenCalledWith("/join/abc123");
+  });
+
+  it("extracts code from pasted URL before navigating", async () => {
+    render(<GroupsScreen />);
+    fireEvent.press(screen.getByText("Join"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Invite code or link")).toBeTruthy();
+    });
+    fireEvent.changeText(screen.getByPlaceholderText("Invite code or link"), "https://splitr.ai/invite/xyz789");
+    fireEvent.press(screen.getByText("Continue"));
+    expect(mockPush).toHaveBeenCalledWith("/join/xyz789");
+  });
+
+  it("shows 'Have an invite code?' link in empty state", async () => {
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Have an invite code?")).toBeTruthy();
+    });
+  });
+
+  it("opens join modal from 'Have an invite code?' link", async () => {
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Have an invite code?")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Have an invite code?"));
+    await waitFor(() => {
+      expect(screen.getByText("Join a Group")).toBeTruthy();
     });
   });
 

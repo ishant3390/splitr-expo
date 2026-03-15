@@ -42,6 +42,7 @@ import type {
   CreateGroupRequest,
   CreateExpenseRequest,
   UpdateUserRequest,
+  CrossGroupSuggestion,
 } from "./types";
 
 // ---- Helper: get token or throw ----
@@ -126,13 +127,35 @@ export function useUserActivity() {
     staleTime: staleTimes.activity,
   });
 
-  // Flatten pages and deduplicate by ID to prevent duplicate entries
+  // Flatten pages, deduplicate, and filter out redundant activities
   const data = useMemo(() => {
     const flat = query.data?.pages.flat() ?? [];
     const seen = new Set<string>();
-    return flat.filter((item) => {
+    const deduped = flat.filter((item) => {
       if (seen.has(item.id)) return false;
       seen.add(item.id);
+      return true;
+    });
+
+    // Build a set of (actorUserId, groupId) pairs from group_created activities.
+    // A member_joined by the same actor in the same group is redundant — the creator
+    // is implicitly a member.
+    const creatorKeys = new Set<string>();
+    for (const item of deduped) {
+      if (item.activityType === "group_created" && item.actorUserId && item.groupId) {
+        creatorKeys.add(`${item.actorUserId}:${item.groupId}`);
+      }
+    }
+
+    return deduped.filter((item) => {
+      if (
+        item.activityType === "member_joined" &&
+        item.actorUserId &&
+        item.groupId &&
+        creatorKeys.has(`${item.actorUserId}:${item.groupId}`)
+      ) {
+        return false;
+      }
       return true;
     });
   }, [query.data?.pages]);
@@ -262,6 +285,51 @@ export function useSettlementHistory(groupId: string) {
     staleTime: staleTimes.settlements, // 0 — always refetch
     enabled: !!groupId,
   });
+}
+
+// ---- Cross-Group Settlements ----
+
+export function useCrossGroupSuggestions() {
+  const fetchToken = useTokenFetcher();
+  const { data: balanceData, isLoading: balanceLoading } = useUserBalance();
+
+  const groupsWithBalance = useMemo(() => {
+    return (balanceData?.groupBalances ?? []).filter((g) => g.balanceCents !== 0);
+  }, [balanceData?.groupBalances]);
+
+  const suggestionQueries = useQueries({
+    queries: groupsWithBalance.map((g) => ({
+      queryKey: queryKeys.settlementSuggestions(g.groupId),
+      queryFn: async () => {
+        const token = await fetchToken();
+        const data = await settlementsApi.suggestions(g.groupId, token);
+        return {
+          groupId: g.groupId,
+          groupName: g.groupName,
+          suggestions: Array.isArray(data) ? data : [],
+        } as CrossGroupSuggestion;
+      },
+      staleTime: staleTimes.settlements, // 0 — always refetch
+    })),
+  });
+
+  const data = useMemo(() => {
+    return suggestionQueries
+      .map((q) => q.data)
+      .filter((d): d is CrossGroupSuggestion => !!d && d.suggestions.length > 0);
+  }, [suggestionQueries]);
+
+  const isLoading = balanceLoading || suggestionQueries.some((q) => q.isLoading);
+
+  const refetch = useCallback(() => {
+    suggestionQueries.forEach((q) => q.refetch());
+  }, [suggestionQueries]);
+
+  const errors = suggestionQueries
+    .map((q, i) => (q.error ? { groupId: groupsWithBalance[i]?.groupId, error: q.error } : null))
+    .filter(Boolean);
+
+  return { data, isLoading, refetch, errors };
 }
 
 // ---- Contacts ----

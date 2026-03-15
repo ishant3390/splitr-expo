@@ -16,6 +16,7 @@ import {
   ArrowRight,
   BellRing,
   Check,
+  ChevronRight,
   HandCoins,
   History,
   Trash2,
@@ -29,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { settlementsApi, groupsApi } from "@/lib/api";
-import { useUserProfile } from "@/lib/hooks";
+import { useUserProfile, useCrossGroupSuggestions } from "@/lib/hooks";
 import { invalidateAfterSettlementChange } from "@/lib/query";
 import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -52,7 +53,8 @@ const PAYMENT_METHODS = Object.entries(PAYMENT_METHOD_ICON_MAP).map(([key, confi
 
 export default function SettleUpScreen() {
   const router = useRouter();
-  const { groupId } = useLocalSearchParams<{ groupId: string }>();
+  const { groupId } = useLocalSearchParams<{ groupId?: string }>();
+  const isCrossGroup = !groupId;
   const { getToken } = useAuth();
   const toast = useToast();
   const colorScheme = useColorScheme();
@@ -62,15 +64,26 @@ export default function SettleUpScreen() {
   const [nudgingUserId, setNudgingUserId] = useState<string | null>(null);
   const [nudgedUserIds, setNudgedUserIds] = useState<Set<string>>(new Set());
 
+  // --- Per-group mode state ---
   const [group, setGroup] = useState<GroupDto | null>(null);
   const [members, setMembers] = useState<GroupMemberDto[]>([]);
   const [suggestions, setSuggestions] = useState<SettlementSuggestionDto[]>([]);
   const [settlements, setSettlements] = useState<SettlementDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isCrossGroup);
+
+  // --- Cross-group mode ---
+  const crossGroupData = useCrossGroupSuggestions();
+  const crossGroupSuggestions = isCrossGroup ? crossGroupData.data : [];
+  const crossGroupLoading = isCrossGroup ? crossGroupData.isLoading : false;
+  const crossGroupTotalSuggestions = crossGroupSuggestions.reduce(
+    (sum, g) => sum + g.suggestions.length, 0
+  );
 
   // Create settlement modal state
   const [showCreate, setShowCreate] = useState(false);
   const [createFrom, setCreateFrom] = useState<SettlementSuggestionDto | null>(null);
+  const [createGroupId, setCreateGroupId] = useState<string | null>(null);
+  const [createCurrency, setCreateCurrency] = useState<string>("USD");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [paymentReference, setPaymentReference] = useState("");
@@ -93,20 +106,22 @@ export default function SettleUpScreen() {
   const [hasMoreSettlements, setHasMoreSettlements] = useState(false);
   const [loadingMoreSettlements, setLoadingMoreSettlements] = useState(false);
 
-  // Tab
+  // Tab (per-group mode only)
   const [activeTab, setActiveTab] = useState<"suggestions" | "history">("suggestions");
 
   const SETTLEMENT_PAGE_SIZE = 20;
 
+  // --- Per-group data loading (only when groupId is provided) ---
   const loadData = useCallback(async () => {
+    if (isCrossGroup) return;
     try {
       const token = await getToken();
       const [groupData, membersData, suggestionsData, settlementsData] =
         await Promise.all([
-          groupsApi.get(groupId, token!),
-          groupsApi.listMembers(groupId, token!),
-          settlementsApi.suggestions(groupId, token!),
-          settlementsApi.list(groupId, token!, { page: 0, limit: SETTLEMENT_PAGE_SIZE }),
+          groupsApi.get(groupId!, token!),
+          groupsApi.listMembers(groupId!, token!),
+          settlementsApi.suggestions(groupId!, token!),
+          settlementsApi.list(groupId!, token!, { page: 0, limit: SETTLEMENT_PAGE_SIZE }),
         ]);
       setGroup(groupData);
       const rawMembers = Array.isArray(membersData) ? membersData : [];
@@ -128,7 +143,7 @@ export default function SettleUpScreen() {
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, isCrossGroup]);
 
   const loadMoreSettlements = async () => {
     if (!hasMoreSettlements || loadingMoreSettlements) return;
@@ -136,7 +151,7 @@ export default function SettleUpScreen() {
     try {
       const token = await getToken();
       const nextPage = settlementPage + 1;
-      const data = await settlementsApi.list(groupId, token!, { page: nextPage, limit: SETTLEMENT_PAGE_SIZE });
+      const data = await settlementsApi.list(groupId!, token!, { page: nextPage, limit: SETTLEMENT_PAGE_SIZE });
       const items = Array.isArray(data) ? data : [];
       setSettlements((prev) => [...prev, ...items]);
       setSettlementPage(nextPage);
@@ -150,17 +165,20 @@ export default function SettleUpScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      if (!isCrossGroup) {
+        loadData();
+      }
+    }, [loadData, isCrossGroup])
   );
 
-  const handleNudge = async (targetUserId: string) => {
-    if (!groupId || nudgingUserId) return;
+  const handleNudge = async (targetUserId: string, nudgeGroupId?: string) => {
+    const gId = nudgeGroupId ?? groupId;
+    if (!gId || nudgingUserId) return;
     setNudgingUserId(targetUserId);
     try {
       const token = await getToken();
       if (!token) return;
-      await groupsApi.nudge(groupId, targetUserId, token);
+      await groupsApi.nudge(gId, targetUserId, token);
       hapticSuccess();
       toast.success("Reminder sent!");
       setNudgedUserIds((prev) => new Set(prev).add(targetUserId));
@@ -179,14 +197,11 @@ export default function SettleUpScreen() {
     }
   };
 
-  const openCreateModal = (suggestion?: SettlementSuggestionDto) => {
-    if (suggestion) {
-      setCreateFrom(suggestion);
-      setAmount((suggestion.amount / 100).toFixed(2));
-    } else {
-      setCreateFrom(null);
-      setAmount("");
-    }
+  const openCreateModal = (suggestion: SettlementSuggestionDto, modalGroupId?: string, currency?: string) => {
+    setCreateFrom(suggestion);
+    setAmount((suggestion.amount / 100).toFixed(2));
+    setCreateGroupId(modalGroupId ?? groupId ?? null);
+    setCreateCurrency(currency || group?.defaultCurrency || "USD");
     setPaymentMethod("cash");
     setPaymentReference("");
     setNotes("");
@@ -195,6 +210,8 @@ export default function SettleUpScreen() {
 
   const handleCreate = async () => {
     if (!createFrom) return;
+    const targetGroupId = createGroupId ?? groupId;
+    if (!targetGroupId) return;
     const parsedAmount = Math.round(parseFloat(amount) * 100);
     if (!parsedAmount || parsedAmount < 1) {
       hapticError();
@@ -206,14 +223,14 @@ export default function SettleUpScreen() {
     try {
       const token = await getToken();
       await settlementsApi.create(
-        groupId,
+        targetGroupId,
         {
           payerUserId: createFrom.fromUser?.id,
           payerGuestUserId: createFrom.fromGuest?.id,
           payeeUserId: createFrom.toUser?.id,
           payeeGuestUserId: createFrom.toGuest?.id,
           amount: parsedAmount,
-          currency: group?.defaultCurrency || "USD",
+          currency: createCurrency,
           paymentMethod: paymentMethod || undefined,
           paymentReference: paymentReference.trim() || undefined,
           settlementDate: new Date().toISOString().split("T")[0],
@@ -226,8 +243,12 @@ export default function SettleUpScreen() {
       setShowSuccess(true);
       setTimeout(async () => {
         setShowSuccess(false);
-        await loadData();
-        invalidateAfterSettlementChange(groupId);
+        if (isCrossGroup) {
+          crossGroupData.refetch();
+        } else {
+          await loadData();
+        }
+        invalidateAfterSettlementChange(targetGroupId);
       }, 800);
     } catch {
       hapticError();
@@ -287,7 +308,110 @@ export default function SettleUpScreen() {
   const goBack = () =>
     router.canGoBack() ? router.back() : router.replace("/(tabs)/groups");
 
-  if (loading) {
+  // --- Shared suggestion card renderer ---
+  const renderSuggestionCard = (
+    s: SettlementSuggestionDto,
+    idx: number,
+    cardGroupId?: string,
+    currency?: string,
+  ) => {
+    const fromName = s.fromUser?.name ?? s.fromGuest?.name ?? "Someone";
+    const toName = s.toUser?.name ?? s.toGuest?.name ?? "Someone";
+    return (
+      <Animated.View
+        key={`${cardGroupId ?? groupId}-${idx}`}
+        entering={FadeInDown.delay(idx * 40).duration(300).springify()}
+      >
+        <Pressable
+          onPress={() => { hapticHeavy(); openCreateModal(s, cardGroupId, currency); }}
+          className="active:opacity-70"
+        >
+          <Card className="p-4">
+            <View className="flex-row items-center gap-3">
+              <Avatar
+                src={s.fromUser?.avatarUrl}
+                fallback={getInitials(fromName)}
+                size="md"
+              />
+              <View className="flex-1">
+                <View className="flex-row items-center gap-2">
+                  <Text
+                    className="text-sm font-sans-semibold text-card-foreground"
+                    numberOfLines={1}
+                  >
+                    {fromName}
+                  </Text>
+                  <ArrowRight size={14} color="#94a3b8" />
+                  <Text
+                    className="text-sm font-sans-semibold text-card-foreground"
+                    numberOfLines={1}
+                  >
+                    {toName}
+                  </Text>
+                </View>
+                <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                  owes {formatCents(s.amount)}
+                </Text>
+              </View>
+              <Avatar
+                src={s.toUser?.avatarUrl}
+                fallback={getInitials(toName)}
+                size="md"
+              />
+            </View>
+            <View className="mt-3 flex-row items-center justify-center gap-2">
+              <View className="flex-row items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
+                <Check size={14} color="#0d9488" />
+                <Text className="text-sm font-sans-semibold text-primary">
+                  Record {formatCents(s.amount)} payment
+                </Text>
+              </View>
+              {currentUser && s.toUser?.id === currentUser.id && s.fromUser && (
+                <Pressable
+                  onPress={(e) => {
+                    e?.stopPropagation?.();
+                    handleNudge(s.fromUser!.id, cardGroupId);
+                  }}
+                  disabled={nudgingUserId === s.fromUser.id || nudgedUserIds.has(s.fromUser.id)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    backgroundColor: nudgedUserIds.has(s.fromUser.id)
+                      ? isDark ? "#1e293b" : "#f1f5f9"
+                      : isDark ? "#1e293b" : "#fef3c7",
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 999,
+                    opacity: nudgingUserId === s.fromUser.id ? 0.5 : 1,
+                  }}
+                >
+                  <BellRing
+                    size={14}
+                    color={nudgedUserIds.has(s.fromUser.id) ? "#94a3b8" : "#f59e0b"}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "Inter_600SemiBold",
+                      color: nudgedUserIds.has(s.fromUser.id) ? "#94a3b8" : "#f59e0b",
+                    }}
+                  >
+                    {nudgedUserIds.has(s.fromUser.id) ? "Sent" : "Remind"}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </Card>
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
+  // --- Loading state ---
+  const isLoading = isCrossGroup ? crossGroupLoading : loading;
+
+  if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
         <View className="px-5 pt-6">
@@ -296,6 +420,11 @@ export default function SettleUpScreen() {
       </SafeAreaView>
     );
   }
+
+  // --- Cross-group empty check ---
+  const allSettled = isCrossGroup
+    ? crossGroupTotalSuggestions === 0
+    : suggestions.length === 0;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -310,265 +439,233 @@ export default function SettleUpScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Group name */}
-      <View className="px-5 pt-4 pb-2">
-        <Text className="text-sm text-muted-foreground font-sans">
-          {group?.name}
-        </Text>
-      </View>
+      {/* Group name (per-group mode only) */}
+      {!isCrossGroup && (
+        <View className="px-5 pt-4 pb-2">
+          <Text className="text-sm text-muted-foreground font-sans">
+            {group?.name}
+          </Text>
+        </View>
+      )}
 
-      {/* Tab switcher */}
-      <View className="flex-row mx-5 mb-4 rounded-xl bg-muted p-1">
-        <Pressable
-          onPress={() => { hapticSelection(); setActiveTab("suggestions"); }}
-          className={cn(
-            "flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg",
-            activeTab === "suggestions" ? "bg-card" : "bg-transparent"
-          )}
-        >
-          <HandCoins
-            size={16}
-            color={activeTab === "suggestions" ? "#0d9488" : "#94a3b8"}
-          />
-          <Text
+      {/* Tab switcher (per-group mode only) */}
+      {!isCrossGroup && (
+        <View className="flex-row mx-5 mb-4 rounded-xl bg-muted p-1">
+          <Pressable
+            onPress={() => { hapticSelection(); setActiveTab("suggestions"); }}
             className={cn(
-              "text-sm font-sans-semibold",
-              activeTab === "suggestions"
-                ? "text-primary"
-                : "text-muted-foreground"
+              "flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg",
+              activeTab === "suggestions" ? "bg-card" : "bg-transparent"
             )}
           >
-            Suggested
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => { hapticSelection(); setActiveTab("history"); }}
-          className={cn(
-            "flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg",
-            activeTab === "history" ? "bg-card" : "bg-transparent"
-          )}
-        >
-          <History
-            size={16}
-            color={activeTab === "history" ? "#0d9488" : "#94a3b8"}
-          />
-          <Text
+            <HandCoins
+              size={16}
+              color={activeTab === "suggestions" ? "#0d9488" : "#94a3b8"}
+            />
+            <Text
+              className={cn(
+                "text-sm font-sans-semibold",
+                activeTab === "suggestions"
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              Suggested
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => { hapticSelection(); setActiveTab("history"); }}
             className={cn(
-              "text-sm font-sans-semibold",
-              activeTab === "history"
-                ? "text-primary"
-                : "text-muted-foreground"
+              "flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg",
+              activeTab === "history" ? "bg-card" : "bg-transparent"
             )}
           >
-            History ({settlements.length})
-          </Text>
-        </Pressable>
-      </View>
+            <History
+              size={16}
+              color={activeTab === "history" ? "#0d9488" : "#94a3b8"}
+            />
+            <Text
+              className={cn(
+                "text-sm font-sans-semibold",
+                activeTab === "history"
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              History ({settlements.length})
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-5 pb-8"
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await loadData(); setRefreshing(false); }} tintColor="#0d9488" />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              if (isCrossGroup) {
+                crossGroupData.refetch();
+              } else {
+                await loadData();
+              }
+              setRefreshing(false);
+            }}
+            tintColor="#0d9488"
+          />
+        }
       >
-        {activeTab === "suggestions" ? (
+        {/* ============ CROSS-GROUP MODE ============ */}
+        {isCrossGroup ? (
           <>
-            {suggestions.length === 0 ? (
+            {allSettled ? (
               <Card className="p-8 items-center gap-3">
                 <Text style={{ fontSize: 40 }}>🎉</Text>
                 <Text className="text-base font-sans-semibold text-foreground">
                   All settled up!
                 </Text>
                 <Text className="text-sm text-muted-foreground font-sans text-center">
-                  No outstanding debts in this group.
+                  No outstanding debts across any of your groups.
                 </Text>
               </Card>
             ) : (
-              <View className="gap-3">
-                <Text className="text-xs font-sans-semibold text-muted-foreground mb-1">
-                  SUGGESTED PAYMENTS ({suggestions.length})
-                </Text>
-                {suggestions.map((s, suggIdx) => {
-                  const fromName =
-                    s.fromUser?.name ?? s.fromGuest?.name ?? "Someone";
-                  const toName =
-                    s.toUser?.name ?? s.toGuest?.name ?? "Someone";
-                  return (
-                    <Animated.View
-                      key={suggIdx}
-                      entering={FadeInDown.delay(suggIdx * 40).duration(300).springify()}
-                    >
+              <View className="gap-5">
+                {crossGroupSuggestions.map((cg) => (
+                  <View key={cg.groupId} className="gap-3">
+                    {/* Section header */}
                     <Pressable
-                      onPress={() => { hapticHeavy(); openCreateModal(s); }}
-                      className="active:opacity-70"
+                      onPress={() => {
+                        hapticSelection();
+                        router.push({ pathname: "/settle-up", params: { groupId: cg.groupId } });
+                      }}
+                      className="flex-row items-center justify-between"
                     >
-                      <Card className="p-4">
-                        <View className="flex-row items-center gap-3">
-                          <Avatar
-                            src={s.fromUser?.avatarUrl}
-                            fallback={getInitials(fromName)}
-                            size="md"
-                          />
-                          <View className="flex-1">
-                            <View className="flex-row items-center gap-2">
-                              <Text
-                                className="text-sm font-sans-semibold text-card-foreground"
-                                numberOfLines={1}
-                              >
-                                {fromName}
-                              </Text>
-                              <ArrowRight size={14} color="#94a3b8" />
-                              <Text
-                                className="text-sm font-sans-semibold text-card-foreground"
-                                numberOfLines={1}
-                              >
-                                {toName}
-                              </Text>
-                            </View>
-                            <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                              owes {formatCents(s.amount)}
-                            </Text>
-                          </View>
-                          <Avatar
-                            src={s.toUser?.avatarUrl}
-                            fallback={getInitials(toName)}
-                            size="md"
-                          />
-                        </View>
-                        <View className="mt-3 flex-row items-center justify-center gap-2">
-                          <View className="flex-row items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
-                            <Check size={14} color="#0d9488" />
-                            <Text className="text-sm font-sans-semibold text-primary">
-                              Record {formatCents(s.amount)} payment
-                            </Text>
-                          </View>
-                          {currentUser && s.toUser?.id === currentUser.id && s.fromUser && (
-                            <Pressable
-                              onPress={(e) => {
-                                e?.stopPropagation?.();
-                                handleNudge(s.fromUser!.id);
-                              }}
-                              disabled={nudgingUserId === s.fromUser.id || nudgedUserIds.has(s.fromUser.id)}
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 4,
-                                backgroundColor: nudgedUserIds.has(s.fromUser.id)
-                                  ? isDark ? "#1e293b" : "#f1f5f9"
-                                  : isDark ? "#1e293b" : "#fef3c7",
-                                paddingHorizontal: 12,
-                                paddingVertical: 8,
-                                borderRadius: 999,
-                                opacity: nudgingUserId === s.fromUser.id ? 0.5 : 1,
-                              }}
-                            >
-                              <BellRing
-                                size={14}
-                                color={nudgedUserIds.has(s.fromUser.id) ? "#94a3b8" : "#f59e0b"}
-                              />
-                              <Text
-                                style={{
-                                  fontSize: 12,
-                                  fontFamily: "Inter_600SemiBold",
-                                  color: nudgedUserIds.has(s.fromUser.id) ? "#94a3b8" : "#f59e0b",
-                                }}
-                              >
-                                {nudgedUserIds.has(s.fromUser.id) ? "Sent" : "Remind"}
-                              </Text>
-                            </Pressable>
-                          )}
-                        </View>
-                      </Card>
+                      <Text className="text-xs font-sans-semibold text-muted-foreground">
+                        {cg.groupName.toUpperCase()} ({cg.suggestions.length})
+                      </Text>
+                      <ChevronRight size={14} color="#94a3b8" />
                     </Pressable>
-                    </Animated.View>
-                  );
-                })}
+                    {/* Suggestions for this group */}
+                    {cg.suggestions.map((s, idx) =>
+                      renderSuggestionCard(s, idx, cg.groupId, cg.currency)
+                    )}
+                  </View>
+                ))}
               </View>
             )}
           </>
         ) : (
+          /* ============ PER-GROUP MODE (unchanged) ============ */
           <>
-            {settlements.length === 0 ? (
-              <Card className="p-8 items-center gap-3">
-                <Text style={{ fontSize: 40 }}>📋</Text>
-                <Text className="text-base font-sans-semibold text-foreground">
-                  No settlements yet
-                </Text>
-                <Text className="text-sm text-muted-foreground font-sans text-center">
-                  Record a payment when someone settles their debt.
-                </Text>
-              </Card>
-            ) : (
-              <View className="gap-3">
-                {settlements
-                  .sort(
-                    (a, b) =>
-                      new Date(b.createdAt).getTime() -
-                      new Date(a.createdAt).getTime()
-                  )
-                  .map((s) => {
-                    const payerName =
-                      s.payerUser?.name ?? s.payerGuest?.name ?? "Someone";
-                    const payeeName =
-                      s.payeeUser?.name ?? s.payeeGuest?.name ?? "Someone";
-                    const methodConfig = getPaymentMethodIcon(s.paymentMethod);
-                    const method = PAYMENT_METHODS.find(
-                      (m) => m.key === s.paymentMethod
-                    );
-                    return (
-                      <Card key={s.id} className="p-4">
-                        <View className="flex-row items-center gap-3">
-                          <CategoryIcon config={methodConfig} />
-                          <View className="flex-1">
-                            <Text className="text-sm font-sans-semibold text-card-foreground">
-                              {payerName} paid {payeeName}
-                            </Text>
-                            <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                              {s.settlementDate}
-                              {s.paymentMethod
-                                ? ` · ${method?.label ?? s.paymentMethod}`
-                                : ""}
-                            </Text>
-                            {s.notes ? (
-                              <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                                {s.notes}
-                              </Text>
-                            ) : null}
-                          </View>
-                          <View className="items-end gap-1">
-                            <Text selectable className="text-sm font-sans-bold text-success" style={{ fontVariant: ["tabular-nums"] }}>
-                              {formatCents(s.amount)}
-                            </Text>
-                            <Pressable
-                              onPress={() => { hapticWarning(); handleDeleteWithUndo(s); }}
-                              hitSlop={8}
-                            >
-                              <Trash2 size={14} color="#ef4444" />
-                            </Pressable>
-                          </View>
-                        </View>
-                      </Card>
-                    );
-                  })}
-
-                {/* Load More */}
-                {hasMoreSettlements && (
-                  <Pressable
-                    onPress={loadMoreSettlements}
-                    disabled={loadingMoreSettlements}
-                    className="py-3 items-center"
-                  >
-                    {loadingMoreSettlements ? (
-                      <ActivityIndicator size="small" color="#0d9488" />
-                    ) : (
-                      <Text className="text-sm font-sans-semibold text-primary">
-                        Load more settlements
-                      </Text>
-                    )}
-                  </Pressable>
+            {activeTab === "suggestions" ? (
+              <>
+                {suggestions.length === 0 ? (
+                  <Card className="p-8 items-center gap-3">
+                    <Text style={{ fontSize: 40 }}>🎉</Text>
+                    <Text className="text-base font-sans-semibold text-foreground">
+                      All settled up!
+                    </Text>
+                    <Text className="text-sm text-muted-foreground font-sans text-center">
+                      No outstanding debts in this group.
+                    </Text>
+                  </Card>
+                ) : (
+                  <View className="gap-3">
+                    <Text className="text-xs font-sans-semibold text-muted-foreground mb-1">
+                      SUGGESTED PAYMENTS ({suggestions.length})
+                    </Text>
+                    {suggestions.map((s, suggIdx) => renderSuggestionCard(s, suggIdx))}
+                  </View>
                 )}
-              </View>
+              </>
+            ) : (
+              <>
+                {settlements.length === 0 ? (
+                  <Card className="p-8 items-center gap-3">
+                    <Text style={{ fontSize: 40 }}>📋</Text>
+                    <Text className="text-base font-sans-semibold text-foreground">
+                      No settlements yet
+                    </Text>
+                    <Text className="text-sm text-muted-foreground font-sans text-center">
+                      Record a payment when someone settles their debt.
+                    </Text>
+                  </Card>
+                ) : (
+                  <View className="gap-3">
+                    {settlements
+                      .sort(
+                        (a, b) =>
+                          new Date(b.createdAt).getTime() -
+                          new Date(a.createdAt).getTime()
+                      )
+                      .map((s) => {
+                        const payerName =
+                          s.payerUser?.name ?? s.payerGuest?.name ?? "Someone";
+                        const payeeName =
+                          s.payeeUser?.name ?? s.payeeGuest?.name ?? "Someone";
+                        const methodConfig = getPaymentMethodIcon(s.paymentMethod);
+                        const method = PAYMENT_METHODS.find(
+                          (m) => m.key === s.paymentMethod
+                        );
+                        return (
+                          <Card key={s.id} className="p-4">
+                            <View className="flex-row items-center gap-3">
+                              <CategoryIcon config={methodConfig} />
+                              <View className="flex-1">
+                                <Text className="text-sm font-sans-semibold text-card-foreground">
+                                  {payerName} paid {payeeName}
+                                </Text>
+                                <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                                  {s.settlementDate}
+                                  {s.paymentMethod
+                                    ? ` · ${method?.label ?? s.paymentMethod}`
+                                    : ""}
+                                </Text>
+                                {s.notes ? (
+                                  <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                                    {s.notes}
+                                  </Text>
+                                ) : null}
+                              </View>
+                              <View className="items-end gap-1">
+                                <Text selectable className="text-sm font-sans-bold text-success" style={{ fontVariant: ["tabular-nums"] }}>
+                                  {formatCents(s.amount)}
+                                </Text>
+                                <Pressable
+                                  onPress={() => { hapticWarning(); handleDeleteWithUndo(s); }}
+                                  hitSlop={8}
+                                >
+                                  <Trash2 size={14} color="#ef4444" />
+                                </Pressable>
+                              </View>
+                            </View>
+                          </Card>
+                        );
+                      })}
+
+                    {/* Load More */}
+                    {hasMoreSettlements && (
+                      <Pressable
+                        onPress={loadMoreSettlements}
+                        disabled={loadingMoreSettlements}
+                        className="py-3 items-center"
+                      >
+                        {loadingMoreSettlements ? (
+                          <ActivityIndicator size="small" color="#0d9488" />
+                        ) : (
+                          <Text className="text-sm font-sans-semibold text-primary">
+                            Load more settlements
+                          </Text>
+                        )}
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+              </>
             )}
           </>
         )}
@@ -720,7 +817,7 @@ export default function SettleUpScreen() {
       </BottomSheetModal>
 
       {/* Confetti when all settled */}
-      <Confetti visible={!loading && suggestions.length === 0 && activeTab === "suggestions"} />
+      <Confetti visible={!isLoading && allSettled && (isCrossGroup || activeTab === "suggestions")} />
 
       {/* Success overlay */}
       {showSuccess && (

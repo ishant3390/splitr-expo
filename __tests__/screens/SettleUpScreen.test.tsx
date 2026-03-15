@@ -6,6 +6,8 @@ const mockRouterBack = jest.fn();
 const mockRouterReplace = jest.fn();
 const mockRouterCanGoBack = jest.fn(() => true);
 
+let mockSearchParams: Record<string, string> = { groupId: "g1" };
+
 jest.mock("expo-router", () => {
   const React = require("react");
   return {
@@ -15,7 +17,7 @@ jest.mock("expo-router", () => {
       back: mockRouterBack,
       canGoBack: mockRouterCanGoBack,
     }),
-    useLocalSearchParams: () => ({ groupId: "g1" }),
+    useLocalSearchParams: () => mockSearchParams,
     useFocusEffect: (cb: () => void) => {
       React.useEffect(() => { cb(); }, []);
     },
@@ -66,8 +68,17 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
+const mockCrossGroupRefetch = jest.fn();
+const mockUseCrossGroupSuggestions = jest.fn(() => ({
+  data: [],
+  isLoading: false,
+  refetch: mockCrossGroupRefetch,
+  errors: [],
+}));
+
 jest.mock("@/lib/hooks", () => ({
   useUserProfile: () => ({ data: { id: "u2", name: "Bob" } }),
+  useCrossGroupSuggestions: (...args: any[]) => mockUseCrossGroupSuggestions(...args),
 }));
 
 jest.mock("@/lib/query", () => ({
@@ -78,6 +89,7 @@ import SettleUpScreen from "@/app/settle-up";
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockSearchParams = { groupId: "g1" };
   mockGetGroup.mockResolvedValue({ id: "g1", name: "Trip", defaultCurrency: "USD" });
   mockListMembers.mockResolvedValue([
     { id: "m1", user: { id: "u1", name: "Alice", email: "alice@test.com" }, displayName: "Alice" },
@@ -91,9 +103,15 @@ beforeEach(() => {
     },
   ]);
   mockListSettlements.mockResolvedValue([]);
+  mockUseCrossGroupSuggestions.mockReturnValue({
+    data: [],
+    isLoading: false,
+    refetch: mockCrossGroupRefetch,
+    errors: [],
+  });
 });
 
-describe("SettleUpScreen", () => {
+describe("SettleUpScreen — per-group mode", () => {
   it("renders header", async () => {
     render(<SettleUpScreen />);
     await waitFor(() => {
@@ -707,6 +725,203 @@ describe("SettleUpScreen", () => {
     fireEvent.press(screen.getByText(/History/));
     await waitFor(() => {
       expect(screen.getByText("Load more settlements")).toBeTruthy();
+    });
+  });
+});
+
+// ============ CROSS-GROUP MODE TESTS ============
+
+describe("SettleUpScreen — cross-group mode", () => {
+  beforeEach(() => {
+    mockSearchParams = {}; // No groupId → cross-group mode
+  });
+
+  it("renders header without group name or tabs", async () => {
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Settle Up")).toBeTruthy();
+    });
+    // No tab switcher in cross-group mode
+    expect(screen.queryByText("Suggested")).toBeNull();
+    expect(screen.queryByText(/History/)).toBeNull();
+  });
+
+  it("shows all settled state when no cross-group suggestions", async () => {
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [],
+      isLoading: false,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/All settled up!/)).toBeTruthy();
+      expect(screen.getByText(/No outstanding debts across any of your groups/)).toBeTruthy();
+    });
+  });
+
+  it("shows loading skeleton when cross-group data is loading", () => {
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [],
+      isLoading: true,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    // Should show skeleton, not "All settled up!"
+    expect(screen.queryByText(/All settled up!/)).toBeNull();
+  });
+
+  it("renders cross-group suggestions grouped by group name", async () => {
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [
+        {
+          groupId: "g1",
+          groupName: "Trip",
+          suggestions: [
+            {
+              fromUser: { id: "u1", name: "Alice", avatarUrl: null },
+              toUser: { id: "u2", name: "Bob", avatarUrl: null },
+              amount: 5000,
+            },
+          ],
+        },
+        {
+          groupId: "g2",
+          groupName: "House",
+          suggestions: [
+            {
+              fromUser: { id: "u3", name: "Carol", avatarUrl: null },
+              toUser: { id: "u2", name: "Bob", avatarUrl: null },
+              amount: 3000,
+            },
+          ],
+        },
+      ],
+      isLoading: false,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      // Section headers
+      expect(screen.getByText("TRIP (1)")).toBeTruthy();
+      expect(screen.getByText("HOUSE (1)")).toBeTruthy();
+      // Suggestion cards
+      expect(screen.getByText("Alice")).toBeTruthy();
+      expect(screen.getByText("Carol")).toBeTruthy();
+    });
+  });
+
+  it("navigates to per-group settle-up when tapping section header", async () => {
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [
+        {
+          groupId: "g1",
+          groupName: "Trip",
+          suggestions: [
+            {
+              fromUser: { id: "u1", name: "Alice", avatarUrl: null },
+              toUser: { id: "u2", name: "Bob", avatarUrl: null },
+              amount: 5000,
+            },
+          ],
+        },
+      ],
+      isLoading: false,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("TRIP (1)")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("TRIP (1)"));
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      pathname: "/settle-up",
+      params: { groupId: "g1" },
+    });
+  });
+
+  it("opens create modal with correct groupId in cross-group mode", async () => {
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [
+        {
+          groupId: "g2",
+          groupName: "House",
+          currency: "EUR",
+          suggestions: [
+            {
+              fromUser: { id: "u3", name: "Carol", avatarUrl: null },
+              toUser: { id: "u2", name: "Bob", avatarUrl: null },
+              amount: 3000,
+            },
+          ],
+        },
+      ],
+      isLoading: false,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$30\.00 payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*\$30\.00 payment/));
+    await waitFor(() => {
+      expect(screen.getAllByText("Record Payment").length).toBeGreaterThan(0);
+    });
+    // Submit the settlement
+    const submitButtons = screen.getAllByText("Record Payment");
+    fireEvent.press(submitButtons[submitButtons.length - 1]);
+    await waitFor(() => {
+      expect(mockCreateSettlement).toHaveBeenCalledWith(
+        "g2", // Uses the cross-group suggestion's groupId
+        expect.objectContaining({
+          payerUserId: "u3",
+          payeeUserId: "u2",
+          amount: 3000,
+          currency: "EUR",
+        }),
+        "mock-token"
+      );
+    });
+  });
+
+  it("does not fetch per-group data in cross-group mode", () => {
+    render(<SettleUpScreen />);
+    expect(mockGetGroup).not.toHaveBeenCalled();
+    expect(mockListMembers).not.toHaveBeenCalled();
+    expect(mockSuggestions).not.toHaveBeenCalled();
+    expect(mockListSettlements).not.toHaveBeenCalled();
+  });
+
+  it("nudges with correct groupId in cross-group mode", async () => {
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [
+        {
+          groupId: "g3",
+          groupName: "Dinner Club",
+          suggestions: [
+            {
+              fromUser: { id: "u5", name: "Eve", avatarUrl: null },
+              toUser: { id: "u2", name: "Bob", avatarUrl: null },
+              amount: 2000,
+            },
+          ],
+        },
+      ],
+      isLoading: false,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Remind")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Remind"));
+    await waitFor(() => {
+      expect(mockNudge).toHaveBeenCalledWith("g3", "u5", "mock-token");
     });
   });
 });

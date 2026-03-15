@@ -833,6 +833,121 @@ describe("formatActivityTitle", () => {
     expect(formatActivityTitle(a, "me")).toBe("Dave joined Road Trip");
   });
 
+  // member_joined_via_invite
+  it("returns 'John joined Road Trip' for member_joined_via_invite", () => {
+    const a = makeActivity({
+      activityType: "member_joined_via_invite",
+      actorUserId: "u8",
+      actorUserName: "John",
+      groupName: "Road Trip",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("John joined Road Trip");
+  });
+
+  it("returns 'You joined Road Trip' for member_joined_via_invite by current user", () => {
+    const a = makeActivity({
+      activityType: "member_joined_via_invite",
+      actorUserId: "me",
+      groupName: "Road Trip",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You joined Road Trip");
+  });
+
+  it("falls back to details.groupName for member_joined_via_invite when groupName is null", () => {
+    const a = makeActivity({
+      activityType: "member_joined_via_invite",
+      actorUserId: "u8",
+      actorUserName: "Chinam",
+      details: { groupName: "RoadTrip" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Chinam joined RoadTrip");
+  });
+
+  it("falls back to details.groupName for member_joined when groupName is null", () => {
+    const a = makeActivity({
+      activityType: "member_joined",
+      actorUserId: "u8",
+      actorUserName: "Dave",
+      details: { groupName: "Beach Trip" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Dave joined Beach Trip");
+  });
+
+  // member_added
+  it("returns 'You added Bob to Road Trip' for member_added by current user", () => {
+    const a = makeActivity({
+      activityType: "member_added",
+      actorUserId: "me",
+      groupName: "Road Trip",
+      details: { targetUserName: "Bob", targetUserId: "u5" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You added Bob to Road Trip");
+  });
+
+  it("returns 'Ajay added you to Road Trip' when target is current user", () => {
+    const a = makeActivity({
+      activityType: "member_added",
+      actorUserId: "u1",
+      actorUserName: "Ajay",
+      groupName: "Road Trip",
+      details: { targetUserName: "Bob", targetUserId: "me" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added you to Road Trip");
+  });
+
+  it("returns 'Ajay added Bob to Road Trip' for member_added by someone else", () => {
+    const a = makeActivity({
+      activityType: "member_added",
+      actorUserId: "u1",
+      actorUserName: "Ajay",
+      groupName: "Road Trip",
+      details: { targetUserName: "Bob", targetUserId: "u5" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added Bob to Road Trip");
+  });
+
+  it("falls back to memberName in member_added details", () => {
+    const a = makeActivity({
+      activityType: "member_added",
+      actorUserId: "u1",
+      actorUserName: "Ajay",
+      groupName: "Trip",
+      details: { memberName: "Charlie" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added Charlie to Trip");
+  });
+
+  it("falls back to addedMemberName in member_added details", () => {
+    const a = makeActivity({
+      activityType: "member_added",
+      actorUserId: "u1",
+      actorUserName: "Ajay",
+      groupName: "Trip",
+      details: { addedMemberName: "Dana" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added Dana to Trip");
+  });
+
+  it("falls back to 'a member' when no target name in member_added", () => {
+    const a = makeActivity({
+      activityType: "member_added",
+      actorUserId: "u1",
+      actorUserName: "Ajay",
+      groupName: "Trip",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added a member to Trip");
+  });
+
+  it("omits group name when groupName is null in member_added", () => {
+    const a = makeActivity({
+      activityType: "member_added",
+      actorUserId: "u1",
+      actorUserName: "Ajay",
+      details: { targetUserName: "Bob" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added Bob");
+  });
+
   // group_created
   it("returns 'You created Weekend' for group_created by current user", () => {
     const a = makeActivity({
@@ -853,14 +968,134 @@ describe("formatActivityTitle", () => {
     expect(formatActivityTitle(a, "me")).toBe("Eve created Weekend");
   });
 
+  // group_updated
+  it("returns 'You updated Trip to Paris' for group_updated by current user", () => {
+    const a = makeActivity({
+      activityType: "group_updated",
+      actorUserId: "me",
+      groupName: "Trip to Paris",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You updated Trip to Paris");
+  });
+
+  it("returns 'Eve updated Trip to Paris' for group_updated by someone else", () => {
+    const a = makeActivity({
+      activityType: "group_updated",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+      groupName: "Trip to Paris",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve updated Trip to Paris");
+  });
+
+  it("falls back to details.groupName for group_updated when groupName is null", () => {
+    const a = makeActivity({
+      activityType: "group_updated",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+      details: { groupName: "Road Trip" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve updated Road Trip");
+  });
+
+  // group_archived
+  it("returns 'You archived Trip to Paris' for group_archived by current user", () => {
+    const a = makeActivity({
+      activityType: "group_archived",
+      actorUserId: "me",
+      groupName: "Trip to Paris",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You archived Trip to Paris");
+  });
+
+  it("returns 'Eve archived Trip to Paris' for group_archived by someone else", () => {
+    const a = makeActivity({
+      activityType: "group_archived",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+      groupName: "Trip to Paris",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve archived Trip to Paris");
+  });
+
+  it("falls back to details.groupName for group_archived when groupName is null", () => {
+    const a = makeActivity({
+      activityType: "group_archived",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+      details: { action: "archived", groupName: "Road Trip" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve archived Road Trip");
+  });
+
+  // group_unarchived
+  it("returns 'You unarchived Trip to Paris' for group_unarchived by current user", () => {
+    const a = makeActivity({
+      activityType: "group_unarchived",
+      actorUserId: "me",
+      groupName: "Trip to Paris",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You unarchived Trip to Paris");
+  });
+
+  it("returns 'Eve unarchived Trip to Paris' for group_unarchived by someone else", () => {
+    const a = makeActivity({
+      activityType: "group_unarchived",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+      groupName: "Trip to Paris",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve unarchived Trip to Paris");
+  });
+
+  it("falls back to details.groupName for group_unarchived when groupName is null", () => {
+    const a = makeActivity({
+      activityType: "group_unarchived",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+      details: { action: "unarchived", groupName: "Road Trip" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve unarchived Road Trip");
+  });
+
+  // group_deleted
+  it("returns 'You deleted Trip to Paris' for group_deleted by current user", () => {
+    const a = makeActivity({
+      activityType: "group_deleted",
+      actorUserId: "me",
+      groupName: "Trip to Paris",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You deleted Trip to Paris");
+  });
+
+  it("returns 'Eve deleted Trip to Paris' for group_deleted by someone else", () => {
+    const a = makeActivity({
+      activityType: "group_deleted",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+      groupName: "Trip to Paris",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve deleted Trip to Paris");
+  });
+
+  it("falls back to details.groupName for group_deleted when groupName is null", () => {
+    const a = makeActivity({
+      activityType: "group_deleted",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+      details: { groupName: "Road Trip" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve deleted Road Trip");
+  });
+
   // Fallback for unknown types
   it("returns fallback format for unknown activity type", () => {
     const a = makeActivity({
-      activityType: "group_updated",
+      activityType: "some_future_type",
       actorUserId: "u7",
       actorUserName: "Frank",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Frank: Group updated");
+    expect(formatActivityTitle(a, "me")).toBe("Frank: Some future type");
   });
 
   it("returns 'You left' for member_left when current user is actor", () => {
@@ -901,10 +1136,10 @@ describe("formatActivityTitle", () => {
 
   it("returns 'You: ...' for truly unknown activity type", () => {
     const a = makeActivity({
-      activityType: "group_updated",
+      activityType: "payment_refunded",
       actorUserId: "me",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You: Group updated");
+    expect(formatActivityTitle(a, "me")).toBe("You: Payment refunded");
   });
 
   // Actor name fallbacks
@@ -984,8 +1219,38 @@ describe("formatActivityInvolvement", () => {
     expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
   });
 
+  it("returns null for member_added", () => {
+    const a = makeActivity({ activityType: "member_added" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
+  it("returns null for member_joined_via_invite", () => {
+    const a = makeActivity({ activityType: "member_joined_via_invite" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
   it("returns null for group_created", () => {
     const a = makeActivity({ activityType: "group_created" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
+  it("returns null for group_archived", () => {
+    const a = makeActivity({ activityType: "group_archived" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
+  it("returns null for group_unarchived", () => {
+    const a = makeActivity({ activityType: "group_unarchived" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
+  it("returns null for group_deleted", () => {
+    const a = makeActivity({ activityType: "group_deleted" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
+  });
+
+  it("returns null for group_updated", () => {
+    const a = makeActivity({ activityType: "group_updated" });
     expect(formatActivityInvolvement(a)).toEqual({ text: null, color: null });
   });
 

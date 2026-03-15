@@ -1,7 +1,14 @@
 // Pure helper functions extracted from screen components for testability.
 
+import type { GroupMemberDto } from "./types";
+
 // Re-export icon utilities from centralized module
 export { getCategoryIcon, getActivityIcon, getPaymentMethodIcon } from "./category-icons";
+
+/** Returns true if any member has a non-zero balance (unsettled debts). */
+export function hasUnsettledBalances(members: GroupMemberDto[]): boolean {
+  return members.some((m) => (m.balance ?? 0) !== 0);
+}
 
 export type SplitType = "equal" | "percentage" | "fixed";
 
@@ -216,19 +223,30 @@ const ACTIVITY_VERB_MAP: Record<string, string> = {
   expense_deleted: "deleted",
   settlement_created: "settled up",
   member_joined: "joined",
+  member_joined_via_invite: "joined",
+  member_added: "added",
   member_removed: "removed",
   member_left: "left",
   group_created: "created",
+  group_archived: "archived",
+  group_unarchived: "unarchived",
+  group_deleted: "deleted",
+  group_updated: "updated",
 };
+
+/** Extract first name from a full name. Returns fallback phrases like "a member" unchanged. */
+function firstName(name: string): string {
+  if (name.startsWith("a ") || name === "Someone") return name;
+  return name.split(" ")[0];
+}
 
 export function formatActivityTitle(
   activity: ActivityLogDto,
   currentUserId: string | null | undefined
 ): string {
   const isYou = !!(currentUserId && activity.actorUserId === currentUserId);
-  const actorName = isYou
-    ? "You"
-    : activity.actorUserName ?? activity.actorGuestName ?? "Someone";
+  const fullName = activity.actorUserName ?? activity.actorGuestName ?? "Someone";
+  const actorName = isYou ? "You" : firstName(fullName);
 
   const verb = ACTIVITY_VERB_MAP[activity.activityType];
   if (!verb) {
@@ -254,19 +272,36 @@ export function formatActivityTitle(
     case "settlement_created":
       return `${actorName} ${verb}`;
     case "member_joined":
-      return `${actorName} ${verb} ${activity.groupName ?? ""}`.trim();
+    case "member_joined_via_invite":
+      return `${actorName} ${verb} ${activity.groupName ?? (activity.details?.groupName as string) ?? ""}`.trim();
+    case "member_added": {
+      const targetId = activity.details?.targetUserId as string | undefined;
+      const isTargetYou = !!(currentUserId && targetId === currentUserId);
+      const targetFullName = ((activity.details?.targetUserName ??
+            activity.details?.memberName ??
+            activity.details?.addedMemberName ??
+            "a member") as string);
+      const targetName = isTargetYou ? "you" : firstName(targetFullName);
+      const groupPart = activity.groupName ? ` to ${activity.groupName}` : "";
+      return `${actorName} ${verb} ${targetName}${groupPart}`;
+    }
     case "member_removed": {
-      const removedName =
+      const removedFullName =
         (activity.details?.removedMemberName as string) ??
         (activity.details?.targetUserName as string) ??
         (activity.details?.memberName as string) ??
         "a member";
+      const removedName = firstName(removedFullName);
       return `${actorName} ${verb} ${removedName}`;
     }
     case "member_left":
-      return `${actorName} ${verb} ${activity.groupName ?? "the group"}`;
+      return `${actorName} ${verb} ${activity.groupName ?? (activity.details?.groupName as string) ?? "the group"}`;
     case "group_created":
-      return `${actorName} ${verb} ${activity.groupName ?? ""}`.trim();
+    case "group_archived":
+    case "group_unarchived":
+    case "group_deleted":
+    case "group_updated":
+      return `${actorName} ${verb} ${activity.groupName ?? (activity.details?.groupName as string) ?? ""}`.trim();
     default:
       return `${actorName}: ${verb}`;
   }

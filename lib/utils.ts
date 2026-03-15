@@ -42,6 +42,35 @@ export function formatDate(dateString: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+/** Format a timestamp as a human-friendly relative time string for activity cards. */
+export function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+
+  // Future dates — fall back to short date
+  if (diffMs < 0) {
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  const diffMin = Math.floor(diffMs / 60_000);
+  const diffHrs = Math.floor(diffMs / 3_600_000);
+  const diffDays = Math.floor(diffMs / 86_400_000);
+
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin} min ago`;
+  if (diffHrs < 24) return diffHrs === 1 ? "1 hour ago" : `${diffHrs} hours ago`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 14) return "Last week";
+  if (diffDays < 21) return "2 weeks ago";
+  if (diffDays < 60) return "Last month";
+
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export function getInitials(name: string): string {
   return name
     .split(" ")
@@ -49,4 +78,12 @@ export function getInitials(name: string): string {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+}
+
+/** Extract invite code from a raw code string or full invite/join URL. */
+export function extractInviteCode(input: string): string {
+  const trimmed = input.trim();
+  const match = trimmed.match(/(?:splitr\.ai|localhost:\d+)\/(?:invite|join)\/([A-Za-z0-9_-]+)/);
+  if (match) return match[1];
+  return trimmed;
 }

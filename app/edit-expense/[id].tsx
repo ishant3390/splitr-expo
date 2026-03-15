@@ -27,7 +27,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { CategoryIcon } from "@/components/ui/category-icon";
-import { expensesApi, groupsApi, categoriesApi } from "@/lib/api";
+import { expensesApi, groupsApi, categoriesApi, isVersionConflict } from "@/lib/api";
 import { inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents, centsToAmount } from "@/lib/utils";
@@ -73,6 +73,7 @@ export default function EditExpenseScreen() {
   const userPickedCategoryRef = useRef(false);
   // Track the description loaded from server so we don't infer on initial population
   const initialDescriptionRef = useRef("");
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const initSplitValues = (memberIds: string[], type: SplitType, totalStr: string) => {
     if (type === "percentage" && memberIds.length > 0) {
@@ -355,6 +356,18 @@ export default function EditExpenseScreen() {
     } catch (err) {
       console.error("Update expense error:", err);
       hapticError();
+      if (isVersionConflict(err)) {
+        toast.error("This expense was edited by someone else. Refreshing...");
+        try {
+          const refreshToken = await getToken();
+          const fresh = await expensesApi.get(id, refreshToken!);
+          setExpense(fresh);
+        } catch {
+          // If re-fetch also fails, user can retry manually
+        }
+        setSubmitting(false);
+        return;
+      }
       toast.error("Failed to update expense. Try again.");
     } finally {
       setSubmitting(false);
@@ -455,7 +468,13 @@ export default function EditExpenseScreen() {
           <View>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Date</Text>
             <Pressable
-              onPress={() => setShowDatePicker(true)}
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  dateInputRef.current?.showPicker();
+                } else {
+                  setShowDatePicker(true);
+                }
+              }}
               className="flex-row items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card"
             >
               <Calendar size={16} color="#0d9488" />
@@ -463,7 +482,21 @@ export default function EditExpenseScreen() {
                 {expenseDate.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
               </Text>
             </Pressable>
-            {showDatePicker && (
+            {Platform.OS === 'web' && (
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={expenseDate.toISOString().split('T')[0]}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setExpenseDate(new Date(e.target.value + 'T00:00:00'));
+                  }
+                }}
+                style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+              />
+            )}
+            {Platform.OS !== 'web' && showDatePicker && (
               <DateTimePicker
                 value={expenseDate}
                 mode="date"

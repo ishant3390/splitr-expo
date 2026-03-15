@@ -59,6 +59,8 @@ import {
   Smartphone,
   Building2,
   Wallet,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react-native";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -215,10 +217,16 @@ export const ACTIVITY_ICON_MAP: Record<string, CategoryIconConfig> = {
   expense_updated:    { icon: Pencil,      color: "#f59e0b", bg: "#fef3c7", label: "Updated" },
   expense_deleted:    { icon: Trash2,      color: "#ef4444", bg: "#fee2e2", label: "Deleted" },
   member_joined:      { icon: UserPlus,    color: "#8b5cf6", bg: "#ede9fe", label: "Joined" },
+  member_joined_via_invite: { icon: UserPlus, color: "#8b5cf6", bg: "#ede9fe", label: "Joined" },
+  member_added:       { icon: UserPlus,    color: "#8b5cf6", bg: "#ede9fe", label: "Added" },
   member_removed:     { icon: UserMinus,   color: "#ef4444", bg: "#fee2e2", label: "Removed" },
   member_left:        { icon: UserMinus,   color: "#ef4444", bg: "#fee2e2", label: "Left" },
   settlement_created: { icon: Handshake,   color: "#059669", bg: "#d1fae5", label: "Settled" },
   group_created:      { icon: Users,       color: "#2563eb", bg: "#dbeafe", label: "Created" },
+  group_archived:     { icon: Archive,     color: "#64748b", bg: "#f1f5f9", label: "Archived" },
+  group_unarchived:   { icon: ArchiveRestore, color: "#2563eb", bg: "#dbeafe", label: "Unarchived" },
+  group_deleted:      { icon: Trash2,      color: "#ef4444", bg: "#fee2e2", label: "Deleted" },
+  group_updated:      { icon: Pencil,      color: "#f59e0b", bg: "#fef3c7", label: "Updated" },
 };
 
 /**

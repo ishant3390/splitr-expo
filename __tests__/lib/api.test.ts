@@ -9,6 +9,7 @@ import {
   settlementsApi,
   chatStream,
   chatApi,
+  isVersionConflict,
 } from "@/lib/api";
 
 // Mock global fetch
@@ -1473,5 +1474,28 @@ describe("chatApi", () => {
         }),
       })
     );
+  });
+});
+
+describe("isVersionConflict", () => {
+  it("returns true for Error with 409 status", () => {
+    expect(isVersionConflict(new Error("API 409: conflict"))).toBe(true);
+  });
+
+  it("returns true for Error with ERR-302 code", () => {
+    expect(isVersionConflict(new Error('{"code":"ERR-302","message":"Resource was updated"}'))).toBe(true);
+  });
+
+  it("returns true for string containing 409", () => {
+    expect(isVersionConflict("API 409: conflict")).toBe(true);
+  });
+
+  it("returns false for unrelated errors", () => {
+    expect(isVersionConflict(new Error("API 500: server error"))).toBe(false);
+  });
+
+  it("returns false for null/undefined", () => {
+    expect(isVersionConflict(null)).toBe(false);
+    expect(isVersionConflict(undefined)).toBe(false);
   });
 });

@@ -173,11 +173,17 @@ test.describe("Group Lifecycle", () => {
     const canArchiveViaUI = await archiveOption.isVisible({ timeout: 2000 }).catch(() => false);
     if (canArchiveViaUI) {
       await archiveOption.click();
-      // Handle confirmation modal if present
-      const confirmBtn = page.getByText("Archive", { exact: true });
-      const hasConfirm = await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false);
-      if (hasConfirm) {
-        await confirmBtn.click();
+      // Handle confirmation modal — button may be "Archive" or "Archive Anyway" depending on balances
+      const archiveAnywayBtn = page.getByText("Archive Anyway", { exact: true });
+      const archiveBtn = page.getByText("Archive", { exact: true });
+      const hasArchiveAnyway = await archiveAnywayBtn.isVisible({ timeout: 2000 }).catch(() => false);
+      if (hasArchiveAnyway) {
+        await archiveAnywayBtn.click();
+      } else {
+        const hasConfirm = await archiveBtn.isVisible({ timeout: 2000 }).catch(() => false);
+        if (hasConfirm) {
+          await archiveBtn.click();
+        }
       }
       await page.waitForTimeout(2000);
     }
@@ -245,6 +251,221 @@ test.describe("Group Lifecycle", () => {
 
     // Should not appear
     await expectGroupNotInList(page, group.name);
+  });
+
+  test("archive settled group → shows standard confirm (no balance warning)", async ({
+    page,
+    apiClient,
+  }) => {
+    // Create a group with no expenses (all balances zero)
+    const group = await apiClient.createGroup(fixtures.group({ name: "Settled Group" }));
+
+    await navigateToGroupsTab(page);
+
+    // Open action sheet
+    const actionsButton = page.locator(`[aria-label="Group actions"]`).first();
+    const groupCard = page.getByText(group.name).first();
+    await groupCard.waitFor({ state: "attached", timeout: 15000 });
+    await page.waitForTimeout(1000);
+
+    // Try 3-dot menu first
+    const hasActionsBtn = await actionsButton.isVisible({ timeout: 2000 }).catch(() => false);
+    if (hasActionsBtn) {
+      await actionsButton.click();
+    } else {
+      await groupCard.click({ button: "right", force: true }).catch(() => {});
+    }
+
+    const archiveOption = page.getByText("Archive Group");
+    const sheetOpened = await archiveOption.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!sheetOpened) {
+      test.skip();
+      return;
+    }
+
+    await archiveOption.click();
+
+    // Should show standard confirm (no "outstanding balances" warning)
+    await expect(page.getByText(/No new expenses can be added/)).toBeVisible({ timeout: 5000 });
+    // Confirm button should say "Archive" (not "Archive Anyway")
+    const archiveAnywayVisible = await page
+      .getByText("Archive Anyway", { exact: true })
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
+    expect(archiveAnywayVisible).toBeFalsy();
+
+    // Confirm archive
+    await page.getByText("Archive", { exact: true }).click();
+    await page.waitForTimeout(2000);
+
+    // Verify archived
+    await page.reload();
+    await skipOnboardingIfPresent(page);
+    await page.waitForTimeout(2000);
+    await navigateToGroupsTab(page);
+    await expectGroupNotInList(page, group.name);
+    await page.getByText("Archived").click();
+    await page.waitForTimeout(2000);
+    await expectGroupInList(page, group.name);
+  });
+
+  test("archive group with unsettled balances → shows balance warning and 'Archive Anyway'", async ({
+    page,
+    apiClient,
+  }) => {
+    // Create a group and add an expense to create non-zero balances
+    const group = await apiClient.createGroup(fixtures.group({ name: "Unsettled Group" }));
+    const me = await apiClient.getMe();
+    const guest = await apiClient.addGuestMember(group.id, fixtures.guestMember({ name: "Debtor" }));
+    const guestUserId = guest.guestUser?.id;
+    if (!guestUserId) {
+      test.skip();
+      return;
+    }
+
+    // Create an expense so balances are non-zero
+    await apiClient.createExpense(
+      group.id,
+      fixtures.guestExpense(me.id, guestUserId, { description: "Dinner", totalAmount: 5000 })
+    );
+
+    await navigateToGroupsTab(page);
+
+    const groupCard = page.getByText(group.name).first();
+    await groupCard.waitFor({ state: "attached", timeout: 15000 });
+    await page.waitForTimeout(1000);
+
+    // Open action sheet via 3-dot menu
+    const actionsButton = page.locator(`[aria-label="Group actions"]`).first();
+    const hasActionsBtn = await actionsButton.isVisible({ timeout: 2000 }).catch(() => false);
+    if (hasActionsBtn) {
+      await actionsButton.click();
+    } else {
+      await groupCard.click({ button: "right", force: true }).catch(() => {});
+    }
+
+    const archiveOption = page.getByText("Archive Group");
+    const sheetOpened = await archiveOption.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!sheetOpened) {
+      test.skip();
+      return;
+    }
+
+    await archiveOption.click();
+
+    // Should show balance warning
+    await expect(page.getByText(/outstanding balances/)).toBeVisible({ timeout: 5000 });
+    // Confirm button should say "Archive Anyway"
+    await expect(page.getByText("Archive Anyway", { exact: true })).toBeVisible({ timeout: 3000 });
+
+    // Confirm archive anyway
+    await page.getByText("Archive Anyway", { exact: true }).click();
+    await page.waitForTimeout(2000);
+
+    // Verify archived
+    await page.reload();
+    await skipOnboardingIfPresent(page);
+    await page.waitForTimeout(2000);
+    await navigateToGroupsTab(page);
+    await expectGroupNotInList(page, group.name);
+    await page.getByText("Archived").click();
+    await page.waitForTimeout(2000);
+    await expectGroupInList(page, group.name);
+  });
+
+  test("archive group with balances from group detail → shows balance warning", async ({
+    page,
+    apiClient,
+  }) => {
+    // Create group with an expense
+    const group = await apiClient.createGroup(fixtures.group({ name: "Detail Balance" }));
+    const me = await apiClient.getMe();
+    const guest = await apiClient.addGuestMember(group.id, fixtures.guestMember({ name: "Member" }));
+    const guestUserId = guest.guestUser?.id;
+    if (!guestUserId) {
+      test.skip();
+      return;
+    }
+
+    await apiClient.createExpense(
+      group.id,
+      fixtures.guestExpense(me.id, guestUserId, { description: "Lunch", totalAmount: 3000 })
+    );
+
+    // Navigate to group detail
+    await navigateToGroupsTab(page);
+    await scrollToGroupAndClick(page, group.name);
+
+    // Wait for group detail to load
+    await page.getByText(group.name).first().waitFor({ state: "attached", timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    // Open more options menu
+    const moreButton = page.getByLabelText("More options");
+    const hasMore = await moreButton.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!hasMore) {
+      test.skip();
+      return;
+    }
+    await moreButton.click();
+
+    const archiveOption = page.getByText("Archive Group");
+    const sheetOpened = await archiveOption.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!sheetOpened) {
+      test.skip();
+      return;
+    }
+
+    await archiveOption.click();
+
+    // Should show balance warning (members have non-zero balances)
+    await expect(page.getByText(/outstanding balances/)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Archive Anyway", { exact: true })).toBeVisible({ timeout: 3000 });
+
+    // Cancel — don't actually archive
+    await page.getByText("Cancel").click();
+  });
+
+  test("archive settled group from group detail → shows standard confirm", async ({
+    page,
+    apiClient,
+  }) => {
+    // Create group with no expenses (zero balances)
+    const group = await apiClient.createGroup(fixtures.group({ name: "Settled Detail" }));
+
+    await navigateToGroupsTab(page);
+    await scrollToGroupAndClick(page, group.name);
+
+    await page.getByText(group.name).first().waitFor({ state: "attached", timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    const moreButton = page.getByLabelText("More options");
+    const hasMore = await moreButton.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!hasMore) {
+      test.skip();
+      return;
+    }
+    await moreButton.click();
+
+    const archiveOption = page.getByText("Archive Group");
+    const sheetOpened = await archiveOption.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!sheetOpened) {
+      test.skip();
+      return;
+    }
+
+    await archiveOption.click();
+
+    // Should show standard confirm, NOT the balance warning
+    await expect(page.getByText(/No new expenses can be added/)).toBeVisible({ timeout: 5000 });
+    const archiveAnywayVisible = await page
+      .getByText("Archive Anyway", { exact: true })
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
+    expect(archiveAnywayVisible).toBeFalsy();
+
+    // Cancel
+    await page.getByText("Cancel").click();
   });
 
   test("toggle simplify debts on group", async ({ page, apiClient }) => {

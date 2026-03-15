@@ -282,6 +282,32 @@ describe("notifications.ts", () => {
       expect(getNotificationUrl(response)).toBe("/(tabs)/groups/grp_123");
     });
 
+    it("navigates to groups list for member_removed (not into the group)", () => {
+      const response = {
+        notification: {
+          request: {
+            content: {
+              data: { type: "member_removed", groupId: "grp_removed" },
+            },
+          },
+        },
+      } as any;
+      expect(getNotificationUrl(response)).toBe("/(tabs)/groups");
+    });
+
+    it("navigates to groups list for member_removed even without groupId", () => {
+      const response = {
+        notification: {
+          request: {
+            content: {
+              data: { type: "member_removed" },
+            },
+          },
+        },
+      } as any;
+      expect(getNotificationUrl(response)).toBe("/(tabs)/groups");
+    });
+
     it("returns null when no groupId in data", () => {
       const response = {
         notification: {

@@ -106,6 +106,10 @@ jest.mock("@/lib/api", () => ({
   categoriesApi: {
     list: (...args: any[]) => mockCategoriesList(...args),
   },
+  isVersionConflict: (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    return msg.includes("409") || msg.includes("ERR-302");
+  },
 }));
 
 jest.mock("@/lib/screen-helpers", () => ({
@@ -664,5 +668,24 @@ describe("EditExpenseScreen", () => {
     await waitFor(() => {
       expect(inferCategoryFromDescription).toHaveBeenCalled();
     });
+  });
+
+  it("shows conflict toast and re-fetches on 409 version conflict", async () => {
+    const freshExpense = { ...mockExpense, version: 2 };
+    mockExpensesUpdate.mockRejectedValueOnce(new Error("API 409: ERR-302 Resource was updated"));
+    mockExpensesGet.mockResolvedValueOnce(mockExpense).mockResolvedValueOnce(freshExpense);
+
+    render(<EditExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Save")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Save"));
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("This expense was edited by someone else. Refreshing...");
+    });
+    // Should have re-fetched the expense
+    expect(mockExpensesGet).toHaveBeenCalledTimes(2);
+    // Should NOT have navigated back
+    expect(mockRouterBack).not.toHaveBeenCalled();
   });
 });

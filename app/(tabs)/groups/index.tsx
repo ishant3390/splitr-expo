@@ -5,7 +5,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { hapticLight, hapticWarning, hapticSuccess, hapticSelection } from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
-import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw, AlertTriangle, Search, MoreVertical } from "lucide-react-native";
+import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw, AlertTriangle, Search, MoreVertical, UserPlus } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -14,13 +14,17 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { GroupAvatar } from "@/components/ui/group-avatar";
 import { useGroups, useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
+import { cn, extractInviteCode } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { GroupDto } from "@/lib/types";
+import { groupsApi } from "@/lib/api";
+import { hasUnsettledBalances } from "@/lib/screen-helpers";
+import { useAuth } from "@clerk/clerk-expo";
 
 export default function GroupsScreen() {
   const router = useRouter();
   const toast = useToast();
+  const { getToken } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const [filter, setFilter] = useState<"active" | "archived">("active");
@@ -28,6 +32,11 @@ export default function GroupsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+
+  // Join group modal
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState("");
+  const [joinInputError, setJoinInputError] = useState<string | null>(null);
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return groups;
@@ -44,6 +53,8 @@ export default function GroupsScreen() {
 
   // Archive confirmation
   const [groupToArchive, setGroupToArchive] = useState<GroupDto | null>(null);
+  const [archiveHasBalances, setArchiveHasBalances] = useState(false);
+  const [checkingBalances, setCheckingBalances] = useState(false);
 
   // Delete confirmation
   const [groupToDelete, setGroupToDelete] = useState<GroupDto | null>(null);
@@ -82,6 +93,7 @@ export default function GroupsScreen() {
       hapticSuccess();
       toast.success(`"${groupToArchive.name}" archived.`);
       setGroupToArchive(null);
+      setArchiveHasBalances(false);
     } catch {
       toast.error("Failed to archive group.");
     }
@@ -143,6 +155,16 @@ export default function GroupsScreen() {
               <Search size={18} color={showSearch ? "#0d9488" : "#64748b"} />
             </View>
           </Pressable>
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={() => { setShowJoinModal(true); setInviteCodeInput(""); setJoinInputError(null); }}
+          >
+            <View className="flex-row items-center gap-1.5">
+              <UserPlus size={16} color="#0d9488" />
+              <Text className="text-sm font-sans-semibold text-primary">Join</Text>
+            </View>
+          </Button>
           <Button
             variant="default"
             size="sm"
@@ -233,14 +255,22 @@ export default function GroupsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
           ListEmptyComponent={
             filter === "active" ? (
-              <EmptyState
-                icon={Users}
-                iconColor="#0d9488"
-                title="No groups yet"
-                subtitle="Split expenses with friends, roommates, or travel buddies"
-                actionLabel="Create Your First Group"
-                onAction={() => router.push("/create-group")}
-              />
+              <View>
+                <EmptyState
+                  icon={Users}
+                  iconColor="#0d9488"
+                  title="No groups yet"
+                  subtitle="Split expenses with friends, roommates, or travel buddies"
+                  actionLabel="Create Your First Group"
+                  onAction={() => router.push("/create-group")}
+                />
+                <Pressable
+                  onPress={() => { setShowJoinModal(true); setInviteCodeInput(""); setJoinInputError(null); }}
+                  className="items-center mt-4"
+                >
+                  <Text className="text-sm font-sans-medium text-primary">Have an invite code?</Text>
+                </Pressable>
+              </View>
             ) : (
               <EmptyState
                 icon={Archive}
@@ -311,9 +341,20 @@ export default function GroupsScreen() {
 
         {filter === "active" ? (
           <Pressable
-            onPress={() => {
+            onPress={async () => {
+              if (!selectedGroup) return;
               setShowActions(false);
-              setGroupToArchive(selectedGroup);
+              setCheckingBalances(true);
+              try {
+                const token = await getToken();
+                const members = await groupsApi.listMembers(selectedGroup.id, token!);
+                setArchiveHasBalances(hasUnsettledBalances(members));
+              } catch {
+                setArchiveHasBalances(false);
+              } finally {
+                setCheckingBalances(false);
+                setGroupToArchive(selectedGroup);
+              }
             }}
             style={{
               flexDirection: "row",
@@ -370,15 +411,26 @@ export default function GroupsScreen() {
         </Pressable>
       </BottomSheetModal>
 
+      {/* Balance check loading */}
+      {checkingBalances && (
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.3)", zIndex: 999 }}>
+          <ActivityIndicator size="large" color="#0d9488" />
+        </View>
+      )}
+
       {/* Archive Confirmation */}
       <ConfirmModal
         visible={!!groupToArchive}
         title="Archive Group"
-        message={`Archive "${groupToArchive?.name}"? No new expenses or settlements can be added while archived. Existing balances are preserved and the group can be unarchived at any time.`}
-        confirmLabel="Archive"
+        message={
+          archiveHasBalances
+            ? `This group has outstanding balances. Archiving will prevent new expenses and settlements until you restore it.\n\nYou can restore the group at any time to settle up.`
+            : `Archive "${groupToArchive?.name}"? No new expenses can be added while archived. You can restore it anytime.`
+        }
+        confirmLabel={archiveHasBalances ? "Archive Anyway" : "Archive"}
         cancelLabel="Cancel"
         onConfirm={handleArchiveConfirm}
-        onCancel={() => setGroupToArchive(null)}
+        onCancel={() => { setGroupToArchive(null); setArchiveHasBalances(false); }}
       />
 
       {/* Delete Confirmation */}
@@ -392,6 +444,61 @@ export default function GroupsScreen() {
         onConfirm={handleDelete}
         onCancel={() => setGroupToDelete(null)}
       />
+
+      {/* Join Group Modal */}
+      <BottomSheetModal
+        visible={showJoinModal}
+        onClose={() => setShowJoinModal(false)}
+        keyboardAvoiding
+      >
+        <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a", marginBottom: 4 }}>
+          Join a Group
+        </Text>
+        <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#94a3b8", marginBottom: 16 }}>
+          Enter an invite code or paste an invite link
+        </Text>
+        <TextInput
+          placeholder="Invite code or link"
+          value={inviteCodeInput}
+          onChangeText={(text) => { setInviteCodeInput(text); setJoinInputError(null); }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={{
+            borderWidth: 1,
+            borderColor: joinInputError ? "#ef4444" : (isDark ? "#334155" : "#e2e8f0"),
+            borderRadius: 12,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            fontSize: 15,
+            fontFamily: "Inter_400Regular",
+            color: isDark ? "#f1f5f9" : "#0f172a",
+            backgroundColor: isDark ? "#1e293b" : "#f8fafc",
+            marginBottom: 4,
+          }}
+          placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
+        />
+        {joinInputError && (
+          <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#ef4444", marginBottom: 8 }}>
+            {joinInputError}
+          </Text>
+        )}
+        <Button
+          variant="default"
+          size="default"
+          className="mt-3"
+          onPress={() => {
+            const code = extractInviteCode(inviteCodeInput);
+            if (!code) {
+              setJoinInputError("Please enter an invite code");
+              return;
+            }
+            setShowJoinModal(false);
+            router.push(`/join/${code}`);
+          }}
+        >
+          <Text className="text-sm font-sans-semibold text-primary-foreground">Continue</Text>
+        </Button>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }

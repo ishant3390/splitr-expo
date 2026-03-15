@@ -5,7 +5,9 @@ import {
   formatCurrency,
   formatCents,
   formatDate,
+  formatRelativeTime,
   getInitials,
+  extractInviteCode,
 } from "@/lib/utils";
 
 describe("centsToAmount", () => {
@@ -138,6 +140,109 @@ describe("cn", () => {
   it("handles undefined/null", () => {
     const result = cn("base", undefined, null);
     expect(result).toBe("base");
+  });
+});
+
+describe("extractInviteCode", () => {
+  it("passes through raw code", () => {
+    expect(extractInviteCode("abc123")).toBe("abc123");
+  });
+
+  it("extracts code from full invite URL", () => {
+    expect(extractInviteCode("https://splitr.ai/invite/abc123")).toBe("abc123");
+  });
+
+  it("extracts code from join URL", () => {
+    expect(extractInviteCode("https://splitr.ai/join/abc123")).toBe("abc123");
+  });
+
+  it("extracts code from localhost URL", () => {
+    expect(extractInviteCode("http://localhost:8081/invite/abc123")).toBe("abc123");
+  });
+
+  it("trims whitespace", () => {
+    expect(extractInviteCode("  abc123  ")).toBe("abc123");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(extractInviteCode("")).toBe("");
+  });
+
+  it("handles codes with hyphens and underscores", () => {
+    expect(extractInviteCode("https://splitr.ai/invite/a-b_c")).toBe("a-b_c");
+  });
+});
+
+describe("formatRelativeTime", () => {
+  const NOW = new Date("2026-03-15T12:00:00Z");
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("returns 'Just now' for less than 1 minute ago", () => {
+    expect(formatRelativeTime("2026-03-15T11:59:45Z")).toBe("Just now");
+  });
+
+  it("returns '1 min ago' for exactly 1 minute ago", () => {
+    expect(formatRelativeTime("2026-03-15T11:59:00Z")).toBe("1 min ago");
+  });
+
+  it("returns 'X min ago' for minutes", () => {
+    expect(formatRelativeTime("2026-03-15T11:55:00Z")).toBe("5 min ago");
+    expect(formatRelativeTime("2026-03-15T11:21:00Z")).toBe("39 min ago");
+  });
+
+  it("returns '1 hour ago' for singular hour", () => {
+    expect(formatRelativeTime("2026-03-15T11:00:00Z")).toBe("1 hour ago");
+  });
+
+  it("returns 'X hours ago' for plural hours", () => {
+    expect(formatRelativeTime("2026-03-15T10:00:00Z")).toBe("2 hours ago");
+    expect(formatRelativeTime("2026-03-15T00:30:00Z")).toBe("11 hours ago");
+  });
+
+  it("returns 'Yesterday' for 1 day ago", () => {
+    expect(formatRelativeTime("2026-03-14T12:00:00Z")).toBe("Yesterday");
+  });
+
+  it("returns 'X days ago' for 2-6 days", () => {
+    expect(formatRelativeTime("2026-03-12T12:00:00Z")).toBe("3 days ago");
+    expect(formatRelativeTime("2026-03-09T12:00:00Z")).toBe("6 days ago");
+  });
+
+  it("returns 'Last week' for 7-13 days ago", () => {
+    expect(formatRelativeTime("2026-03-08T12:00:00Z")).toBe("Last week");
+    expect(formatRelativeTime("2026-03-02T12:00:00Z")).toBe("Last week");
+  });
+
+  it("returns '2 weeks ago' for 14-20 days ago", () => {
+    expect(formatRelativeTime("2026-03-01T12:00:00Z")).toBe("2 weeks ago");
+    expect(formatRelativeTime("2026-02-23T12:00:00Z")).toBe("2 weeks ago");
+  });
+
+  it("returns 'Last month' for 21-59 days ago", () => {
+    expect(formatRelativeTime("2026-02-22T12:00:00Z")).toBe("Last month");
+    expect(formatRelativeTime("2026-01-15T12:00:00Z")).toBe("Last month");
+  });
+
+  it("returns short date for 60+ days ago", () => {
+    expect(formatRelativeTime("2026-01-14T12:00:00Z")).toBe("Jan 14");
+    expect(formatRelativeTime("2025-06-01T12:00:00Z")).toBe("Jun 1");
+  });
+
+  it("returns short date for future dates", () => {
+    expect(formatRelativeTime("2026-03-20T12:00:00Z")).toBe("Mar 20");
+  });
+
+  it("returns empty string for invalid date string", () => {
+    expect(formatRelativeTime("not-a-date")).toBe("");
+    expect(formatRelativeTime("")).toBe("");
   });
 });
 

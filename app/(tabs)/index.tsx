@@ -34,7 +34,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useUserBalance, useTopDebtor } from "@/lib/hooks";
 import { useNetwork } from "@/components/NetworkProvider";
-import { cn, formatCents, formatDate, getInitials } from "@/lib/utils";
+import { cn, formatCents, formatDate, formatRelativeTime, getInitials } from "@/lib/utils";
 import { formatActivityTitle, formatActivityInvolvement } from "@/lib/screen-helpers";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedPressable } from "@/components/ui/animated-pressable";
@@ -194,7 +194,7 @@ export default function HomeScreen() {
             {/* Settle-up nudge */}
             {totalOwesCents > 0 && (
               <Pressable
-                onPress={() => { hapticLight(); router.push("/(tabs)/groups"); }}
+                onPress={() => { hapticLight(); router.push("/settle-up"); }}
                 className="mt-4 flex-row items-center justify-center gap-2 bg-white/15 rounded-xl py-2.5"
               >
                 <HandCoins size={16} color="#ffffff" />
@@ -380,7 +380,8 @@ export default function HomeScreen() {
                   const oldDesc = item.details?.oldDescription as string | undefined;
                   const newDesc = item.details?.newDescription as string | undefined;
                   const descChanged = oldDesc != null && newDesc != null && oldDesc !== newDesc;
-                  const isMemberJoined = item.activityType === "member_joined";
+                  const isMemberActivity = ["member_joined", "member_joined_via_invite", "member_added", "member_left"].includes(item.activityType);
+                  const isGroupLifecycle = ["group_created", "group_archived", "group_unarchived", "group_deleted", "group_updated"].includes(item.activityType);
                   const memberRole = (item.details?.role as string) ?? "";
                   const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
                   const involvement = formatActivityInvolvement(item);
@@ -420,15 +421,19 @@ export default function HomeScreen() {
                                 "{oldDesc}" → "{newDesc}"
                               </Text>
                             ) : null}
-                            {isMemberJoined ? (
+                            {isMemberActivity && memberRole ? (
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                                {actorName} joined {item.groupName ?? groupName}{memberRole ? ` as ${memberRole}` : ""}
+                                as {memberRole}
                               </Text>
-                            ) : (
+                            ) : isGroupLifecycle ? (
+                              <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                                {item.activityType === "group_created" ? "New group" : item.activityType === "group_archived" ? "Archived" : item.activityType === "group_deleted" ? "Deleted" : item.activityType === "group_updated" ? "Updated" : "Restored"}
+                              </Text>
+                            ) : !isMemberActivity && !isGroupLifecycle && groupName ? (
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                                 {groupName}
                               </Text>
-                            )}
+                            ) : null}
                           </View>
                           <View className="items-end">
                             {displayAmount != null && (
@@ -448,7 +453,7 @@ export default function HomeScreen() {
                               </Text>
                             )}
                             <Text className="text-xs text-muted-foreground font-sans">
-                              {formatDate(item.createdAt)}
+                              {formatRelativeTime(item.createdAt)}
                             </Text>
                           </View>
                         </View>

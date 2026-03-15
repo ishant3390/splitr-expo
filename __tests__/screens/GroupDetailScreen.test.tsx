@@ -107,6 +107,7 @@ jest.mock("@/lib/hooks", () => ({
 }));
 
 jest.mock("@/lib/screen-helpers", () => ({
+  hasUnsettledBalances: (members: any[]) => members.some((m: any) => (m.balance ?? 0) !== 0),
   dedupeMembers: (arr: any[]) => {
     const seen = new Set();
     return (Array.isArray(arr) ? arr : []).filter((m: any) => {
@@ -867,8 +868,8 @@ describe("GroupDetailScreen", () => {
     });
   });
 
-  // --- Archive group from actions modal (lines 1254-1262) ---
-  it("archives group via actions modal", async () => {
+  // --- Archive group from actions modal (with balance warning) ---
+  it("archives group via actions modal showing balance warning", async () => {
     render(<GroupDetailScreen />);
     await waitFor(() => {
       expect(screen.getByLabelText("More options")).toBeTruthy();
@@ -878,7 +879,33 @@ describe("GroupDetailScreen", () => {
       expect(screen.getByText("Archive Group")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Archive Group"));
-    // Opens archive confirm modal
+    // Members have non-zero balances, so warning should appear
+    await waitFor(() => {
+      expect(screen.getByText(/outstanding balances/)).toBeTruthy();
+      expect(screen.getByText("Archive Anyway")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Archive Anyway"));
+    await waitFor(() => {
+      expect(mockArchiveMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ groupId: "g1", archive: true })
+      );
+    });
+  });
+
+  it("archives group with standard message when all balances are zero", async () => {
+    mockListMembers.mockResolvedValue([
+      { id: "m1", user: { id: "u1", name: "Alice", email: "test@example.com", avatarUrl: null }, guestUser: null, displayName: "Alice", notificationsEnabled: true, balance: 0 },
+      { id: "m2", user: { id: "u2", name: "Bob", email: "bob@test.com", avatarUrl: null }, guestUser: null, displayName: "Bob", notificationsEnabled: true, balance: 0 },
+    ]);
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByLabelText("More options")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText("More options"));
+    await waitFor(() => {
+      expect(screen.getByText("Archive Group")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Archive Group"));
     await waitFor(() => {
       expect(screen.getByText(/Archive "Trip to Paris"/)).toBeTruthy();
       expect(screen.getByText("Archive")).toBeTruthy();

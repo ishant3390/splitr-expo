@@ -382,6 +382,51 @@ describe("hooks.ts", () => {
       const { result } = renderHook(() => useUserActivity());
       expect(result.current.data).toEqual([{ id: "a1" }, { id: "a2" }]);
     });
+
+    it("filters out redundant member_joined when same user created the group", () => {
+      mockUseInfiniteQuery.mockReturnValue({
+        data: {
+          pages: [[
+            { id: "a1", activityType: "group_created", actorUserId: "u1", groupId: "g1" },
+            { id: "a2", activityType: "member_joined", actorUserId: "u1", groupId: "g1" },
+            { id: "a3", activityType: "member_joined", actorUserId: "u2", groupId: "g1" },
+          ]],
+          pageParams: [0],
+        },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+      });
+
+      const { result } = renderHook(() => useUserActivity());
+      // u1's member_joined is filtered (they created the group), u2's is kept
+      expect(result.current.data).toHaveLength(2);
+      expect(result.current.data.map((d: any) => d.id)).toEqual(["a1", "a3"]);
+    });
+
+    it("keeps member_joined when user did not create the group", () => {
+      mockUseInfiniteQuery.mockReturnValue({
+        data: {
+          pages: [[
+            { id: "a1", activityType: "group_created", actorUserId: "u1", groupId: "g1" },
+            { id: "a2", activityType: "member_joined", actorUserId: "u3", groupId: "g1" },
+          ]],
+          pageParams: [0],
+        },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+      });
+
+      const { result } = renderHook(() => useUserActivity());
+      expect(result.current.data).toHaveLength(2);
+    });
   });
 
   describe("useGroups", () => {

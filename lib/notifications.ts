@@ -196,6 +196,9 @@ export function getNotificationUrl(
   const type = data.type as string | undefined;
   const groupId = data.groupId as string | undefined;
 
+  // member_removed: user was kicked from the group — navigate to groups list, not into the group
+  if (type === "member_removed") return "/(tabs)/groups";
+
   if (!groupId) return null;
 
   switch (type) {

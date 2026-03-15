@@ -327,6 +327,15 @@ export interface UpdateSettlementRequest {
   version?: number;
 }
 
+// ---- Cross-Group Settlement ----
+
+export interface CrossGroupSuggestion {
+  groupId: string;
+  groupName: string;
+  currency?: string;
+  suggestions: SettlementSuggestionDto[];
+}
+
 // ---- Invite / Join ----
 
 export interface GroupInvitePreviewDto {
