@@ -59,6 +59,7 @@ jest.mock("@clerk/clerk-expo", () => ({
 jest.mock("nativewind", () => ({
   useColorScheme: () => ({
     colorScheme: "light",
+    setColorScheme: jest.fn(),
     toggleColorScheme: jest.fn(),
   }),
 }));

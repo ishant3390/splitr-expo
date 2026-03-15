@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, Platform, Appearance, useColorScheme as useSystemColorScheme } from "react-native";
+import { View, Text, ScrollView, Pressable, Platform } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
@@ -36,14 +37,14 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { user } = useUser();
   const router = useRouter();
-  const colorScheme = useSystemColorScheme();
+  const { colorScheme, setColorScheme } = useColorScheme();
   const { data: apiUser = null } = useUserProfile();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const toast = useToast();
 
   const handleToggleDarkMode = () => {
     const next = colorScheme === "dark" ? "light" : "dark";
-    Appearance.setColorScheme(next);
+    setColorScheme(next);
     AsyncStorage.setItem(DARK_MODE_KEY, next);
   };
 

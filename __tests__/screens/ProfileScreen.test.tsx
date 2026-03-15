@@ -109,7 +109,13 @@ describe("ProfileScreen", () => {
 
   // --- Dark mode toggle (lines 44-48) ---
   it("toggles dark mode on switch press", () => {
-    const setColorSchemeSpy = jest.spyOn(Appearance, "setColorScheme").mockImplementation(() => {});
+    const mockSetColorScheme = jest.fn();
+    const nativewind = require("nativewind");
+    jest.spyOn(nativewind, "useColorScheme").mockReturnValue({
+      colorScheme: "light",
+      setColorScheme: mockSetColorScheme,
+      toggleColorScheme: jest.fn(),
+    });
     const AsyncStorageMock = require("@react-native-async-storage/async-storage");
     render(<ProfileScreen />);
     expect(screen.getByText("Dark Mode")).toBeTruthy();
@@ -118,9 +124,8 @@ describe("ProfileScreen", () => {
     expect(switches.length).toBeGreaterThan(0);
     // Fire onValueChange to toggle dark mode
     fireEvent(switches[0], "valueChange", true);
-    expect(setColorSchemeSpy).toHaveBeenCalledWith("dark");
+    expect(mockSetColorScheme).toHaveBeenCalledWith("dark");
     expect(AsyncStorageMock.setItem).toHaveBeenCalledWith("@splitr/dark_mode", "dark");
-    setColorSchemeSpy.mockRestore();
   });
 
   // --- Sign out flow (lines 50-52, 183-191) ---

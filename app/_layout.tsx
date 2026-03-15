@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
-import { AppState, Appearance, Pressable, Text, View } from "react-native";
+import { AppState, Appearance, Platform, Pressable, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { usersApi } from "@/lib/api";
@@ -269,7 +269,9 @@ export default function RootLayout() {
   useEffect(() => {
     AsyncStorage.getItem("@splitr/dark_mode").then((value) => {
       if (value === "dark" || value === "light") {
-        Appearance.setColorScheme(value);
+        if (Platform.OS !== "web") {
+          Appearance.setColorScheme(value);
+        }
       }
     });
   }, []);

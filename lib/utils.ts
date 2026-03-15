@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { ExpenseCategory } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -42,25 +41,6 @@ export function formatDate(dateString: string): string {
 
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
-
-// Icon name mappings for lucide-react-native (resolved at component level)
-export const categoryIconNames: Record<ExpenseCategory, string> = {
-  food: "Utensils",
-  transport: "Car",
-  accommodation: "Home",
-  entertainment: "Gamepad2",
-  shopping: "ShoppingBag",
-  other: "MoreHorizontal",
-};
-
-export const categoryLabels: Record<ExpenseCategory, string> = {
-  food: "Food & Drinks",
-  transport: "Transport",
-  accommodation: "Accommodation",
-  entertainment: "Entertainment",
-  shopping: "Shopping",
-  other: "Other",
-};
 
 export function getInitials(name: string): string {
   return name

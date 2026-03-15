@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import { expensesApi, groupsApi, categoriesApi } from "@/lib/api";
 import { inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { useToast } from "@/components/ui/toast";
@@ -38,29 +39,6 @@ import type {
   UpdateExpenseRequest,
   SplitRequest,
 } from "@/lib/types";
-
-const ICON_TO_EMOJI: Record<string, string> = {
-  restaurant: "🍕", "food_and_drink": "🍔", food: "🍕", fastfood: "🍔",
-  local_cafe: "☕", coffee: "☕", local_bar: "🍺",
-  directions_car: "🚗", transport: "🚗", car: "🚗",
-  flight: "✈️", travel: "✈️", hotel: "🏨",
-  accommodation: "🏠", home: "🏠", house: "🏠",
-  sports_esports: "🎮", entertainment: "🎮", movie: "🎬",
-  shopping_bag: "🛍️", shopping: "🛍️", shopping_cart: "🛒",
-  groceries: "🛒", local_grocery_store: "🛒",
-  health: "❤️", local_hospital: "🏥", fitness_center: "💪",
-  card_giftcard: "🎁", gifts: "🎁",
-  work: "💼", business: "💼",
-  wifi: "📡", utilities: "📡", electric_bolt: "⚡",
-  pets: "🐾", school: "📚", education: "📚",
-  other: "📋", more_horiz: "📋",
-};
-
-function getCategoryEmoji(icon?: string): string {
-  if (!icon) return "📋";
-  if (/^\p{Emoji}/u.test(icon)) return icon;
-  return ICON_TO_EMOJI[icon.toLowerCase()] ?? "📋";
-}
 
 type SplitType = "equal" | "percentage" | "fixed";
 
@@ -452,7 +430,7 @@ export default function EditExpenseScreen() {
               }}
               keyboardType="decimal-pad"
               placeholder="$0"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
               className="text-foreground"
               style={{
                 fontSize: 56,
@@ -517,7 +495,7 @@ export default function EditExpenseScreen() {
                         isSelected ? "bg-primary border-primary" : "bg-card border-border"
                       )}
                     >
-                      <Text style={{ fontSize: 15 }}>{getCategoryEmoji(cat.icon)}</Text>
+                      <CategoryIcon iconName={cat.icon} size="sm" />
                       <Text
                         className={cn(
                           "text-sm font-sans-medium",
@@ -551,7 +529,7 @@ export default function EditExpenseScreen() {
                     >
                       <View
                         className={cn(
-                          "w-5 h-5 rounded-full border-2 items-center justify-center",
+                          "w-6 h-6 rounded-full border-2 items-center justify-center",
                           isSelected ? "border-primary bg-primary" : "border-muted-foreground"
                         )}
                       >
@@ -676,7 +654,7 @@ export default function EditExpenseScreen() {
                               }
                               keyboardType="decimal-pad"
                               placeholder="0"
-                              placeholderTextColor="#94a3b8"
+                              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
                               style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: isDark ? "#f1f5f9" : "#0f172a", fontFamily: "Inter_400Regular" }}
                             />
                             <Text className="text-sm text-muted-foreground font-sans pr-2">%</Text>
@@ -694,7 +672,7 @@ export default function EditExpenseScreen() {
                               }
                               keyboardType="decimal-pad"
                               placeholder="0.00"
-                              placeholderTextColor="#94a3b8"
+                              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
                               style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: isDark ? "#f1f5f9" : "#0f172a", fontFamily: "Inter_400Regular" }}
                             />
                           </View>

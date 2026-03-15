@@ -76,6 +76,8 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 
   return (
     <Animated.View
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
       style={{
         opacity,
         transform: [{ translateY }],
@@ -124,7 +126,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         </Pressable>
       )}
       <Pressable onPress={onDismiss} hitSlop={8} style={{ marginLeft: toast.action ? 4 : 0 }}>
-        <X size={16} color="#94a3b8" />
+        <X size={16} color={isDark ? "#64748b" : "#94a3b8"} />
       </Pressable>
     </Animated.View>
   );

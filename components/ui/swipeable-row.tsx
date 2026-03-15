@@ -25,6 +25,8 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
         <Pressable
           onPress={() => { close(); onEdit(); }}
           style={[styles.action, styles.editAction]}
+          accessibilityRole="button"
+          accessibilityLabel="Edit"
         >
           <Pencil size={18} color="#ffffff" />
           <Text style={styles.actionText}>Edit</Text>
@@ -34,6 +36,8 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
         <Pressable
           onPress={() => { close(); onDelete(); }}
           style={[styles.action, styles.deleteAction]}
+          accessibilityRole="button"
+          accessibilityLabel="Delete"
         >
           <Trash2 size={18} color="#ffffff" />
           <Text style={styles.actionText}>Delete</Text>

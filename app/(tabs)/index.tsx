@@ -27,6 +27,8 @@ import {
   Wifi,
   AlertTriangle,
 } from "lucide-react-native";
+import { CategoryIcon } from "@/components/ui/category-icon";
+import { getActivityIcon } from "@/lib/category-icons";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { SkeletonList } from "@/components/ui/skeleton";
@@ -42,37 +44,19 @@ import type { ActivityLogDto } from "@/lib/types";
 
 // Airbnb-style category data
 const CATEGORIES = [
-  { key: "all", label: "All", icon: Zap, emoji: "⚡" },
-  { key: "food", label: "Food", icon: Utensils, emoji: "🍕" },
-  { key: "transport", label: "Transport", icon: Car, emoji: "🚗" },
-  { key: "travel", label: "Travel", icon: Plane, emoji: "✈️" },
-  { key: "home", label: "Home", icon: HomeIcon, emoji: "🏠" },
-  { key: "entertainment", label: "Fun", icon: Gamepad2, emoji: "🎮" },
-  { key: "shopping", label: "Shopping", icon: ShoppingBag, emoji: "🛍️" },
-  { key: "coffee", label: "Coffee", icon: Coffee, emoji: "☕" },
-  { key: "gifts", label: "Gifts", icon: Gift, emoji: "🎁" },
-  { key: "health", label: "Health", icon: Heart, emoji: "❤️" },
-  { key: "work", label: "Work", icon: Briefcase, emoji: "💼" },
-  { key: "utilities", label: "Utilities", icon: Wifi, emoji: "📡" },
+  { key: "all", label: "All", icon: Zap },
+  { key: "food", label: "Food", icon: Utensils },
+  { key: "transport", label: "Transport", icon: Car },
+  { key: "travel", label: "Travel", icon: Plane },
+  { key: "home", label: "Home", icon: HomeIcon },
+  { key: "entertainment", label: "Fun", icon: Gamepad2 },
+  { key: "shopping", label: "Shopping", icon: ShoppingBag },
+  { key: "coffee", label: "Coffee", icon: Coffee },
+  { key: "gifts", label: "Gifts", icon: Gift },
+  { key: "health", label: "Health", icon: Heart },
+  { key: "work", label: "Work", icon: Briefcase },
+  { key: "utilities", label: "Utilities", icon: Wifi },
 ] as const;
-
-// Map activity type or category name to an emoji for activity items
-const ACTIVITY_EMOJI_MAP: Record<string, string> = {
-  expense_created: "💸",
-  expense_updated: "✏️",
-  expense_deleted: "🗑️",
-  member_joined: "👋",
-  member_left: "👋",
-  group_created: "🎉",
-  settlement_created: "🤝",
-  food: "🍕",
-  transport: "🚗",
-  accommodation: "🏠",
-  entertainment: "🎮",
-  shopping: "🛍️",
-  travel: "✈️",
-  other: "📋",
-};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -406,12 +390,9 @@ export default function HomeScreen() {
                     ? { pathname: `/(tabs)/groups/${item.groupId}` as const }
                     : null;
 
-                  // Get emoji for this activity item
+                  // Get icon config for this activity item
                   const categoryName = (item.details?.categoryName ?? item.details?.category) as string | undefined;
-                  const activityEmoji =
-                    ACTIVITY_EMOJI_MAP[categoryName?.toLowerCase() ?? ""] ||
-                    ACTIVITY_EMOJI_MAP[item.activityType] ||
-                    "📋";
+                  const activityIconConfig = getActivityIcon(item.activityType, categoryName);
 
                   return (
                     <Animated.View
@@ -424,9 +405,7 @@ export default function HomeScreen() {
                     >
                       <Card className="p-4">
                         <View className="flex-row items-center gap-3">
-                          <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-                            <Text style={{ fontSize: 20 }}>{activityEmoji}</Text>
-                          </View>
+                          <CategoryIcon config={activityIconConfig} />
                           <View className="flex-1">
                             <Text className="text-sm font-sans-semibold text-card-foreground">
                               {title}

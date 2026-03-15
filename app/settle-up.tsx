@@ -34,7 +34,8 @@ import { invalidateAfterSettlementChange } from "@/lib/query";
 import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
-import { getPaymentMethodLabel, getPaymentMethodEmoji } from "@/lib/screen-helpers";
+import { CategoryIcon } from "@/components/ui/category-icon";
+import { getPaymentMethodIcon, PAYMENT_METHOD_ICON_MAP } from "@/lib/category-icons";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { Confetti } from "@/components/ui/confetti";
 import type {
@@ -44,14 +45,10 @@ import type {
   GroupMemberDto,
 } from "@/lib/types";
 
-const PAYMENT_METHODS = [
-  { key: "cash", label: "Cash", emoji: "💵" },
-  { key: "venmo", label: "Venmo", emoji: "💜" },
-  { key: "zelle", label: "Zelle", emoji: "⚡" },
-  { key: "paypal", label: "PayPal", emoji: "🅿️" },
-  { key: "bank_transfer", label: "Bank", emoji: "🏦" },
-  { key: "other", label: "Other", emoji: "💳" },
-];
+const PAYMENT_METHODS = Object.entries(PAYMENT_METHOD_ICON_MAP).map(([key, config]) => ({
+  key,
+  label: config.label,
+}));
 
 export default function SettleUpScreen() {
   const router = useRouter();
@@ -515,17 +512,14 @@ export default function SettleUpScreen() {
                       s.payerUser?.name ?? s.payerGuest?.name ?? "Someone";
                     const payeeName =
                       s.payeeUser?.name ?? s.payeeGuest?.name ?? "Someone";
+                    const methodConfig = getPaymentMethodIcon(s.paymentMethod);
                     const method = PAYMENT_METHODS.find(
                       (m) => m.key === s.paymentMethod
                     );
                     return (
                       <Card key={s.id} className="p-4">
                         <View className="flex-row items-center gap-3">
-                          <View className="w-10 h-10 rounded-full bg-success/15 items-center justify-center">
-                            <Text style={{ fontSize: 20 }}>
-                              {method?.emoji ?? "💸"}
-                            </Text>
-                          </View>
+                          <CategoryIcon config={methodConfig} />
                           <View className="flex-1">
                             <Text className="text-sm font-sans-semibold text-card-foreground">
                               {payerName} paid {payeeName}
@@ -676,7 +670,7 @@ export default function SettleUpScreen() {
                       : "bg-card border-border"
                   )}
                 >
-                  <Text style={{ fontSize: 14 }}>{m.emoji}</Text>
+                  <CategoryIcon config={getPaymentMethodIcon(m.key)} size="sm" />
                   <Text
                     className={cn(
                       "text-sm font-sans-medium",

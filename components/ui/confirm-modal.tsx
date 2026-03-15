@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, Modal } from "react-native";
+import { View, Text, Pressable, Modal, useColorScheme } from "react-native";
 
 interface ConfirmModalProps {
   visible: boolean;
@@ -22,6 +22,7 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const isDark = useColorScheme() === "dark";
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
       <Pressable
@@ -37,7 +38,7 @@ export function ConfirmModal({
         <Pressable
           onPress={(e) => e.stopPropagation()}
           style={{
-            backgroundColor: "#ffffff",
+            backgroundColor: isDark ? "#1e293b" : "#ffffff",
             borderRadius: 16,
             padding: 24,
             width: "100%",
@@ -49,29 +50,33 @@ export function ConfirmModal({
             elevation: 8,
           }}
         >
-          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0f172a", marginBottom: 8 }}>
+          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a", marginBottom: 8 }}>
             {title}
           </Text>
-          <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", marginBottom: 24, lineHeight: 20 }}>
+          <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b", marginBottom: 24, lineHeight: 20 }}>
             {message}
           </Text>
           <View style={{ flexDirection: "row", gap: 12 }}>
             <Pressable
               onPress={onCancel}
+              accessibilityRole="button"
+              accessibilityLabel={cancelLabel}
               style={{
                 flex: 1,
                 paddingVertical: 12,
                 borderRadius: 10,
-                backgroundColor: "#f1f5f9",
+                backgroundColor: isDark ? "#334155" : "#f1f5f9",
                 alignItems: "center",
               }}
             >
-              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#64748b" }}>
+              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: isDark ? "#94a3b8" : "#64748b" }}>
                 {cancelLabel}
               </Text>
             </Pressable>
             <Pressable
               onPress={onConfirm}
+              accessibilityRole="button"
+              accessibilityLabel={confirmLabel}
               style={{
                 flex: 1,
                 paddingVertical: 12,

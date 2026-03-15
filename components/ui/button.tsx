@@ -83,6 +83,7 @@ export function Button({
           scale.value = withSpring(1, { damping: 8, stiffness: 150 });
           props.onPressOut?.(e);
         }}
+        accessibilityRole="button"
         {...props}
       >
         {loading && (

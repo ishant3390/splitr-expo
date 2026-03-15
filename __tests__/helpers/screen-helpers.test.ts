@@ -1,11 +1,8 @@
 import {
-  getCategoryEmoji,
   initSplitValues,
   calculateEqualSplit,
   validatePercentageSplit,
   validateFixedSplit,
-  getPaymentMethodLabel,
-  getPaymentMethodEmoji,
   dedupeMembers,
   aggregateByPerson,
   aggregateByCategory,
@@ -18,41 +15,6 @@ import {
   formatActivityInvolvement,
 } from "../../lib/screen-helpers";
 import type { ActivityLogDto } from "../../lib/types";
-
-// ---------------------------------------------------------------------------
-// getCategoryEmoji
-// ---------------------------------------------------------------------------
-describe("getCategoryEmoji", () => {
-  it("returns emoji for a known icon name", () => {
-    expect(getCategoryEmoji("restaurant")).toBe("🍕");
-    expect(getCategoryEmoji("coffee")).toBe("☕");
-    expect(getCategoryEmoji("flight")).toBe("✈️");
-    expect(getCategoryEmoji("shopping")).toBe("🛍️");
-    expect(getCategoryEmoji("hotel")).toBe("🏨");
-  });
-
-  it("is case-insensitive for known icons", () => {
-    expect(getCategoryEmoji("RESTAURANT")).toBe("🍕");
-    expect(getCategoryEmoji("Coffee")).toBe("☕");
-    expect(getCategoryEmoji("FLIGHT")).toBe("✈️");
-  });
-
-  it("returns default emoji for undefined/null input", () => {
-    expect(getCategoryEmoji(undefined)).toBe("📋");
-    expect(getCategoryEmoji("")).toBe("📋");
-  });
-
-  it("passes through an already-emoji string", () => {
-    expect(getCategoryEmoji("🎉")).toBe("🎉");
-    expect(getCategoryEmoji("🍕")).toBe("🍕");
-    expect(getCategoryEmoji("💰")).toBe("💰");
-  });
-
-  it("returns default emoji for an unknown icon name", () => {
-    expect(getCategoryEmoji("nonexistent_icon")).toBe("📋");
-    expect(getCategoryEmoji("xyz")).toBe("📋");
-  });
-});
 
 // ---------------------------------------------------------------------------
 // initSplitValues
@@ -229,65 +191,6 @@ describe("validateFixedSplit", () => {
     const result = validateFixedSplit({}, 5000);
     expect(result.valid).toBe(false);
     expect(result.totalFixed).toBe(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// getPaymentMethodLabel
-// ---------------------------------------------------------------------------
-describe("getPaymentMethodLabel", () => {
-  it("returns label and emoji for cash", () => {
-    const result = getPaymentMethodLabel("cash");
-    expect(result).toMatchObject({ label: "Cash", emoji: "💵" });
-  });
-
-  it("returns label and emoji for venmo", () => {
-    const result = getPaymentMethodLabel("venmo");
-    expect(result).toMatchObject({ label: "Venmo", emoji: "💜" });
-  });
-
-  it("returns label and emoji for zelle", () => {
-    const result = getPaymentMethodLabel("zelle");
-    expect(result).toMatchObject({ label: "Zelle", emoji: "⚡" });
-  });
-
-  it("returns label and emoji for paypal", () => {
-    const result = getPaymentMethodLabel("paypal");
-    expect(result).toMatchObject({ label: "PayPal", emoji: "🅿️" });
-  });
-
-  it("returns label and emoji for bank_transfer", () => {
-    const result = getPaymentMethodLabel("bank_transfer");
-    expect(result).toMatchObject({ label: "Bank", emoji: "🏦" });
-  });
-
-  it("returns label and emoji for other", () => {
-    const result = getPaymentMethodLabel("other");
-    expect(result).toMatchObject({ label: "Other", emoji: "💳" });
-  });
-
-  it("returns undefined for unknown key", () => {
-    expect(getPaymentMethodLabel("bitcoin")).toBeUndefined();
-    expect(getPaymentMethodLabel("")).toBeUndefined();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// getPaymentMethodEmoji
-// ---------------------------------------------------------------------------
-describe("getPaymentMethodEmoji", () => {
-  it("returns correct emoji for known keys", () => {
-    expect(getPaymentMethodEmoji("cash")).toBe("💵");
-    expect(getPaymentMethodEmoji("venmo")).toBe("💜");
-    expect(getPaymentMethodEmoji("bank_transfer")).toBe("🏦");
-  });
-
-  it("returns default emoji for unknown key", () => {
-    expect(getPaymentMethodEmoji("bitcoin")).toBe("💳");
-  });
-
-  it("returns default emoji for undefined", () => {
-    expect(getPaymentMethodEmoji(undefined)).toBe("💳");
   });
 });
 

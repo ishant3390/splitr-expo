@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, useColorScheme } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,6 +19,7 @@ interface AccordionItemProps {
 }
 
 export function AccordionItem({ title, children, expanded = false, onToggle }: AccordionItemProps) {
+  const isDark = useColorScheme() === "dark";
   const rotation = useSharedValue(expanded ? 180 : 0);
   const height = useSharedValue(expanded ? 1 : 0);
   const opacity = useSharedValue(expanded ? 1 : 0);
@@ -49,12 +50,14 @@ export function AccordionItem({ title, children, expanded = false, onToggle }: A
       <Pressable
         onPress={handlePress}
         className="flex-row items-center justify-between p-4"
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
       >
         <Text className="flex-1 text-sm font-sans-medium text-card-foreground pr-3">
           {title}
         </Text>
         <Animated.View style={chevronStyle}>
-          <ChevronDown size={18} color="#94a3b8" />
+          <ChevronDown size={18} color={isDark ? "#64748b" : "#94a3b8"} />
         </Animated.View>
       </Pressable>
       <Animated.View style={contentStyle}>

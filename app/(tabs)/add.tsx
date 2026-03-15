@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   InputAccessoryView,
   Keyboard,
+  useColorScheme,
 } from "react-native";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -39,7 +40,8 @@ import { groupsApi, categoriesApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
-import { getCategoryEmoji, initSplitValues as computeSplitValues, dedupeMembers, inferCategoryFromDescription } from "@/lib/screen-helpers";
+import { initSplitValues as computeSplitValues, dedupeMembers, inferCategoryFromDescription } from "@/lib/screen-helpers";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import { useNetwork } from "@/components/NetworkProvider";
 import { addToQueue, generateClientId } from "@/lib/offline";
 import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
@@ -66,6 +68,7 @@ export default function AddExpenseScreen() {
   const { getToken } = useAuth();
   const { user: clerkUser } = useUser();
   const toast = useToast();
+  const isDark = useColorScheme() === "dark";
 
   const [groups, setGroups] = useState<GroupDto[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
@@ -444,7 +447,7 @@ export default function AddExpenseScreen() {
                 }}
                 keyboardType="decimal-pad"
                 placeholder="$0"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
                 className="text-foreground"
                 inputAccessoryViewID="amount-done"
                 style={{
@@ -551,7 +554,7 @@ export default function AddExpenseScreen() {
                         isSelected ? "bg-primary border-primary" : "bg-card border-border"
                       )}
                     >
-                      <Text style={{ fontSize: 15 }}>{getCategoryEmoji(cat.icon)}</Text>
+                      <CategoryIcon iconName={cat.icon} size="sm" />
                       <Text
                         className={cn(
                           "text-sm font-sans-medium",
@@ -661,7 +664,7 @@ export default function AddExpenseScreen() {
                         >
                           <View
                             className={cn(
-                              "w-5 h-5 rounded-full border-2 items-center justify-center",
+                              "w-6 h-6 rounded-full border-2 items-center justify-center",
                               isSelected ? "border-primary bg-primary" : "border-muted-foreground"
                             )}
                           >
@@ -795,7 +798,7 @@ export default function AddExpenseScreen() {
                                   keyboardType="decimal-pad"
                                   inputAccessoryViewID="amount-done"
                                   placeholder="0"
-                                  placeholderTextColor="#94a3b8"
+                                  placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
                                   style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", fontFamily: "Inter_400Regular" }}
                                   className="text-foreground"
                                 />
@@ -815,7 +818,7 @@ export default function AddExpenseScreen() {
                                   keyboardType="decimal-pad"
                                   inputAccessoryViewID="amount-done"
                                   placeholder="0.00"
-                                  placeholderTextColor="#94a3b8"
+                                  placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
                                   style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", fontFamily: "Inter_400Regular" }}
                                   className="text-foreground"
                                 />

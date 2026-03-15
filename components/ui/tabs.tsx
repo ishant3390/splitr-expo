@@ -29,6 +29,8 @@ export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
           <Pressable
             key={tab.id}
             onPress={() => onTabChange(tab.id)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
             style={[
               styles.tab,
               isActive && {

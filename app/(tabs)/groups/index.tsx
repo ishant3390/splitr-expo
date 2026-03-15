@@ -159,7 +159,7 @@ export default function GroupsScreen() {
             onChangeText={setSearchQuery}
             autoFocus
             style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#f1f5f9" : "#0f172a" }}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery("")}>

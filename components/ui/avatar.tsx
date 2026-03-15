@@ -34,6 +34,7 @@ export function Avatar({ src, fallback, size = "md", className }: AvatarProps) {
           style={{ width: s.image, height: s.image }}
           contentFit="cover"
           onError={() => setImageError(true)}
+          accessibilityLabel={`Avatar for ${fallback}`}
         />
       ) : (
         <Text className={clsx("font-sans-semibold text-primary", s.text)}>

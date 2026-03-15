@@ -219,7 +219,7 @@ function TypingDot({ delay: d }: { delay: number }) {
   return (
     <Animated.View
       style={[
-        { width: 8, height: 8, borderRadius: 4, backgroundColor: "#8e8e93" },
+        { width: 8, height: 8, borderRadius: 4, backgroundColor: "#64748b" },
         animStyle,
       ]}
     />
@@ -231,13 +231,13 @@ function TypingDotsIndicator({ label }: { label: string }) {
     <View className="px-4 py-2 items-start">
       <View className="flex-row items-start gap-2">
         <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center mt-1">
-          <Bot size={14} color="#8e8e93" />
+          <Bot size={14} color="#64748b" />
         </View>
         <View>
           {/* iMessage-style typing bubble */}
           <View 
             style={{ 
-              backgroundColor: "#e5e5ea", 
+              backgroundColor: "#f1f5f9",
               borderRadius: 18, 
               paddingHorizontal: 16, 
               paddingVertical: 12,
@@ -313,8 +313,8 @@ function SendButton({
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: enabled
-            ? "#0078fe"
-            : isDark ? "#334155" : "#e5e5ea",
+            ? "#0d9488"
+            : isDark ? "#334155" : "#f1f5f9",
         }}
       >
         <Send size={18} color={enabled ? "#ffffff" : "#94a3b8"} />
@@ -446,7 +446,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
           borderBottomWidth: 8,
           borderBottomColor: "transparent",
           borderLeftWidth: 10,
-          borderLeftColor: "#0078fe",
+          borderLeftColor: "#0d9488",
         }}
       />
     );
@@ -465,7 +465,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
         borderBottomWidth: 8,
         borderBottomColor: "transparent",
         borderRightWidth: 10,
-        borderRightColor: "#e5e5ea",
+        borderRightColor: "#f1f5f9",
       }}
     />
   );
@@ -476,12 +476,12 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
     const getBubbleClasses = () => {
       if (isUser) {
         // iMessage blue for user bubbles
-        const base = "bg-[#0078fe] rounded-2xl";
+        const base = "bg-primary rounded-2xl";
         if (position === "only" || position === "last") return `${base} rounded-br-md`;
         return base;
       }
       // Light gray for assistant bubbles (iMessage style)
-      const base = "bg-[#e5e5ea] rounded-2xl";
+      const base = "bg-muted rounded-2xl";
       if (position === "only" || position === "last") return `${base} rounded-bl-md`;
       return base;
     };
@@ -600,7 +600,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
               >
                 {showAvatar && (
                   <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center">
-                    <Bot size={14} color="#8e8e93" />
+                    <Bot size={14} color="#64748b" />
                   </View>
                 )}
               </View>
@@ -611,7 +611,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                 <View
                   style={{
                     borderLeftWidth: 2,
-                    borderLeftColor: "#0078fe",
+                    borderLeftColor: "#0d9488",
                     paddingLeft: 8,
                     marginBottom: 4,
                     opacity: 0.7,
@@ -621,7 +621,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                     style={{
                       fontSize: 11,
                       fontFamily: "Inter_500Medium",
-                      color: "#0078fe",
+                      color: "#0d9488",
                       marginBottom: 1,
                     }}
                   >
@@ -742,7 +742,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                             <Text
                               key={i}
                               style={{
-                                color: isUser ? "#bbdefb" : "#0078fe",
+                                color: isUser ? "#bbdefb" : "#0d9488",
                                 fontFamily: "Inter_600SemiBold",
                               }}
                             >
@@ -1957,12 +1957,12 @@ export default function ChatScreen() {
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: "rgba(0, 120, 254, 0.1)",
+            backgroundColor: "rgba(13, 148, 136, 0.1)",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Bot size={20} color="#0078fe" />
+          <Bot size={20} color="#0d9488" />
         </View>
         <View className="flex-1">
           <Text className="text-base font-sans-semibold text-foreground">
@@ -2187,7 +2187,7 @@ export default function ChatScreen() {
             <View
               style={{
                 borderLeftWidth: 2,
-                borderLeftColor: "#0078fe",
+                borderLeftColor: "#0d9488",
                 paddingLeft: 8,
                 flex: 1,
               }}
@@ -2196,7 +2196,7 @@ export default function ChatScreen() {
                 style={{
                   fontSize: 11,
                   fontFamily: "Inter_500Medium",
-                  color: "#0078fe",
+                  color: "#0d9488",
                   marginBottom: 1,
                 }}
               >
@@ -2302,7 +2302,7 @@ export default function ChatScreen() {
                       ? "Describe the receipt..."
                       : "Type a message... (@ for people, # for groups)"
               }
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
               multiline
               maxLength={500}
               editable={!isQuotaExceeded && isConnected}

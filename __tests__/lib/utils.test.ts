@@ -6,8 +6,6 @@ import {
   formatCents,
   formatDate,
   getInitials,
-  categoryIconNames,
-  categoryLabels,
 } from "@/lib/utils";
 
 describe("centsToAmount", () => {
@@ -143,20 +141,3 @@ describe("cn", () => {
   });
 });
 
-describe("categoryIconNames", () => {
-  it("has all expected categories", () => {
-    expect(categoryIconNames.food).toBe("Utensils");
-    expect(categoryIconNames.transport).toBe("Car");
-    expect(categoryIconNames.accommodation).toBe("Home");
-    expect(categoryIconNames.entertainment).toBe("Gamepad2");
-    expect(categoryIconNames.shopping).toBe("ShoppingBag");
-    expect(categoryIconNames.other).toBe("MoreHorizontal");
-  });
-});
-
-describe("categoryLabels", () => {
-  it("has human-readable labels", () => {
-    expect(categoryLabels.food).toBe("Food & Drinks");
-    expect(categoryLabels.other).toBe("Other");
-  });
-});

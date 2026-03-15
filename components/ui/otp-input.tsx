@@ -64,6 +64,7 @@ export function OTPInput({ length = 6, value, onChange, className }: OTPInputPro
             keyboardType="number-pad"
             maxLength={index === 0 ? length : 1}
             selectTextOnFocus
+            accessibilityLabel={`Digit ${index + 1} of ${length}`}
             className={clsx(
               "w-12 h-14 rounded-xl text-center text-xl font-sans-bold",
               digit

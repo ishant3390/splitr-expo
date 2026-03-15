@@ -17,11 +17,6 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
   ArrowLeft,
   Plus,
-  Utensils,
-  Car,
-  Home,
-  Gamepad2,
-  ShoppingBag,
   MoreHorizontal,
   UserPlus,
   HandCoins,
@@ -62,17 +57,9 @@ import { dedupeMembers, aggregateByPerson, aggregateByCategory, aggregateByMonth
 import * as Clipboard from "expo-clipboard";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
+import { CategoryIcon } from "@/components/ui/category-icon";
 import { formatActivityTitle } from "@/lib/screen-helpers";
-import type { GroupDto, GroupMemberDto, ExpenseDto, ExpenseCategory, ContactDto, ActivityLogDto } from "@/lib/types";
-
-const iconMap: Record<ExpenseCategory, typeof Utensils> = {
-  food: Utensils,
-  transport: Car,
-  accommodation: Home,
-  entertainment: Gamepad2,
-  shopping: ShoppingBag,
-  other: MoreHorizontal,
-};
+import type { GroupDto, GroupMemberDto, ExpenseDto, ContactDto, ActivityLogDto } from "@/lib/types";
 
 function getInviteUrl(inviteCode: string) {
   return `https://splitr.ai/invite/${inviteCode}`;
@@ -831,7 +818,7 @@ export default function GroupDetailScreen() {
               onChangeText={setSearchQuery}
               autoFocus
               style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#f1f5f9" : "#0f172a" }}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery("")}>
@@ -911,10 +898,7 @@ export default function GroupDetailScreen() {
             {unified.map((item, idx) => {
               if (item.kind === "expense") {
                 const expense = item.data;
-                const categoryKey = (expense.category?.icon ??
-                  expense.category?.name ??
-                  "other") as ExpenseCategory;
-                const Icon = iconMap[categoryKey] ?? MoreHorizontal;
+                const categoryIconName = expense.category?.icon ?? expense.category?.name;
                 const payer = expense.payers?.[0];
                 const payerName = resolvePayerName(payer, members, expense.createdBy);
                 const splitCount = expense.splits?.length ?? 1;
@@ -949,9 +933,7 @@ export default function GroupDetailScreen() {
                   >
                     <Card className="p-4">
                       <View className="flex-row items-center gap-3">
-                        <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-                          <Icon size={20} color="#0d9488" />
-                        </View>
+                        <CategoryIcon iconName={categoryIconName} />
                         <View className="flex-1">
                           <Text className="text-sm font-sans-semibold text-card-foreground">
                             {expense.description}

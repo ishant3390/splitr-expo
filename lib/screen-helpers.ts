@@ -1,26 +1,7 @@
 // Pure helper functions extracted from screen components for testability.
 
-// --- From add.tsx ---
-
-const ICON_TO_EMOJI: Record<string, string> = {
-  restaurant: "🍕", "food_and_drink": "🍔", food: "🍕", fastfood: "🍔",
-  local_cafe: "☕", coffee: "☕", local_bar: "🍺", directions_car: "🚗",
-  transport: "🚗", car: "🚗", flight: "✈️", travel: "✈️", hotel: "🏨",
-  accommodation: "🏠", home: "🏠", house: "🏠", sports_esports: "🎮",
-  entertainment: "🎮", movie: "🎬", theaters: "🎭", shopping_bag: "🛍️",
-  shopping: "🛍️", shopping_cart: "🛒", groceries: "🛒",
-  local_grocery_store: "🛒", receipt: "🧾", payments: "💳", health: "❤️",
-  local_hospital: "🏥", fitness_center: "💪", card_giftcard: "🎁",
-  gifts: "🎁", work: "💼", business: "💼", wifi: "📡", utilities: "📡",
-  electric_bolt: "⚡", water_drop: "💧", pets: "🐾", school: "📚",
-  education: "📚", other: "📋", more_horiz: "📋",
-};
-
-export function getCategoryEmoji(icon?: string): string {
-  if (!icon) return "📋";
-  if (/^\p{Emoji}/u.test(icon)) return icon;
-  return ICON_TO_EMOJI[icon.toLowerCase()] ?? ICON_TO_EMOJI[icon] ?? "📋";
-}
+// Re-export icon utilities from centralized module
+export { getCategoryIcon, getActivityIcon, getPaymentMethodIcon } from "./category-icons";
 
 export type SplitType = "equal" | "percentage" | "fixed";
 
@@ -123,26 +104,6 @@ export function inferCategoryFromDescription(
     }
   }
   return null;
-}
-
-// --- From settle-up.tsx ---
-
-const PAYMENT_METHODS = [
-  { key: "cash", label: "Cash", emoji: "💵" },
-  { key: "venmo", label: "Venmo", emoji: "💜" },
-  { key: "zelle", label: "Zelle", emoji: "⚡" },
-  { key: "paypal", label: "PayPal", emoji: "🅿️" },
-  { key: "bank_transfer", label: "Bank", emoji: "🏦" },
-  { key: "other", label: "Other", emoji: "💳" },
-];
-
-export function getPaymentMethodLabel(key: string): { label: string; emoji: string } | undefined {
-  return PAYMENT_METHODS.find((m) => m.key === key);
-}
-
-export function getPaymentMethodEmoji(key?: string): string {
-  if (!key) return "💳";
-  return PAYMENT_METHODS.find((m) => m.key === key)?.emoji ?? "💳";
 }
 
 // --- From group/[id].tsx ---
