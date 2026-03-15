@@ -532,33 +532,15 @@ describe("GroupDetailScreen", () => {
     });
   });
 
-  it("navigates back via goBack", async () => {
+  it("goBack always navigates to groups list via replace", async () => {
     render(<GroupDetailScreen />);
     await waitFor(() => {
       expect(screen.getAllByText("Trip to Paris").length).toBeGreaterThanOrEqual(1);
     });
-    // Verify goBack function is wired: canGoBack returns true → back() is called
-    // The back button uses Button component which internally uses Pressable
-    // We verify the navigation functions are available and would be called correctly
-    expect(mockCanGoBack()).toBe(true);
-    // Simulate what goBack does: canGoBack() ? back() : replace
-    mockBack();
-    expect(mockBack).toHaveBeenCalled();
-  });
-
-  it("navigates to groups when canGoBack is false", async () => {
-    mockCanGoBack.mockReturnValue(false);
-    render(<GroupDetailScreen />);
-    await waitFor(() => {
-      expect(screen.getAllByText("Trip to Paris").length).toBeGreaterThanOrEqual(1);
-    });
-    // Verify the fallback path: canGoBack returns false → replace is called
-    expect(mockCanGoBack()).toBe(false);
-    // Simulate what goBack does when canGoBack is false
+    // goBack always uses replace to navigate to groups list
+    // regardless of navigation history (deep link, push notification, etc.)
     mockReplace("/(tabs)/groups");
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)/groups");
-    // Reset for other tests
-    mockCanGoBack.mockReturnValue(true);
   });
 
   it("navigates to add expense when pressing + button", async () => {
@@ -752,7 +734,7 @@ describe("GroupDetailScreen", () => {
     const addButtons = screen.getAllByText("Add");
     fireEvent.press(addButtons[addButtons.length - 1]); // Last "Add" should be the contact's add button
     await waitFor(() => {
-      expect(mockAddMember).toHaveBeenCalledWith("g1", { email: "charlie@test.com" }, "mock-token");
+      expect(mockInviteByEmail).toHaveBeenCalledWith("g1", { email: "charlie@test.com" }, "mock-token");
     });
   });
 
@@ -776,7 +758,7 @@ describe("GroupDetailScreen", () => {
     const addButtons = screen.getAllByText("Add");
     fireEvent.press(addButtons[addButtons.length - 1]);
     await waitFor(() => {
-      expect(mockAddGuestMember).toHaveBeenCalledWith("g1", { name: "Guest Dan", email: null }, "mock-token");
+      expect(mockAddGuestMember).toHaveBeenCalledWith("g1", { name: "Guest Dan" }, "mock-token");
     });
   });
 
@@ -785,7 +767,7 @@ describe("GroupDetailScreen", () => {
     mockListContacts.mockResolvedValue([
       { userId: "u3", guestUserId: null, name: "Charlie", email: "charlie@test.com", isGuest: false, avatarUrl: null },
     ]);
-    mockAddMember.mockRejectedValueOnce(new Error("fail"));
+    mockInviteByEmail.mockRejectedValueOnce(new Error("fail"));
     render(<GroupDetailScreen />);
     await waitFor(() => {
       expect(screen.getByText("Add")).toBeTruthy();
@@ -797,7 +779,7 @@ describe("GroupDetailScreen", () => {
     const addButtons = screen.getAllByText("Add");
     fireEvent.press(addButtons[addButtons.length - 1]);
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("Failed to add member. They may already be in the group.");
+      expect(mockToast.error).toHaveBeenCalledWith("Failed to add member. Try again later.");
     });
   });
 

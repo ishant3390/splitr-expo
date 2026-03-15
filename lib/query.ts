@@ -125,6 +125,7 @@ export function invalidateAfterSettlementChange(groupId: string) {
 export function invalidateAfterGroupChange() {
   queryClient.invalidateQueries({ queryKey: ["groups"] });
   queryClient.invalidateQueries({ queryKey: queryKeys.userBalance });
+  queryClient.invalidateQueries({ queryKey: queryKeys.userActivity });
 }
 
 /**
@@ -136,6 +137,7 @@ export function invalidateAfterMemberChange(groupId: string) {
   queryClient.invalidateQueries({ queryKey: queryKeys.group(groupId) });
   queryClient.invalidateQueries({ queryKey: queryKeys.userBalance });
   queryClient.invalidateQueries({ queryKey: queryKeys.contacts });
+  queryClient.invalidateQueries({ queryKey: queryKeys.userActivity });
 }
 
 /**

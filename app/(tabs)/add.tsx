@@ -19,7 +19,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
-  ScanLine,
   ChevronDown,
   Plus,
   Check,

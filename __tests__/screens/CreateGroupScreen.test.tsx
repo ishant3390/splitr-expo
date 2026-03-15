@@ -36,7 +36,6 @@ const mockCreate = jest.fn(() =>
     inviteCode: "abc123",
   })
 );
-const mockAddGuestMember = jest.fn(() => Promise.resolve({}));
 
 jest.mock("@/lib/api", () => ({
   usersApi: {
@@ -44,7 +43,6 @@ jest.mock("@/lib/api", () => ({
   },
   groupsApi: {
     create: (...args: any[]) => mockCreate(...args),
-    addGuestMember: (...args: any[]) => mockAddGuestMember(...args),
   },
 }));
 
@@ -84,11 +82,14 @@ describe("CreateGroupScreen", () => {
     });
   });
 
-  it("renders Add People section", async () => {
+  it("does not render Add People section", async () => {
     render(<CreateGroupScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Add People")).toBeTruthy();
+      expect(screen.getByText("New Group")).toBeTruthy();
     });
+    expect(screen.queryByText("Add People")).toBeNull();
+    expect(screen.queryByPlaceholderText("Name (e.g., Alex)")).toBeNull();
+    expect(screen.queryByPlaceholderText("Email (optional)")).toBeNull();
   });
 
   it("renders Create Group button", async () => {
@@ -143,103 +144,12 @@ describe("CreateGroupScreen", () => {
     // Should show emoji picker grid
   });
 
-  it("adds a member by name", async () => {
-    render(<CreateGroupScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Add People")).toBeTruthy();
-    });
-    const nameInput = screen.getByPlaceholderText("Name (e.g., Alex)");
-    fireEvent.changeText(nameInput, "Charlie");
-    fireEvent.press(screen.getByText("Add"));
-    await waitFor(() => {
-      expect(screen.getByText("Charlie")).toBeTruthy();
-    });
-  });
-
-  it("prevents adding duplicate member names", async () => {
-    render(<CreateGroupScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Add People")).toBeTruthy();
-    });
-    const nameInput = screen.getByPlaceholderText("Name (e.g., Alex)");
-    fireEvent.changeText(nameInput, "Charlie");
-    fireEvent.press(screen.getByText("Add"));
-    await waitFor(() => {
-      expect(screen.getByText("Charlie")).toBeTruthy();
-    });
-    fireEvent.changeText(nameInput, "Charlie");
-    fireEvent.press(screen.getByText("Add"));
-    expect(mockToast.error).toHaveBeenCalledWith("This person has already been added.");
-  });
-
-  it("validates empty member name", async () => {
-    render(<CreateGroupScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Add People")).toBeTruthy();
-    });
-    const nameInput = screen.getByPlaceholderText("Name (e.g., Alex)");
-    fireEvent.changeText(nameInput, "");
-    // The Add button should be disabled when name is empty
-    // But clicking anyway...
-    const emailInput = screen.getByPlaceholderText("Email (optional)");
-    fireEvent(emailInput, "submitEditing");
-    expect(mockToast.error).toHaveBeenCalledWith("Please enter a name.");
-  });
-
-  it("validates invalid email format", async () => {
-    render(<CreateGroupScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Add People")).toBeTruthy();
-    });
-    const nameInput = screen.getByPlaceholderText("Name (e.g., Alex)");
-    fireEvent.changeText(nameInput, "Dave");
-    const emailInput = screen.getByPlaceholderText("Email (optional)");
-    fireEvent.changeText(emailInput, "not-an-email");
-    fireEvent.press(screen.getByText("Add"));
-    expect(mockToast.error).toHaveBeenCalledWith("Please enter a valid email address.");
-  });
-
-  it("adds member with valid email", async () => {
-    render(<CreateGroupScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Add People")).toBeTruthy();
-    });
-    const nameInput = screen.getByPlaceholderText("Name (e.g., Alex)");
-    fireEvent.changeText(nameInput, "Eve");
-    const emailInput = screen.getByPlaceholderText("Email (optional)");
-    fireEvent.changeText(emailInput, "eve@test.com");
-    fireEvent.press(screen.getByText("Add"));
-    await waitFor(() => {
-      expect(screen.getByText("Eve")).toBeTruthy();
-      expect(screen.getByText("eve@test.com")).toBeTruthy();
-    });
-  });
-
-  it("removes a member", async () => {
-    render(<CreateGroupScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Add People")).toBeTruthy();
-    });
-    const nameInput = screen.getByPlaceholderText("Name (e.g., Alex)");
-    fireEvent.changeText(nameInput, "Frank");
-    fireEvent.press(screen.getByText("Add"));
-    await waitFor(() => {
-      expect(screen.getByText("Frank")).toBeTruthy();
-    });
-    // The X button is next to each member
-    // Find all pressable elements - the close button should be there
-    // The member row has an X button
-  });
-
   it("validates empty group name on create", async () => {
     render(<CreateGroupScreen />);
     await waitFor(() => {
       expect(screen.getByText("Create Group")).toBeTruthy();
     });
-    // Both Create buttons are disabled when name is empty, so we type a space and clear it
-    // Actually the button is disabled={!groupName.trim()}, so we can't click it
-    // The validation toast fires inside handleCreate, but button is disabled
-    // Instead, verify the button is present but not clickable (disabled state)
+    // The button is disabled={!groupName.trim()}, so we verify it's present
     expect(screen.getByText("Create Group")).toBeTruthy();
   });
 
@@ -248,7 +158,6 @@ describe("CreateGroupScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Create")).toBeTruthy();
     });
-    // Type group name
     const nameInput = screen.getAllByPlaceholderText(/e\.g\.,/)[0];
     fireEvent.changeText(nameInput, "Beach Trip");
     fireEvent.press(screen.getByText("Create"));
@@ -256,33 +165,10 @@ describe("CreateGroupScreen", () => {
       expect(mockCreate).toHaveBeenCalled();
       expect(mockToast.success).toHaveBeenCalledWith('"Beach Trip" created!');
     });
-    // Share sheet should be visible
     await waitFor(() => {
       expect(screen.getByText("Group Created!")).toBeTruthy();
       expect(screen.getByText("Share Invite Link")).toBeTruthy();
       expect(screen.getByText("Go to Group")).toBeTruthy();
-    });
-  });
-
-  it("creates group with members", async () => {
-    render(<CreateGroupScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Add People")).toBeTruthy();
-    });
-    // Add a member
-    const nameInput = screen.getByPlaceholderText("Name (e.g., Alex)");
-    fireEvent.changeText(nameInput, "Grace");
-    fireEvent.press(screen.getByText("Add"));
-    await waitFor(() => {
-      expect(screen.getByText("Grace")).toBeTruthy();
-    });
-    // Type group name and create
-    const groupNameInput = screen.getAllByPlaceholderText(/e\.g\.,/)[0];
-    fireEvent.changeText(groupNameInput, "Hiking Crew");
-    fireEvent.press(screen.getByText("Create"));
-    await waitFor(() => {
-      expect(mockCreate).toHaveBeenCalled();
-      expect(mockAddGuestMember).toHaveBeenCalledWith("g1", { name: "Grace" }, "mock-token");
     });
   });
 
@@ -306,9 +192,7 @@ describe("CreateGroupScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Group Created!")).toBeTruthy();
     });
-    // Invite link should be visible
     expect(screen.getByText("https://splitr.ai/invite/abc123")).toBeTruthy();
-    // Tap to copy
     fireEvent.press(screen.getByText("https://splitr.ai/invite/abc123"));
     await waitFor(() => {
       expect(Clipboard.setStringAsync).toHaveBeenCalledWith("https://splitr.ai/invite/abc123");
@@ -325,7 +209,6 @@ describe("CreateGroupScreen", () => {
     });
     expect(screen.getByText("Show QR Code")).toBeTruthy();
     fireEvent.press(screen.getByText("Show QR Code"));
-    // QR code should be shown (mocked as "QRCode" string component)
   });
 
   it("dismisses share sheet and navigates to group", async () => {
@@ -342,7 +225,6 @@ describe("CreateGroupScreen", () => {
 
   it("navigates back via goBack", async () => {
     render(<CreateGroupScreen />);
-    // Verify goBack navigates back when canGoBack is true
     expect(mockCanGoBack()).toBe(true);
     mockBack();
     expect(mockBack).toHaveBeenCalled();
@@ -351,7 +233,6 @@ describe("CreateGroupScreen", () => {
   it("navigates to groups when canGoBack is false", async () => {
     mockCanGoBack.mockReturnValueOnce(false);
     render(<CreateGroupScreen />);
-    // Verify fallback: when canGoBack is false, replace to groups
     expect(mockCanGoBack()).toBe(false);
     mockReplace("/(tabs)/groups");
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)/groups");
@@ -373,34 +254,6 @@ describe("CreateGroupScreen", () => {
     fireEvent.press(screen.getByText("Home"));
     await waitFor(() => {
       expect(screen.getByPlaceholderText("e.g., Apartment 4B")).toBeTruthy();
-    });
-  });
-
-  it("creates group with member that has email and sends addGuestMember with email", async () => {
-    render(<CreateGroupScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Add People")).toBeTruthy();
-    });
-    // Add member with email
-    const nameInput = screen.getByPlaceholderText("Name (e.g., Alex)");
-    fireEvent.changeText(nameInput, "Hank");
-    const emailInput = screen.getByPlaceholderText("Email (optional)");
-    fireEvent.changeText(emailInput, "hank@test.com");
-    fireEvent.press(screen.getByText("Add"));
-    await waitFor(() => {
-      expect(screen.getByText("Hank")).toBeTruthy();
-      expect(screen.getByText("hank@test.com")).toBeTruthy();
-    });
-    // Create group
-    const groupNameInput = screen.getAllByPlaceholderText(/e\.g\.,/)[0];
-    fireEvent.changeText(groupNameInput, "Email Test");
-    fireEvent.press(screen.getByText("Create"));
-    await waitFor(() => {
-      expect(mockAddGuestMember).toHaveBeenCalledWith(
-        "g1",
-        { name: "Hank", email: "hank@test.com" },
-        "mock-token"
-      );
     });
   });
 
@@ -430,7 +283,6 @@ describe("CreateGroupScreen", () => {
       expect(screen.getByText("Show QR Code")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Show QR Code"));
-    // QR code is now visible (mocked as "QRCode"), Show QR Code button disappears
     await waitFor(() => {
       expect(screen.queryByText("Show QR Code")).toBeNull();
     });

@@ -231,8 +231,11 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               canPreventDefault: true,
             });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+            if (!event.defaultPrevented) {
+              // Always reset nested stacks to their root screen
+              // - Switching tabs: shows the tab's root, not a stale detail screen
+              // - Tapping active tab: pops back to root (standard iOS/Android pattern)
+              navigation.navigate(route.name, { screen: "index" });
             }
           };
 

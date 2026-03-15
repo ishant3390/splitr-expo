@@ -7,6 +7,7 @@ import {
   Sandwich,
   IceCream,
   Car,
+  CarTaxiFront,
   Bus,
   Plane,
   Train,
@@ -43,11 +44,15 @@ import {
   PawPrint,
   GraduationCap,
   BookOpen,
+  Shirt,
+  Repeat,
+  ShieldCheck,
   Pencil,
   MoreHorizontal,
   PlusCircle,
   Trash2,
   UserPlus,
+  UserMinus,
   Handshake,
   Users,
   Banknote,
@@ -96,6 +101,10 @@ export const CATEGORY_ICON_MAP: Record<string, CategoryIconConfig> = {
   gas:              { icon: Fuel,         color: "#2563eb", bg: "#dbeafe", darkBg: "#172554", label: "Gas" },
   fuel:             { icon: Fuel,         color: "#2563eb", bg: "#dbeafe", darkBg: "#172554", label: "Fuel" },
   parking:          { icon: ParkingCircle, color: "#2563eb", bg: "#dbeafe", darkBg: "#172554", label: "Parking" },
+  taxi:             { icon: CarTaxiFront, color: "#2563eb", bg: "#dbeafe", darkBg: "#172554", label: "Taxi" },
+  rideshare:        { icon: CarTaxiFront, color: "#2563eb", bg: "#dbeafe", darkBg: "#172554", label: "Rideshare" },
+  uber:             { icon: CarTaxiFront, color: "#2563eb", bg: "#dbeafe", darkBg: "#172554", label: "Uber" },
+  lyft:             { icon: CarTaxiFront, color: "#2563eb", bg: "#dbeafe", darkBg: "#172554", label: "Lyft" },
 
   // Home (violet)
   accommodation:    { icon: Home,         color: "#7c3aed", bg: "#ede9fe", darkBg: "#2e1065", label: "Accommodation" },
@@ -132,6 +141,8 @@ export const CATEGORY_ICON_MAP: Record<string, CategoryIconConfig> = {
   receipt:          { icon: Receipt,      color: "#059669", bg: "#d1fae5", darkBg: "#022c22", label: "Receipt" },
   investment:       { icon: TrendingUp,   color: "#059669", bg: "#d1fae5", darkBg: "#022c22", label: "Investment" },
   savings:          { icon: PiggyBank,    color: "#059669", bg: "#d1fae5", darkBg: "#022c22", label: "Savings" },
+  subscription:     { icon: Repeat,       color: "#059669", bg: "#d1fae5", darkBg: "#022c22", label: "Subscription" },
+  insurance:        { icon: ShieldCheck,  color: "#059669", bg: "#d1fae5", darkBg: "#022c22", label: "Insurance" },
 
   // Work (slate)
   work:             { icon: Briefcase,    color: "#475569", bg: "#f1f5f9", darkBg: "#1e293b", label: "Work" },
@@ -150,6 +161,9 @@ export const CATEGORY_ICON_MAP: Record<string, CategoryIconConfig> = {
   electric_bolt:    { icon: Zap,          color: "#0284c7", bg: "#e0f2fe", darkBg: "#082f49", label: "Electric" },
   water_drop:       { icon: Droplets,     color: "#0284c7", bg: "#e0f2fe", darkBg: "#082f49", label: "Water" },
   phone:            { icon: Phone,        color: "#0284c7", bg: "#e0f2fe", darkBg: "#082f49", label: "Phone" },
+
+  // Household (indigo)
+  laundry:          { icon: Shirt,        color: "#4f46e5", bg: "#e0e7ff", darkBg: "#1e1b4b", label: "Laundry" },
 
   // Pets (purple)
   pets:             { icon: PawPrint,     color: "#9333ea", bg: "#f3e8ff", darkBg: "#3b0764", label: "Pets" },
@@ -201,6 +215,8 @@ export const ACTIVITY_ICON_MAP: Record<string, CategoryIconConfig> = {
   expense_updated:    { icon: Pencil,      color: "#f59e0b", bg: "#fef3c7", label: "Updated" },
   expense_deleted:    { icon: Trash2,      color: "#ef4444", bg: "#fee2e2", label: "Deleted" },
   member_joined:      { icon: UserPlus,    color: "#8b5cf6", bg: "#ede9fe", label: "Joined" },
+  member_removed:     { icon: UserMinus,   color: "#ef4444", bg: "#fee2e2", label: "Removed" },
+  member_left:        { icon: UserMinus,   color: "#ef4444", bg: "#fee2e2", label: "Left" },
   settlement_created: { icon: Handshake,   color: "#059669", bg: "#d1fae5", label: "Settled" },
   group_created:      { icon: Users,       color: "#2563eb", bg: "#dbeafe", label: "Created" },
 };

@@ -863,12 +863,48 @@ describe("formatActivityTitle", () => {
     expect(formatActivityTitle(a, "me")).toBe("Frank: Group updated");
   });
 
-  it("returns 'You: ...' for unknown type when current user is actor", () => {
+  it("returns 'You left' for member_left when current user is actor", () => {
     const a = makeActivity({
       activityType: "member_left",
       actorUserId: "me",
+      groupName: "Beach Trip",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You: Member left");
+    expect(formatActivityTitle(a, "me")).toBe("You left Beach Trip");
+  });
+
+  it("returns 'You removed {name}' for member_removed with details", () => {
+    const a = makeActivity({
+      activityType: "member_removed",
+      actorUserId: "me",
+      details: { removedMemberName: "Charlie" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You removed Charlie");
+  });
+
+  it("returns 'Someone removed a member' when member_removed has no details", () => {
+    const a = makeActivity({
+      activityType: "member_removed",
+      actorUserName: "Alice",
+      actorUserId: "u9",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Alice removed a member");
+  });
+
+  it("falls back to targetUserName in member_removed details", () => {
+    const a = makeActivity({
+      activityType: "member_removed",
+      actorUserId: "me",
+      details: { targetUserName: "Dan" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You removed Dan");
+  });
+
+  it("returns 'You: ...' for truly unknown activity type", () => {
+    const a = makeActivity({
+      activityType: "group_updated",
+      actorUserId: "me",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You: Group updated");
   });
 
   // Actor name fallbacks

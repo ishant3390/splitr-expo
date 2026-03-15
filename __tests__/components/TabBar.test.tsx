@@ -96,16 +96,16 @@ describe("TabBar", () => {
     );
   });
 
-  it("navigates to tab route when not already focused", () => {
+  it("navigates to tab route with screen reset when not already focused", () => {
     render(<TabBar {...createMockProps(0)} />);
     fireEvent.press(screen.getByLabelText("Groups"));
-    expect(mockNavigate).toHaveBeenCalledWith("groups");
+    expect(mockNavigate).toHaveBeenCalledWith("groups", { screen: "index" });
   });
 
-  it("does not navigate when tab is already focused", () => {
+  it("resets to root when tapping already focused tab", () => {
     render(<TabBar {...createMockProps(0)} />);
     fireEvent.press(screen.getByLabelText("Home"));
-    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith("index", { screen: "index" });
   });
 
   it("does not navigate when event default is prevented", () => {

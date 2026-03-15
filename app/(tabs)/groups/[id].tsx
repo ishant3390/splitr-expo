@@ -67,7 +67,7 @@ function getInviteUrl(inviteCode: string) {
 
 export default function GroupDetailScreen() {
   const router = useRouter();
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/groups"));
+  const goBack = () => router.replace("/(tabs)/groups");
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getToken } = useAuth();
   const { user: clerkUser } = useUser();
@@ -303,22 +303,33 @@ export default function GroupDetailScreen() {
     setAddingMember(true);
     try {
       const token = await getToken();
-      if (contact.userId && contact.email) {
-        await groupsApi.addMember(id, { email: contact.email }, token!);
+      if (contact.email) {
+        // Use invite endpoint so the backend sends an email notification
+        await groupsApi.inviteByEmail(id, { email: contact.email }, token!);
       } else {
         await groupsApi.addGuestMember(
           id,
-          { name: contact.name, email: contact.email },
+          { name: contact.name },
           token!
         );
       }
       hapticSuccess();
-      toast.success(`${contact.name} added to group.`);
+      toast.success(
+        contact.email
+          ? `Invite sent to ${contact.name}.`
+          : `${contact.name} added to group.`
+      );
       setShowAddMember(false);
       const updated = await groupsApi.listMembers(id, token!);
       setMembers(dedupeMembers(updated));
-    } catch {
-      toast.error("Failed to add member. They may already be in the group.");
+    } catch (err: unknown) {
+      hapticError();
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("409") || msg.includes("ERR-409") || msg.includes("INVITE_ALREADY_MEMBER")) {
+        toast.error("This person is already in the group.");
+      } else {
+        toast.error("Failed to add member. Try again later.");
+      }
     } finally {
       setAddingMember(false);
     }

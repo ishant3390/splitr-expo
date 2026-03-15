@@ -126,10 +126,20 @@ export function useUserActivity() {
     staleTime: staleTimes.activity,
   });
 
+  // Flatten pages and deduplicate by ID to prevent duplicate entries
+  const data = useMemo(() => {
+    const flat = query.data?.pages.flat() ?? [];
+    const seen = new Set<string>();
+    return flat.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [query.data?.pages]);
+
   return {
     ...query,
-    // Flatten pages into a single array for easy consumption
-    data: query.data?.pages.flat() ?? [],
+    data,
   };
 }
 

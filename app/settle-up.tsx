@@ -14,7 +14,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import {
   ArrowLeft,
   ArrowRight,
-  Bell,
+  BellRing,
   Check,
   HandCoins,
   History,
@@ -463,7 +463,7 @@ export default function SettleUpScreen() {
                                 opacity: nudgingUserId === s.fromUser.id ? 0.5 : 1,
                               }}
                             >
-                              <Bell
+                              <BellRing
                                 size={14}
                                 color={nudgedUserIds.has(s.fromUser.id) ? "#94a3b8" : "#f59e0b"}
                               />

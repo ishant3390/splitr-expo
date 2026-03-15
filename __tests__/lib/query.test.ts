@@ -126,7 +126,8 @@ describe("invalidation helpers", () => {
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["groups"] });
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userBalance });
-      expect(invalidateSpy).toHaveBeenCalledTimes(2);
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userActivity });
+      expect(invalidateSpy).toHaveBeenCalledTimes(3);
     });
   });
 
@@ -138,7 +139,8 @@ describe("invalidation helpers", () => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.group("g3") });
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userBalance });
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.contacts });
-      expect(invalidateSpy).toHaveBeenCalledTimes(4);
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.userActivity });
+      expect(invalidateSpy).toHaveBeenCalledTimes(5);
     });
   });
 

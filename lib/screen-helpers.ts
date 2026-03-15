@@ -216,6 +216,8 @@ const ACTIVITY_VERB_MAP: Record<string, string> = {
   expense_deleted: "deleted",
   settlement_created: "settled up",
   member_joined: "joined",
+  member_removed: "removed",
+  member_left: "left",
   group_created: "created",
 };
 
@@ -253,6 +255,16 @@ export function formatActivityTitle(
       return `${actorName} ${verb}`;
     case "member_joined":
       return `${actorName} ${verb} ${activity.groupName ?? ""}`.trim();
+    case "member_removed": {
+      const removedName =
+        (activity.details?.removedMemberName as string) ??
+        (activity.details?.targetUserName as string) ??
+        (activity.details?.memberName as string) ??
+        "a member";
+      return `${actorName} ${verb} ${removedName}`;
+    }
+    case "member_left":
+      return `${actorName} ${verb} ${activity.groupName ?? "the group"}`;
     case "group_created":
       return `${actorName} ${verb} ${activity.groupName ?? ""}`.trim();
     default:

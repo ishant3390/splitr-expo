@@ -25,7 +25,7 @@ import {
   ArrowLeft,
   Camera,
   ImageIcon,
-  ScanLine,
+  ScanText,
   RotateCcw,
   CheckCircle2,
   AlertTriangle,
@@ -263,7 +263,7 @@ export default function ReceiptScannerScreen() {
         <View className="flex-1 items-center justify-center px-5 gap-6">
           <Animated.View entering={FadeInDown.delay(100).duration(400).springify()}>
             <View className="w-24 h-24 rounded-3xl bg-primary/10 items-center justify-center">
-              <ScanLine size={48} color="#0d9488" />
+              <ScanText size={48} color="#0d9488" />
             </View>
           </Animated.View>
 
