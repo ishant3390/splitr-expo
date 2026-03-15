@@ -710,7 +710,7 @@ describe("GroupDetailScreen", () => {
     });
     fireEvent.press(screen.getByText("Group Notifications"));
     await waitFor(() => {
-      expect(mockToast.show).toHaveBeenCalledWith("Failed to update notification preference", "error");
+      expect(mockToast.error).toHaveBeenCalledWith("Failed to update notification preference");
     });
   });
 
@@ -1331,10 +1331,7 @@ describe("GroupDetailScreen", () => {
     });
     fireEvent.press(screen.getByText("Simplify debts"));
     await waitFor(() => {
-      expect(mockToast.show).toHaveBeenCalledWith(
-        "Failed to update simplify debts setting",
-        "error"
-      );
+      expect(mockToast.error).toHaveBeenCalledWith("Failed to update simplify debts setting");
     });
   });
 });

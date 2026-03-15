@@ -164,9 +164,7 @@ export default function ActivityScreen() {
             const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
             const involvement = formatActivityInvolvement(item);
 
-            const destination = item.expenseId
-              ? { pathname: `/edit-expense/${item.expenseId}` as const, params: { groupId: item.groupId } }
-              : item.groupId
+            const destination = item.groupId
               ? { pathname: `/(tabs)/groups/${item.groupId}` as const }
               : null;
 
