@@ -225,7 +225,7 @@ export default function GroupDetailScreen() {
     } catch {
       setGroupNotificationsEnabled(!newValue); // revert
       hapticWarning();
-      toast.show("Failed to update notification preference", "error");
+      toast.error("Failed to update notification preference");
     } finally {
       setTogglingNotifications(false);
     }
@@ -242,11 +242,11 @@ export default function GroupDetailScreen() {
       await groupsApi.update(id, { simplifyDebts: newValue, version: group.version }, token!);
       invalidateAfterGroupChange();
       hapticSuccess();
-      toast.show(newValue ? "Debt simplification enabled" : "Debt simplification disabled");
+      toast.success(newValue ? "Debt simplification enabled" : "Debt simplification disabled");
     } catch {
       setGroup((prev) => prev ? { ...prev, simplifyDebts: !newValue } : prev);
       hapticError();
-      toast.show("Failed to update simplify debts setting", "error");
+      toast.error("Failed to update simplify debts setting");
     } finally {
       setTogglingSimplify(false);
     }
