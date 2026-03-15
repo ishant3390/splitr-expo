@@ -236,10 +236,12 @@ export default function GroupDetailScreen() {
     if (!group) return;
     setTogglingSimplify(true);
     const newValue = !(group.simplifyDebts ?? false);
+    const oldVersion = group.version;
     setGroup((prev) => prev ? { ...prev, simplifyDebts: newValue } : prev);
     try {
       const token = await getToken();
-      await groupsApi.update(id, { simplifyDebts: newValue, version: group.version }, token!);
+      await groupsApi.update(id, { simplifyDebts: newValue, version: oldVersion }, token!);
+      setGroup((prev) => prev ? { ...prev, version: (prev.version ?? 0) + 1 } : prev);
       invalidateAfterGroupChange();
       hapticSuccess();
       toast.success(newValue ? "Debt simplification enabled" : "Debt simplification disabled");

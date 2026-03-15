@@ -44,6 +44,14 @@ type SplitType = "equal" | "percentage" | "fixed";
 
 export default function EditExpenseScreen() {
   const router = useRouter();
+
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)");
+    }
+  };
   const isDark = useColorScheme() === "dark";
   const params = useLocalSearchParams<{ id: string; groupId: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -352,7 +360,7 @@ export default function EditExpenseScreen() {
       await expensesApi.update(id, updateRequest, token!);
       hapticSuccess();
       toast.success("Expense updated.");
-      router.back();
+      goBack();
     } catch (err) {
       console.error("Update expense error:", err);
       hapticError();
@@ -380,7 +388,7 @@ export default function EditExpenseScreen() {
       const token = await getToken();
       await expensesApi.delete(id, token!);
       toast.success("Expense deleted.");
-      router.back();
+      goBack();
     } catch {
       toast.error("Failed to delete expense.");
     } finally {
@@ -412,7 +420,7 @@ export default function EditExpenseScreen() {
       >
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-          <Button variant="ghost" size="icon" onPress={() => router.back()}>
+          <Button variant="ghost" size="icon" onPress={() => goBack()}>
             <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
           </Button>
           <Text className="text-lg font-sans-semibold text-foreground">Edit Expense</Text>
