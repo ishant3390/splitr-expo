@@ -37,6 +37,7 @@ import {
   Archive,
   RotateCcw,
   Trash2,
+  GitMerge,
 } from "lucide-react-native";
 import QRCode from "react-native-qrcode-svg";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -49,6 +50,7 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { groupsApi, contactsApi, inviteApi, expensesApi } from "@/lib/api";
 import { useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
+import { invalidateAfterGroupChange } from "@/lib/query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -132,6 +134,9 @@ export default function GroupDetailScreen() {
   // Notification toggle for current user in this group
   const [groupNotificationsEnabled, setGroupNotificationsEnabled] = useState(true);
   const [togglingNotifications, setTogglingNotifications] = useState(false);
+
+  // Simplify debts toggle
+  const [togglingSimplify, setTogglingSimplify] = useState(false);
 
   const loadData = async () => {
     try {
@@ -222,6 +227,27 @@ export default function GroupDetailScreen() {
       toast.show("Failed to update notification preference", "error");
     } finally {
       setTogglingNotifications(false);
+    }
+  };
+
+  // Toggle simplify debts for this group
+  const toggleSimplifyDebts = async () => {
+    if (!group) return;
+    setTogglingSimplify(true);
+    const newValue = !(group.simplifyDebts ?? false);
+    setGroup((prev) => prev ? { ...prev, simplifyDebts: newValue } : prev);
+    try {
+      const token = await getToken();
+      await groupsApi.update(id, { simplifyDebts: newValue, version: group.version }, token!);
+      invalidateAfterGroupChange();
+      hapticSuccess();
+      toast.show(newValue ? "Debt simplification enabled" : "Debt simplification disabled");
+    } catch {
+      setGroup((prev) => prev ? { ...prev, simplifyDebts: !newValue } : prev);
+      hapticError();
+      toast.show("Failed to update simplify debts setting", "error");
+    } finally {
+      setTogglingSimplify(false);
     }
   };
 
@@ -684,6 +710,45 @@ export default function GroupDetailScreen() {
             </View>
           </Card>
         </Pressable>
+
+        {/* Simplify debts toggle */}
+        {!isArchived && (
+          <Pressable onPress={toggleSimplifyDebts} disabled={togglingSimplify} className="mb-4">
+            <Card className="p-4 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-3">
+                <GitMerge size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+                <View>
+                  <Text className="text-sm font-sans-medium text-foreground">
+                    Simplify debts
+                  </Text>
+                  <Text className="text-xs text-muted-foreground font-sans">
+                    Reduces the number of transactions needed to settle up
+                  </Text>
+                </View>
+              </View>
+              <View
+                style={{
+                  width: 44,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: (group?.simplifyDebts ?? false) ? "#0d9488" : (isDark ? "#334155" : "#cbd5e1"),
+                  justifyContent: "center",
+                  paddingHorizontal: 2,
+                }}
+              >
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    backgroundColor: "#ffffff",
+                    alignSelf: (group?.simplifyDebts ?? false) ? "flex-end" : "flex-start",
+                  }}
+                />
+              </View>
+            </Card>
+          </Pressable>
+        )}
 
         {/* Insights */}
         {expenses.length > 0 && (

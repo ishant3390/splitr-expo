@@ -202,6 +202,7 @@ jest.mock("expo-linear-gradient", () => {
 // Mock @react-navigation/native
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: (cb: () => void) => cb(),
+  useIsFocused: () => true,
 }));
 
 // Mock expo-notifications

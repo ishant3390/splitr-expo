@@ -239,19 +239,7 @@ test.describe("AI Chat — Split Assistant", () => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
   });
 
-  test("can navigate to chat from Home quick-action button", async ({ page }) => {
-    // Navigate via the Home button back to home, then use the Chat quick-action
-    await page.getByRole("button", { name: "Go to home" }).click();
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 15000 });
-
-    // Chat quick-action button on the home screen
-    await expect(page.getByText("Chat")).toBeVisible({ timeout: 10000 });
-    await page.getByText("Chat").click();
-
-    await expect(page.getByText("Split Assistant")).toBeVisible({
-      timeout: 15000,
-    });
-  });
+  // Chat quick-action removed from Home (AI Chat deferred to post-MVP)
 
   // ── Input state ───────────────────────────────────────────────────────────
 

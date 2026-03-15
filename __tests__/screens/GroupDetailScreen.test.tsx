@@ -69,6 +69,7 @@ const mockAddGuestMember = jest.fn(() => Promise.resolve({}));
 const mockRemoveMember = jest.fn(() => Promise.resolve());
 const mockUpdateMember = jest.fn(() => Promise.resolve());
 const mockInviteByEmail = jest.fn(() => Promise.resolve());
+const mockUpdateGroup = jest.fn(() => Promise.resolve({ id: "g1", name: "Trip to Paris", simplifyDebts: true, version: 2 }));
 const mockDeleteExpense = jest.fn(() => Promise.resolve());
 const mockListContacts = jest.fn(() => Promise.resolve([]));
 const mockRegenerate = jest.fn(() => Promise.resolve({ inviteCode: "new-code", id: "g1", name: "Trip to Paris" }));
@@ -84,6 +85,7 @@ jest.mock("@/lib/api", () => ({
     addMember: (...args: any[]) => mockAddMember(...args),
     addGuestMember: (...args: any[]) => mockAddGuestMember(...args),
     removeMember: (...args: any[]) => mockRemoveMember(...args),
+    update: (...args: any[]) => mockUpdateGroup(...args),
     updateMember: (...args: any[]) => mockUpdateMember(...args),
     inviteByEmail: (...args: any[]) => mockInviteByEmail(...args),
     activity: (...args: any[]) => mockGroupActivity(...args),
@@ -1203,5 +1205,79 @@ describe("GroupDetailScreen", () => {
     // Both items should be visible
     expect(screen.getByText("Dinner")).toBeTruthy();
     expect(screen.getByText(/Alice settled up/i)).toBeTruthy();
+  });
+
+  // --- Simplify debts toggle ---
+
+  it("renders Simplify debts toggle OFF by default", async () => {
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Simplify debts")).toBeTruthy();
+      expect(screen.getByText("Reduces the number of transactions needed to settle up")).toBeTruthy();
+    });
+  });
+
+  it("renders Simplify debts toggle ON when group.simplifyDebts is true", async () => {
+    mockGetGroup.mockResolvedValue({
+      id: "g1",
+      name: "Trip to Paris",
+      inviteCode: "abc123",
+      defaultCurrency: "USD",
+      memberCount: 2,
+      isArchived: false,
+      version: 1,
+      simplifyDebts: true,
+    });
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Simplify debts")).toBeTruthy();
+    });
+  });
+
+  it("calls API with correct payload when Simplify debts is toggled", async () => {
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Simplify debts")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Simplify debts"));
+    await waitFor(() => {
+      expect(mockUpdateGroup).toHaveBeenCalledWith(
+        "g1",
+        { simplifyDebts: true, version: 1 },
+        "mock-token"
+      );
+    });
+  });
+
+  it("hides Simplify debts toggle when group is archived", async () => {
+    mockGetGroup.mockResolvedValue({
+      id: "g1",
+      name: "Trip to Paris",
+      inviteCode: "abc123",
+      defaultCurrency: "USD",
+      memberCount: 2,
+      isArchived: true,
+      version: 1,
+    });
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText("Trip to Paris").length).toBeGreaterThanOrEqual(1);
+    });
+    expect(screen.queryByText("Simplify debts")).toBeNull();
+  });
+
+  it("reverts toggle and shows error toast on API failure", async () => {
+    mockUpdateGroup.mockRejectedValueOnce(new Error("fail"));
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Simplify debts")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Simplify debts"));
+    await waitFor(() => {
+      expect(mockToast.show).toHaveBeenCalledWith(
+        "Failed to update simplify debts setting",
+        "error"
+      );
+    });
   });
 });

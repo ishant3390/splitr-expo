@@ -41,6 +41,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
+import { invalidateAfterGroupChange } from "@/lib/query";
 import type { GroupDto } from "@/lib/types";
 import * as Clipboard from "expo-clipboard";
 
@@ -156,6 +157,7 @@ export default function CreateGroupScreen() {
         token!
       );
 
+      invalidateAfterGroupChange();
       hapticSuccess();
       toast.success(`"${groupName}" created!`);
       setCreatedGroup(group);

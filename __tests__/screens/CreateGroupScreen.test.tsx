@@ -26,6 +26,11 @@ jest.mock("@/components/ui/toast", () => ({
 
 jest.mock("react-native-qrcode-svg", () => "QRCode");
 
+jest.mock("@/lib/query", () => ({
+  invalidateAfterGroupChange: jest.fn(),
+  invalidateAfterExpenseChange: jest.fn(),
+}));
+
 const mockGetMe = jest.fn(() =>
   Promise.resolve({ defaultCurrency: "EUR" })
 );

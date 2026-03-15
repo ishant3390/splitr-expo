@@ -36,6 +36,7 @@ import { SkeletonList } from "@/components/ui/skeleton";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { groupsApi, categoriesApi } from "@/lib/api";
+import { invalidateAfterGroupChange, invalidateAfterExpenseChange } from "@/lib/query";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
@@ -111,6 +112,7 @@ export default function AddExpenseScreen() {
               { name: "Personal", description: "Quick personal expenses" },
               token!
             );
+            invalidateAfterGroupChange();
             list = [personal];
           } catch {
             // If creation fails, continue — user can still create a group manually
@@ -349,6 +351,7 @@ export default function AddExpenseScreen() {
 
       if (isOnline) {
         await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
+        invalidateAfterExpenseChange(selectedGroup.id);
         hapticSuccess();
         // Save smart defaults for next time
         AsyncStorage.setItem(SMART_DEFAULTS_KEY, JSON.stringify({

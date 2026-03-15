@@ -11,7 +11,6 @@ test.describe("Create Group Flow", () => {
   test("shows create group form", async ({ page }) => {
     await expect(page.getByText("What's this group for?")).toBeVisible();
     await expect(page.getByText("Currency")).toBeVisible();
-    await expect(page.getByText("Add People")).toBeVisible();
     await expect(page.getByText("Create Group")).toBeVisible();
   });
 
@@ -35,14 +34,6 @@ test.describe("Create Group Flow", () => {
     await expect(page.getByText("CAD", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("AUD", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("JPY", { exact: true }).first()).toBeVisible();
-  });
-
-  test("shows add people section with helper text", async ({ page }) => {
-    await expect(page.getByText("Add People")).toBeVisible();
-    await expect(page.getByText("(optional)")).toBeVisible();
-    await expect(
-      page.getByPlaceholder("Name (e.g., Alex)")
-    ).toBeVisible();
   });
 
   test("can select a group type", async ({ page }) => {

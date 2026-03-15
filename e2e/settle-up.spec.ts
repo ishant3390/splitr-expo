@@ -42,7 +42,7 @@ test.describe("Settle Up Flow", () => {
     if (hasGroups) {
       await page.getByText("members").first().click();
       await page.waitForTimeout(1000);
-      await page.getByText("Settle Up").click();
+      await page.getByText("Settle Up", { exact: true }).click();
 
       // Verify both tabs
       await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
@@ -73,7 +73,7 @@ test.describe("Settle Up Flow", () => {
     if (hasGroups) {
       await page.getByText("members").first().click();
       await page.waitForTimeout(1000);
-      await page.getByText("Settle Up").click();
+      await page.getByText("Settle Up", { exact: true }).click();
       await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
 
       // Switch to History

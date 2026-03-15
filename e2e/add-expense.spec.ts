@@ -12,18 +12,8 @@ test.describe("Add Expense Flow", () => {
   });
 
   test("shows add expense screen elements", async ({ page }) => {
-    // The add expense screen should show these elements
-    const hasAddExpense = await page
-      .getByText("Add Expense")
-      .isVisible()
-      .catch(() => false);
-    const hasScanReceipt = await page
-      .getByText("Scan Receipt")
-      .isVisible()
-      .catch(() => false);
-
-    // Should be on either Add Expense or another add-related screen
-    expect(hasAddExpense || hasScanReceipt).toBeTruthy();
+    // The add expense screen should show the Add Expense title
+    await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
   });
 
   test("can navigate to add expense from home quick action", async ({ page }) => {
@@ -37,18 +27,7 @@ test.describe("Add Expense Flow", () => {
     const hasAdd = await addButton.isVisible().catch(() => false);
     if (hasAdd) {
       await addButton.click();
-      await page.waitForTimeout(2000);
-
-      // Should navigate to add-related screen
-      const isOnAdd = await page
-        .getByText("Add Expense")
-        .isVisible()
-        .catch(() => false);
-      const isOnScan = await page
-        .getByText("Scan Receipt")
-        .isVisible()
-        .catch(() => false);
-      expect(isOnAdd || isOnScan).toBeTruthy();
+      await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
     }
   });
 });

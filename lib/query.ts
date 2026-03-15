@@ -4,7 +4,7 @@
  * FINANCIAL APP SAFETY RULES:
  * - Balance & settlement data: staleTime=0 (always refetch, never trust stale cache)
  * - Expenses: staleTime=10s (brief cache, refetch on focus)
- * - Groups/members: staleTime=30s
+ * - Groups: staleTime=5s / Members: staleTime=30s
  * - Categories: staleTime=5min (static reference data)
  * - User profile: staleTime=2min
  * - NO optimistic updates for money-related mutations
@@ -76,8 +76,8 @@ export const staleTimes = {
   settlements: 0,
   /** Expenses — brief cache, refetch on focus */
   expenses: 10_000,
-  /** Groups and members — moderate cache */
-  groups: 30_000,
+  /** Groups and members — short cache for fresh data on tab switches */
+  groups: 5_000,
   members: 30_000,
   /** Activity feed */
   activity: 30_000,

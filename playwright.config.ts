@@ -18,7 +18,19 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testDir: "./e2e",
+      testIgnore: "**/integration/**",
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "integration",
+      testDir: "./e2e/integration",
+      use: {
+        ...devices["Desktop Chrome"],
+        actionTimeout: 15000,
+      },
+      timeout: 60000,
+      retries: 1,
     },
   ],
 

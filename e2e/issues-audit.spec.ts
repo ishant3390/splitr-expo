@@ -31,38 +31,7 @@ async function goToAddExpense(page: any) {
   await page.waitForTimeout(1000);
 }
 
-// ─── Issue 1: Unable to add members while creating a new group ───────────────
-test("Issue 1 — create-group: can add members by name", async ({ page }) => {
-  await goToGroups(page);
-  await page.getByText("New").click();
-  await expect(page.getByText("New Group")).toBeVisible({ timeout: 5000 });
-
-  // Fill group name
-  await page.getByRole("textbox").first().fill("Test Group Issue1");
-
-  // Check add-people section exists
-  const hasAddPeople = await page.getByText("Add People").isVisible().catch(() => false);
-  const hasNameInput = await page.getByPlaceholder("Name (e.g., Alex)").isVisible().catch(() => false);
-
-  await page.screenshot({ path: path.join(SHOTS, "issue1-create-group-members.png") });
-
-  console.log("Issue 1 — Add People section visible:", hasAddPeople);
-  console.log("Issue 1 — Name input visible:", hasNameInput);
-
-  // Try typing a member name and adding
-  if (hasNameInput) {
-    await page.getByPlaceholder("Name (e.g., Alex)").fill("Alice");
-
-    // Look for an Add button near the input
-    const hasAddBtn = await page.getByText("Add Member").isVisible().catch(() => false) ||
-                      await page.locator("button").filter({ hasText: /^Add$/ }).isVisible().catch(() => false);
-    await page.screenshot({ path: path.join(SHOTS, "issue1-typed-member.png") });
-    console.log("Issue 1 — Add member button visible after typing:", hasAddBtn);
-  }
-
-  // PASS if the add-people UI exists at all; FAIL if no way to add members
-  expect(hasAddPeople && hasNameInput).toBeTruthy();
-});
+// Issue 1 removed — members are now added from group detail, not during creation
 
 // ─── Issue 2: Unable to change the date while adding expense ─────────────────
 test("Issue 2 — add expense: date is editable (not read-only)", async ({ page }) => {
@@ -160,9 +129,15 @@ test("Issue 5 — update expense: edit flow works without error", async ({ page 
     return;
   }
 
-  // Look for an expense to click
-  const hasExpense = await page.getByText(/\$\d+\.\d{2}/).first().isVisible().catch(() => false);
-  console.log("Issue 5 — Expense with amount visible:", hasExpense);
+  // Wait for group detail to fully load
+  await expect(page.getByText(/^ACTIVITY/).first()).toBeVisible({ timeout: 5000 });
+
+  // Look for an expense item within the group detail — expenses show "added" text with amounts
+  // Scope to the group detail overlay to avoid matching home screen activity behind it
+  const activitySection = page.getByText(/^ACTIVITY/).first().locator('..');
+  const expenseItem = activitySection.locator('..').locator('text=/added/').first();
+  const hasExpense = await expenseItem.isVisible().catch(() => false);
+  console.log("Issue 5 — Expense item visible in group:", hasExpense);
 
   await page.screenshot({ path: path.join(SHOTS, "issue5-group-detail.png") });
 
@@ -171,8 +146,8 @@ test("Issue 5 — update expense: edit flow works without error", async ({ page 
     return;
   }
 
-  // Click on the expense amount to open edit
-  await page.getByText(/\$\d+\.\d{2}/).first().click();
+  // Click on the expense item to open edit
+  await expenseItem.click({ force: true });
   await page.waitForTimeout(1500);
 
   await page.screenshot({ path: path.join(SHOTS, "issue5-after-expense-click.png") });
@@ -199,7 +174,7 @@ test("Issue 5 — update expense: edit flow works without error", async ({ page 
 
     // Check for errors
     const hasError = await page.getByText(/error|failed|something went wrong/i).first().isVisible().catch(() => false);
-    const backOnGroup = await page.getByText(/^EXPENSES/).first().isVisible().catch(() => false);
+    const backOnGroup = await page.getByText(/^ACTIVITY/).first().isVisible().catch(() => false);
 
     console.log("Issue 5 — Error after save:", hasError);
     console.log("Issue 5 — Returned to group detail after save:", backOnGroup);

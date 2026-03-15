@@ -57,19 +57,7 @@ test.describe("Cross-Screen Navigation", () => {
     // Click the center Add tab (3rd child in tablist)
     await page.getByRole("button", { name: "Add Expense" }).click();
 
-    await page.waitForTimeout(2000);
-
-    // Should show Add Expense or Scan Receipt
-    const hasAddExpense = await page
-      .getByText("Add Expense")
-      .isVisible()
-      .catch(() => false);
-    const hasScanReceipt = await page
-      .getByText("Scan Receipt")
-      .isVisible()
-      .catch(() => false);
-
-    expect(hasAddExpense || hasScanReceipt).toBeTruthy();
+    await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
   });
 
   test("Profile to Edit Profile and back", async ({ page }) => {
@@ -130,10 +118,10 @@ test.describe("Cross-Screen Navigation", () => {
 
     // Open group
     await page.getByText("members").first().click();
-    await expect(page.getByText("Settle Up")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Settle Up", { exact: true })).toBeVisible({ timeout: 5000 });
 
     // Go to settle up
-    await page.getByText("Settle Up").click();
+    await page.getByText("Settle Up", { exact: true }).click();
     await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/History/)).toBeVisible();
 
@@ -169,61 +157,14 @@ test.describe("Cross-Screen Navigation", () => {
     expect(hasError || hasGroups || hasHome).toBeTruthy();
   });
 
-  test("Home quick actions navigate correctly", async ({ page }) => {
+  test("Home screen shows key sections", async ({ page }) => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
 
-    // Check for Scan quick action
-    const hasScan = await page
-      .getByText("Scan")
-      .isVisible()
-      .catch(() => false);
+    // Balance card
+    await expect(page.getByText("Net Balance")).toBeVisible();
 
-    if (hasScan) {
-      await page.getByText("Scan").click();
-      await page.waitForTimeout(2000);
-
-      // Should navigate to receipt scanner or scan-related screen
-      const isOnScan = await page
-        .getByText(/Scan Receipt|Scanner/i)
-        .isVisible()
-        .catch(() => false);
-      const isOnHome = await page
-        .getByText("Splitr")
-        .isVisible()
-        .catch(() => false);
-
-      // Either navigated to scan screen or stayed on home (if scan opens a modal)
-      expect(isOnScan || isOnHome).toBeTruthy();
-
-      // receipt-scanner is a push screen — navigate back
-      if (isOnScan) {
-        await page.goBack();
-      }
-      await expect(page.getByText("Splitr")).toBeVisible({ timeout: 5000 });
-    }
-
-    // Check for Chat quick action
-    const hasChat = await page
-      .getByText("Chat")
-      .isVisible()
-      .catch(() => false);
-
-    if (hasChat) {
-      await page.getByText("Chat").click();
-      await page.waitForTimeout(2000);
-
-      // Should navigate to chat screen — check for the chat input or assistant label
-      const isOnChat = await page
-        .getByText("Split Assistant")
-        .isVisible()
-        .catch(() => false);
-      const isOnChatAlt = await page
-        .getByPlaceholder(/message/i)
-        .isVisible()
-        .catch(() => false);
-
-      expect(isOnChat || isOnChatAlt).toBeTruthy();
-    }
+    // Recent activity section
+    await expect(page.getByText("Recent Activity")).toBeVisible();
   });
 
   test("tab bar maintains state across tab switches", async ({ page }) => {

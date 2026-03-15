@@ -97,6 +97,8 @@ lib/
 - Biometric lock gate in `_layout.tsx` wraps `AuthGate`, checks on app open + foreground resume
 - Notifications: web platform renders passthrough (no expo-notifications on web)
 - Per-group notification toggle in group detail: reads `member.notificationsEnabled`, toggles via `PATCH /v1/groups/{groupId}/members/{memberId}`
+- **Cache invalidation after direct API calls**: Any screen calling `groupsApi`/`expensesApi` directly (outside React Query `useMutation` hooks) MUST call the matching invalidation helper from `lib/query.ts` (`invalidateAfterGroupChange()`, `invalidateAfterExpenseChange(groupId)`, etc.). Prefer using mutation hooks from `lib/hooks.ts` which handle this automatically.
+- **Web focus reliability**: `useFocusEffect` is unreliable on web; screens that need refetch-on-focus should also use `useIsFocused()` from `@react-navigation/native` as a state-based fallback
 
 ## Key API Endpoints
 - `POST /v1/groups/{groupId}/expenses` — expenses always belong to a group
@@ -263,33 +265,60 @@ lib/
 - **Async tests use waitFor** — never use arbitrary delays or fake timers in screen tests with data loading
 - **Tests must be deterministic** — no reliance on timing, order, or external state
 
-### E2E Testing (Playwright)
+### E2E Smoke Tests (Playwright)
 - **Framework**: Playwright targeting Expo web (`react-native-web`)
-- **Config**: `playwright.config.ts` — runs Expo web server on port 8081
-- **Structure**: `e2e/` directory with `auth.setup.ts` + `*.spec.ts` files
+- **Config**: `playwright.config.ts` — `chromium` project for smoke, `integration` project for backend tests
+- **Structure**: `e2e/*.spec.ts` (smoke) + `e2e/integration/*.spec.ts` (integration)
 - **Auth**: `@clerk/testing/playwright` injects Clerk session via `setupClerkTestingToken()`
 - **Requires**: `CLERK_SECRET_KEY` in `.env.local` for authenticated tests
 - **Auth setup**: `e2e/auth.setup.ts` extends base test fixture with Clerk token injection
 - **Unauthenticated tests**: Use `@playwright/test` directly (e.g., `e2e/auth.spec.ts`)
+- **Count**: 117 smoke tests across 17 spec files
 - Run `npx playwright install chromium` once before first run
 
+### E2E Integration Tests (Playwright + Backend)
+- **Purpose**: Full CRUD integration tests against live backend at `localhost:8085`
+- **Structure**: `e2e/integration/` with 11 spec files (50 tests total)
+- **Helpers**: `e2e/integration/helpers/` — `api-client.ts` (REST client), `fixtures.ts` (data factories), `cleanup.ts` (auto-cleanup fixture)
+- **Auth fixture**: `cleanup.ts` extends Playwright test with `apiClient` injected + auto-cleanup via `afterEach`
+- **Data strategy**: All test data prefixed with `[E2E]` + timestamp; tracked resources auto-deleted in reverse order
+- **Backend health**: Every spec runs `ApiClient.isBackendHealthy()` in `beforeAll` — skips with clear message if backend is down
+- **Timing**: Uses `page.waitForResponse()` instead of `waitForTimeout()` for API-dependent waits
+- **Spec files**:
+  - `group-lifecycle.spec.ts` (5) — create, detail, archive, restore, delete
+  - `expense-lifecycle.spec.ts` (5) — UI add, API add, delete, auto-category, split validation
+  - `settlement-flow.spec.ts` (6) — suggestions, record payment, history, balance changes, delete revert
+  - `member-management.spec.ts` (5) — UI add, API add, count update, remove, email member
+  - `home-data.spec.ts` (5) — balance card, owed amounts, recent activity, category filter, View All nav
+  - `profile-management.spec.ts` (3) — display data, edit name, change currency
+  - `activity-data.spec.ts` (5) — time grouping, expense items, settlement items, search, pagination
+  - `invite-flow.spec.ts` (4) — share modal, preview, self-join handling, regenerate code
+  - `search-filter.spec.ts` (3) — match search, no-match empty state, clear search
+  - `navigation-data.spec.ts` (5) — group card nav, expense edit, back nav, tab state, View All
+  - `settings-screens.spec.ts` (4) — notifications, privacy, help, payment methods
+
 ### E2E Test Conventions
-- Import `{ test, expect }` from `./auth.setup` for authenticated tests
+- **Smoke tests**: Import `{ test, expect }` from `./auth.setup`
+- **Integration tests**: Import `{ test, expect }` from `./helpers/cleanup` (provides `apiClient`)
 - Import from `@playwright/test` directly for unauthenticated tests
 - Use resilient selectors: `getByText()`, `getByRole()`, `getByTestId()`
 - Handle conditional UI (empty states vs data) with `.isVisible().catch(() => false)`
 - Keep tests independent — each test navigates from `/` fresh
+- Integration tests must not leave stale `[E2E]` data — always use `apiClient` for setup/teardown
 
 ## Commands
 ```bash
-npx expo start          # Start dev server
-npx expo start --clear  # Start with cache clear
-npm test                # Run all tests
-npm run test:watch      # Run tests in watch mode
-npm run test:coverage   # Run tests with coverage report
-npm run test:e2e        # Run Playwright E2E tests
-npm run test:e2e:ui     # Run E2E with Playwright UI
-npm run test:e2e:headed # Run E2E in headed browser
+npx expo start                        # Start dev server
+npx expo start --clear                # Start with cache clear
+npm test                              # Run all unit/component tests
+npm run test:watch                    # Run tests in watch mode
+npm run test:coverage                 # Run tests with coverage report
+npm run test:e2e                      # Run Playwright smoke tests (no backend needed)
+npm run test:e2e:ui                   # Smoke tests with Playwright UI
+npm run test:e2e:headed               # Smoke tests in headed browser
+npm run test:e2e:integration          # Run integration tests (backend at :8085 required)
+npm run test:e2e:integration:headed   # Integration tests in headed browser
+npm run test:e2e:all                  # Run both smoke + integration suites
 ```
 
 ## Design Context

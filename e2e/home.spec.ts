@@ -12,10 +12,11 @@ test.describe("Home Screen", () => {
     await expect(page.getByText("You owe")).toBeVisible();
   });
 
-  test("shows quick action buttons", async ({ page }) => {
+  test("shows balance card elements", async ({ page }) => {
     await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("Scan")).toBeVisible();
-    await expect(page.getByText("Chat")).toBeVisible();
+    await expect(page.getByText("Net Balance")).toBeVisible();
+    await expect(page.getByText("You are owed")).toBeVisible();
+    await expect(page.getByText("You owe")).toBeVisible();
   });
 
   test("shows category filter bar", async ({ page }) => {

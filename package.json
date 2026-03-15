@@ -11,9 +11,12 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:ui": "playwright test --project=chromium --ui",
+    "test:e2e:headed": "playwright test --project=chromium --headed",
+    "test:e2e:integration": "playwright test --project=integration",
+    "test:e2e:integration:headed": "playwright test --project=integration --headed",
+    "test:e2e:all": "playwright test"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.19.31",

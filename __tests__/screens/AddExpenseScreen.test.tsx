@@ -47,6 +47,11 @@ const mockListCategories = jest.fn(() =>
 const mockCreateExpense = jest.fn(() => Promise.resolve({ id: "e1" }));
 const mockGroupCreate = jest.fn(() => Promise.resolve({ id: "g-auto", name: "Personal" }));
 
+jest.mock("@/lib/query", () => ({
+  invalidateAfterGroupChange: jest.fn(),
+  invalidateAfterExpenseChange: jest.fn(),
+}));
+
 jest.mock("@/lib/api", () => ({
   groupsApi: {
     list: (...args: any[]) => mockListGroups(...args),

@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Platform, useColorScheme, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { hapticLight, hapticWarning, hapticSuccess, hapticSelection } from "@/lib/haptics";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { ChevronRight, Plus, Archive, Trash2, X, Users, RotateCcw, AlertTriangle, Search, MoreVertical } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,15 +48,22 @@ export default function GroupsScreen() {
   // Delete confirmation
   const [groupToDelete, setGroupToDelete] = useState<GroupDto | null>(null);
 
+  const isFocused = useIsFocused();
   const archiveMutation = useArchiveGroup();
   const deleteMutation = useDeleteGroup();
   const deleting = deleteMutation.isPending;
 
+  // Primary: event-based refetch (reliable on native)
   useFocusEffect(
     useCallback(() => {
       refetch();
     }, [refetch])
   );
+
+  // Fallback: state-based refetch (reliable on web)
+  useEffect(() => {
+    if (isFocused) refetch();
+  }, [isFocused]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
