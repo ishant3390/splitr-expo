@@ -8,6 +8,7 @@ import {
   formatRelativeTime,
   getInitials,
   extractInviteCode,
+  getCurrencySymbol,
 } from "@/lib/utils";
 
 describe("centsToAmount", () => {
@@ -246,3 +247,24 @@ describe("formatRelativeTime", () => {
   });
 });
 
+
+describe("getCurrencySymbol", () => {
+  it("returns $ for USD", () => {
+    expect(getCurrencySymbol("USD")).toBe("$");
+  });
+
+  it("returns symbol for known currencies", () => {
+    expect(getCurrencySymbol("EUR")).toBe("€");
+    expect(getCurrencySymbol("GBP")).toBe("£");
+  });
+
+  it("defaults to USD symbol when no argument given", () => {
+    expect(getCurrencySymbol()).toBe("$");
+  });
+
+  it("returns currency code as fallback for unknown currency", () => {
+    const result = getCurrencySymbol("XYZ");
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  });
+});

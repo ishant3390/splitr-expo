@@ -281,7 +281,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -20,
   },
   fabShadow: {
     shadowColor: "#0d9488",
@@ -289,6 +288,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    backgroundColor: "transparent",
   },
   fab: {
     width: 52,

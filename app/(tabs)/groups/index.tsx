@@ -484,7 +484,6 @@ export default function GroupsScreen() {
         )}
         <Button
           variant="default"
-          size="default"
           className="mt-3"
           onPress={() => {
             const code = extractInviteCode(inviteCodeInput);
@@ -496,7 +495,10 @@ export default function GroupsScreen() {
             router.push(`/join/${code}`);
           }}
         >
-          <Text className="text-sm font-sans-semibold text-primary-foreground">Continue</Text>
+          <View className="flex-row items-center gap-2">
+            <ChevronRight size={18} color="#ffffff" />
+            <Text className="text-base font-sans-semibold text-primary-foreground">Continue</Text>
+          </View>
         </Button>
       </BottomSheetModal>
     </SafeAreaView>

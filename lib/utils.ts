@@ -28,6 +28,16 @@ export function formatCents(cents: number, currency = "USD"): string {
   return formatCurrency(centsToAmount(cents), currency);
 }
 
+/** Extract the currency symbol (e.g. "$", "€", "£") for a given ISO currency code. */
+export function getCurrencySymbol(currency = "USD"): string {
+  try {
+    const parts = new Intl.NumberFormat("en-US", { style: "currency", currency }).formatToParts(0);
+    return parts.find((p) => p.type === "currency")?.value ?? currency;
+  } catch {
+    return currency;
+  }
+}
+
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();

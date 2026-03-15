@@ -49,7 +49,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { groupsApi, contactsApi, inviteApi, expensesApi } from "@/lib/api";
-import { useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
+import { useArchiveGroup, useDeleteGroup, useCategories } from "@/lib/hooks";
 import { invalidateAfterGroupChange } from "@/lib/query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, formatRelativeTime, getInitials, cn } from "@/lib/utils";
@@ -119,6 +119,11 @@ export default function GroupDetailScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const archiveMutation = useArchiveGroup();
   const deleteMutation = useDeleteGroup();
+  const { data: categoriesList = [] } = useCategories();
+  const categoryMap = React.useMemo(
+    () => Object.fromEntries(categoriesList.map((c) => [c.id, c])),
+    [categoriesList]
+  );
 
   // Delete expense state
   const [expenseToDelete, setExpenseToDelete] = useState<ExpenseDto | null>(null);
@@ -623,7 +628,7 @@ export default function GroupDetailScreen() {
                           )}
                         >
                           {balance > 0 ? "+" : ""}
-                          {formatCents(balance)}
+                          {formatCents(balance, group?.defaultCurrency)}
                         </Text>
                       </Card>
                       <Pressable
@@ -646,13 +651,13 @@ export default function GroupDetailScreen() {
             <View>
               <Text className="text-xs text-muted-foreground font-sans">Total Spent</Text>
               <Text selectable className="text-xl font-sans-bold text-foreground" style={{ fontVariant: ["tabular-nums"] }}>
-                {formatCents(totalSpent)}
+                {formatCents(totalSpent, group?.defaultCurrency)}
               </Text>
             </View>
             <View className="items-end">
               <Text className="text-xs text-muted-foreground font-sans">Per Person (avg)</Text>
               <Text selectable className="text-xl font-sans-bold text-primary" style={{ fontVariant: ["tabular-nums"] }}>
-                {formatCents(members.length > 0 ? totalSpent / members.length : 0)}
+                {formatCents(members.length > 0 ? totalSpent / members.length : 0, group?.defaultCurrency)}
               </Text>
             </View>
           </View>
@@ -785,7 +790,7 @@ export default function GroupDetailScreen() {
                         <View key={p.name} className="gap-1">
                           <View className="flex-row items-center justify-between">
                             <Text className="text-xs font-sans-medium text-foreground">{p.name}</Text>
-                            <Text className="text-xs font-sans-semibold text-foreground">{formatCents(p.total)}</Text>
+                            <Text className="text-xs font-sans-semibold text-foreground">{formatCents(p.total, group?.defaultCurrency)}</Text>
                           </View>
                           <View className="h-2 rounded-full bg-muted overflow-hidden">
                             <View
@@ -819,7 +824,7 @@ export default function GroupDetailScreen() {
                           <View key={cat} className="flex-row items-center gap-1.5">
                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: catColors[i % catColors.length] }} />
                             <Text className="text-xs font-sans text-muted-foreground">
-                              {cat} ({formatCents(amount)})
+                              {cat} ({formatCents(amount, group?.defaultCurrency)})
                             </Text>
                           </View>
                         ))}
@@ -844,7 +849,7 @@ export default function GroupDetailScreen() {
                             return (
                               <View key={m.month} className="flex-1 items-center gap-1">
                                 <Text className="text-[8px] font-sans text-muted-foreground" style={{ fontVariant: ["tabular-nums"] }}>
-                                  {formatCents(m.total)}
+                                  {formatCents(m.total, group?.defaultCurrency)}
                                 </Text>
                                 <View
                                   className="w-full rounded-t bg-primary"
@@ -977,7 +982,8 @@ export default function GroupDetailScreen() {
             {unified.map((item, idx) => {
               if (item.kind === "expense") {
                 const expense = item.data;
-                const categoryIconName = expense.category?.icon ?? expense.category?.name;
+                const resolvedCategory = expense.category?.id ? (categoryMap[expense.category.id] ?? expense.category) : expense.category;
+                const categoryIconName = resolvedCategory?.icon ?? resolvedCategory?.name;
                 const payer = expense.payers?.[0];
                 const payerName = resolvePayerName(payer, members, expense.createdBy);
                 const splitCount = expense.splits?.length ?? 1;
@@ -1024,7 +1030,7 @@ export default function GroupDetailScreen() {
                         </View>
                         <View className="items-end">
                           <Text selectable className="text-sm font-sans-bold text-foreground" style={{ fontVariant: ["tabular-nums"] }}>
-                            {formatCents(expense.amountCents)}
+                            {formatCents(expense.amountCents, expense.currency ?? group?.defaultCurrency)}
                           </Text>
                           <Text className="text-xs text-muted-foreground font-sans">
                             {splitCount} {splitCount === 1 ? "person" : "people"}
@@ -1078,7 +1084,7 @@ export default function GroupDetailScreen() {
                         </View>
                         {displayAmount != null && (
                           <Text className="text-sm font-sans-semibold text-success">
-                            {formatCents(displayAmount)}
+                            {formatCents(displayAmount, group?.defaultCurrency)}
                           </Text>
                         )}
                       </View>

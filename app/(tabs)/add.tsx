@@ -38,7 +38,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { groupsApi, categoriesApi } from "@/lib/api";
 import { invalidateAfterGroupChange, invalidateAfterExpenseChange } from "@/lib/query";
 import { useToast } from "@/components/ui/toast";
-import { getInitials, cn, amountToCents } from "@/lib/utils";
+import { getInitials, cn, amountToCents, getCurrencySymbol } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
 import { initSplitValues as computeSplitValues, dedupeMembers, inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { CategoryIcon } from "@/components/ui/category-icon";
@@ -394,6 +394,7 @@ export default function AddExpenseScreen() {
       : "0.00";
   const totalPct = splitWith.reduce((s, id) => s + (parseFloat(splitPercentages[id] ?? "0") || 0), 0);
   const totalFixed = splitWith.reduce((s, id) => s + (parseFloat(splitFixedAmounts[id] ?? "0") || 0), 0);
+  const currencySymbol = getCurrencySymbol(selectedGroup?.defaultCurrency ?? "USD");
 
   if (groupsLoading) {
     return (
@@ -441,15 +442,15 @@ export default function AddExpenseScreen() {
               </Text>
               <TextInput
                 ref={amountInputRef}
-                value={amount ? `$${amount}` : ""}
+                value={amount ? `${currencySymbol}${amount}` : ""}
                 onChangeText={(val) => {
-                  const raw = val.startsWith("$") ? val.slice(1) : val;
+                  const raw = val.startsWith(currencySymbol) ? val.slice(currencySymbol.length) : val;
                   if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) {
                     setAmount(raw);
                   }
                 }}
                 keyboardType="decimal-pad"
-                placeholder="$0"
+                placeholder={`${currencySymbol}0`}
                 placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
                 className="text-foreground"
                 inputAccessoryViewID="amount-done"
@@ -720,7 +721,7 @@ export default function AddExpenseScreen() {
                 </Text>
                 {splitType === "equal" && (
                   <Text className="text-sm text-primary font-sans-semibold">
-                    {`$${perPerson}/person`}
+                    {`${currencySymbol}${perPerson}/person`}
                   </Text>
                 )}
                 {splitType === "percentage" && (
@@ -736,7 +737,7 @@ export default function AddExpenseScreen() {
                     "text-sm font-sans-semibold",
                     Math.abs(totalFixed - (parseFloat(amount) || 0)) < 0.01 ? "text-primary" : "text-destructive"
                   )}>
-                    {`$${totalFixed.toFixed(2)} / $${amount || "0.00"}`}
+                    {`${currencySymbol}${totalFixed.toFixed(2)} / ${currencySymbol}${amount || "0.00"}`}
                   </Text>
                 )}
               </View>
@@ -749,8 +750,8 @@ export default function AddExpenseScreen() {
               {splitType === "fixed" && splitWith.length > 0 && Math.abs(totalFixed - (parseFloat(amount) || 0)) >= 0.01 && (
                 <Text className="text-xs text-destructive font-sans mb-1">
                   {totalFixed < (parseFloat(amount) || 0)
-                    ? `$${((parseFloat(amount) || 0) - totalFixed).toFixed(2)} remaining`
-                    : `$${(totalFixed - (parseFloat(amount) || 0)).toFixed(2)} over — reduce to match total`}
+                    ? `${currencySymbol}${((parseFloat(amount) || 0) - totalFixed).toFixed(2)} remaining`
+                    : `${currencySymbol}${(totalFixed - (parseFloat(amount) || 0)).toFixed(2)} over — reduce to match total`}
                 </Text>
               )}
 
@@ -807,7 +808,7 @@ export default function AddExpenseScreen() {
                           </Text>
                           {isChecked && splitType === "equal" && !!amount && (
                             <Text className="text-sm font-sans-semibold text-primary">
-                              {`$${perPerson}`}
+                              {`${currencySymbol}${perPerson}`}
                             </Text>
                           )}
                           {isChecked && splitType === "percentage" && (
@@ -832,7 +833,7 @@ export default function AddExpenseScreen() {
                           {isChecked && splitType === "fixed" && (
                             <Pressable onPress={(e) => e.stopPropagation()}>
                               <View className="flex-row items-center border border-border rounded-lg bg-muted overflow-hidden">
-                                <Text className="text-sm text-muted-foreground font-sans pl-2">$</Text>
+                                <Text className="text-sm text-muted-foreground font-sans pl-2">{currencySymbol}</Text>
                                 <TextInput
                                   value={splitFixedAmounts[member.id] ?? ""}
                                   onChangeText={(val) =>

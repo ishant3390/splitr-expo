@@ -3,7 +3,7 @@ import { View, Text, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
-import { Users, Check, AlertCircle, Archive } from "lucide-react-native";
+import { Users, Check, AlertCircle, Archive, UserPlus, LogIn } from "lucide-react-native";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GroupAvatar } from "@/components/ui/group-avatar";
@@ -210,13 +210,20 @@ export default function JoinGroupScreen() {
             {joining ? (
               <ActivityIndicator size="small" color="#ffffff" />
             ) : (
-              <Text className="text-base font-sans-semibold text-primary-foreground">
-                {isArchived
-                  ? "Group Archived"
-                  : isSignedIn
-                  ? "Join Group"
-                  : "Sign in to Join"}
-              </Text>
+              <View className="flex-row items-center gap-2">
+                {!isArchived && (
+                  isSignedIn
+                    ? <UserPlus size={18} color="#ffffff" />
+                    : <LogIn size={18} color="#ffffff" />
+                )}
+                <Text className="text-base font-sans-semibold text-primary-foreground">
+                  {isArchived
+                    ? "Group Archived"
+                    : isSignedIn
+                    ? "Join Group"
+                    : "Sign in to Join"}
+                </Text>
+              </View>
             )}
           </Button>
         )}

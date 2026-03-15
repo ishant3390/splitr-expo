@@ -104,6 +104,12 @@ jest.mock("@/lib/api", () => ({
 jest.mock("@/lib/hooks", () => ({
   useArchiveGroup: () => ({ mutateAsync: mockArchiveMutateAsync, isPending: false }),
   useDeleteGroup: () => ({ mutateAsync: mockDeleteMutateAsync, isPending: false }),
+  useCategories: () => ({
+    data: [
+      { id: "cat-food", name: "Food", icon: "food" },
+      { id: "cat-transport", name: "Transport", icon: "car" },
+    ],
+  }),
 }));
 
 jest.mock("@/lib/screen-helpers", () => ({
@@ -836,6 +842,30 @@ describe("GroupDetailScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Taxi")).toBeTruthy();
       expect(screen.getByText(/2 people/)).toBeTruthy();
+    });
+  });
+
+  it("uses categoryMap lookup when expense.category has no icon field", async () => {
+    mockListExpenses.mockResolvedValue({
+      data: [
+        {
+          id: "e1",
+          description: "Groceries",
+          amountCents: 1500,
+          // icon field absent; only id and name — lookup must resolve via categoryMap
+          category: { id: "cat-food", name: "Food" },
+          payers: [{ user: { id: "u1", name: "Alice" }, amountPaid: 1500 }],
+          splits: [{ user: { id: "u1" } }],
+          createdAt: "2026-03-10T10:00:00Z",
+          date: "2026-03-10",
+          createdBy: { id: "u1", name: "Alice" },
+        },
+      ],
+      pagination: { hasMore: false },
+    });
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeTruthy();
     });
   });
 
