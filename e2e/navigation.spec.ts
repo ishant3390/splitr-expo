@@ -43,7 +43,7 @@ test.describe("Cross-Screen Navigation", () => {
 
     // Open a group
     await page.getByText("members").first().click();
-    await expect(page.getByText(/^MEMBERS/).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Your Balance")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("Total Spent")).toBeVisible();
 
     // group/[id] is a push screen (no tab bar) — go back
@@ -90,11 +90,11 @@ test.describe("Cross-Screen Navigation", () => {
 
     // Navigate to Groups
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("New")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("button", { name: "New" })).toBeVisible({ timeout: 5000 });
 
     // Click "New" to go to create group
-    await page.getByText("New").click();
-    await expect(page.getByText("New Group")).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: "New" }).click();
+    await expect(page.getByText("New Group", { exact: true })).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("Create Group")).toBeVisible();
 
     // create-group is a push screen (no tab bar) — use back navigation

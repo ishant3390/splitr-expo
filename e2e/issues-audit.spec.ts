@@ -130,13 +130,13 @@ test("Issue 5 — update expense: edit flow works without error", async ({ page 
   }
 
   // Wait for group detail to fully load
-  await expect(page.getByText(/^ACTIVITY/).first()).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText("Your Balance")).toBeVisible({ timeout: 5000 });
 
-  // Look for an expense item within the group detail — expenses show "added" text with amounts
-  // Scope to the group detail overlay to avoid matching home screen activity behind it
-  const activitySection = page.getByText(/^ACTIVITY/).first().locator('..');
-  const expenseItem = activitySection.locator('..').locator('text=/added/').first();
-  const hasExpense = await expenseItem.isVisible().catch(() => false);
+  // Look for an expense item within the RECENT EXPENSES section
+  const hasExpenseSection = await page.getByText("RECENT EXPENSES").isVisible().catch(() => false);
+  // Expense cards show dollar amounts — find a clickable expense
+  const expenseItem = page.locator("text=/\\$\\d+/").first();
+  const hasExpense = hasExpenseSection && await expenseItem.isVisible().catch(() => false);
   console.log("Issue 5 — Expense item visible in group:", hasExpense);
 
   await page.screenshot({ path: path.join(SHOTS, "issue5-group-detail.png") });
@@ -174,7 +174,7 @@ test("Issue 5 — update expense: edit flow works without error", async ({ page 
 
     // Check for errors
     const hasError = await page.getByText(/error|failed|something went wrong/i).first().isVisible().catch(() => false);
-    const backOnGroup = await page.getByText(/^ACTIVITY/).first().isVisible().catch(() => false);
+    const backOnGroup = await page.getByText("Your Balance").isVisible().catch(() => false);
 
     console.log("Issue 5 — Error after save:", hasError);
     console.log("Issue 5 — Returned to group detail after save:", backOnGroup);
@@ -310,24 +310,24 @@ test("Issue 8 — group detail: has delete or archive option in screen", async (
 
   await page.screenshot({ path: path.join(SHOTS, "issue8-group-detail.png") });
 
-  // Check for a "More options" button (aria-label set on MoreVertical button in group detail header)
-  const hasMore = await page.locator("[aria-label='More options']").isVisible().catch(() => false);
+  // Check for the settings gear button in group detail header
+  const hasMore = await page.locator("[aria-label='Group settings']").isVisible().catch(() => false);
 
-  console.log("Issue 8 — More options button visible:", hasMore);
+  console.log("Issue 8 — Group settings button visible:", hasMore);
 
   if (hasMore) {
-    await page.locator("[aria-label='More options']").first().click();
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: path.join(SHOTS, "issue8-more-menu.png") });
-    const hasArchiveInMenu = await page.getByText(/archive|delete/i).isVisible().catch(() => false);
-    console.log("Issue 8 — Archive/Delete in more menu:", hasArchiveInMenu);
-    if (hasArchiveInMenu) {
-      console.log("Issue 8 — STATUS: FIXED ✓ (archive/delete option in more menu)");
+    await page.locator("[aria-label='Group settings']").first().click();
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: path.join(SHOTS, "issue8-group-settings.png") });
+    const hasArchiveInSettings = await page.getByText(/archive|delete/i).isVisible().catch(() => false);
+    console.log("Issue 8 — Archive/Delete in group settings:", hasArchiveInSettings);
+    if (hasArchiveInSettings) {
+      console.log("Issue 8 — STATUS: FIXED ✓ (archive/delete option in group settings page)");
     } else {
-      console.log("Issue 8 — STATUS: PARTIAL ⚠ (more menu opened but no archive/delete found)");
+      console.log("Issue 8 — STATUS: PARTIAL ⚠ (settings opened but no archive/delete found — may need to scroll)");
     }
   } else {
-    console.log("Issue 8 — STATUS: OPEN ✗ (no more options button on group detail screen)");
+    console.log("Issue 8 — STATUS: OPEN ✗ (no settings button on group detail screen)");
   }
 });
 

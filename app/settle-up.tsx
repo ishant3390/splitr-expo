@@ -187,8 +187,10 @@ export default function SettleUpScreen() {
       setNudgedUserIds((prev) => new Set(prev).add(targetUserId));
     } catch (err: any) {
       const msg = err?.message ?? "";
-      if (msg.includes("429") || msg.toLowerCase().includes("cooldown")) {
-        toast.info("You already sent a reminder. Try again later.");
+      if (msg.includes("422") || msg.includes("429") || msg.toLowerCase().includes("cooldown") || msg.toLowerCase().includes("reminder recently")) {
+        toast.info("Reminder was sent recently. Try again later.");
+        // Mark as nudged so the button shows "Sent"
+        setNudgedUserIds((prev) => new Set(prev).add(targetUserId));
       } else if (msg.toLowerCase().includes("not_owed") || msg.toLowerCase().includes("doesn't owe")) {
         toast.error("This person doesn't owe you anything.");
       } else {

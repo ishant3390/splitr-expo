@@ -187,7 +187,8 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const realIndex = realTabs.findIndex((r) => r.name === activeRoute.name);
     if (realIndex === -1) return;
     const posIndex = realIndex < 2 ? realIndex : realIndex + 1;
-    indicatorX.value = withSpring(posIndex * tabWidth + tabWidth / 2 - 10, SPRING_BOUNCY);
+    // Center of the tab slot
+    indicatorX.value = withSpring(posIndex * tabWidth + tabWidth / 2, SPRING_BOUNCY);
     // Brief stretch on move
     indicatorWidth.value = withSequence(
       withSpring(28, { damping: 8, stiffness: 250 }),
@@ -196,7 +197,8 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   }, [state.index]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
+    // Subtract half the current width so the pill is always centered
+    transform: [{ translateX: indicatorX.value - indicatorWidth.value / 2 }],
     width: indicatorWidth.value,
   }));
 

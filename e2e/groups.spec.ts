@@ -12,7 +12,7 @@ test.describe("Groups Screen", () => {
   });
 
   test("shows New button", async ({ page }) => {
-    await expect(page.getByText("New")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: "New" })).toBeVisible({ timeout: 10000 });
   });
 
   test("shows empty state or group list", async ({ page }) => {
@@ -44,8 +44,8 @@ test.describe("Groups Screen", () => {
   });
 
   test("New button navigates to create group", async ({ page }) => {
-    await expect(page.getByText("New")).toBeVisible({ timeout: 10000 });
-    await page.getByText("New").click();
+    await expect(page.getByRole("button", { name: "New" })).toBeVisible({ timeout: 10000 });
+    await page.getByRole("button", { name: "New" }).click();
 
     // Should navigate to create group screen — look for the "Create Group" button
     await expect(page.getByText("Create Group", { exact: true })).toBeVisible({

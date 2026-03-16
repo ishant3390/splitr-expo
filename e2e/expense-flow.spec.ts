@@ -197,7 +197,7 @@ test.describe("Expense Flow", () => {
     if (!hasGroups) return;
 
     await page.getByText("members").first().click();
-    await expect(page.getByText(/^ACTIVITY/).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Your Balance")).toBeVisible({ timeout: 5000 });
 
     // Check if there are any expense items
     const hasExpenses = await page

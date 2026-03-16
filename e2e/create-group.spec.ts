@@ -3,9 +3,9 @@ import { test, expect } from "./auth.setup";
 test.describe("Create Group Flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("New")).toBeVisible({ timeout: 10000 });
-    await page.getByText("New").click();
-    await expect(page.getByText("New Group")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("button", { name: "New" })).toBeVisible({ timeout: 10000 });
+    await page.getByRole("button", { name: "New" }).click();
+    await expect(page.getByText("New Group", { exact: true })).toBeVisible({ timeout: 10000 });
   });
 
   test("shows create group form", async ({ page }) => {
