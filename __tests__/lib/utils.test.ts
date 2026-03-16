@@ -5,6 +5,7 @@ import {
   formatCurrency,
   formatCents,
   formatDate,
+  formatMemberSince,
   formatRelativeTime,
   getInitials,
   extractInviteCode,
@@ -100,6 +101,19 @@ describe("formatDate", () => {
     jest.setSystemTime(now);
     const result = formatDate("2026-01-15T10:00:00Z");
     expect(result).toBe("Jan 15");
+  });
+});
+
+describe("formatMemberSince", () => {
+  it("formats date as 'Mon YYYY'", () => {
+    expect(formatMemberSince("2026-03-15T12:00:00Z")).toBe("Mar 2026");
+    expect(formatMemberSince("2025-01-01T00:00:00Z")).toBe("Jan 2025");
+    expect(formatMemberSince("2024-12-25T18:30:00Z")).toBe("Dec 2024");
+  });
+
+  it("returns dash for invalid date", () => {
+    expect(formatMemberSince("not-a-date")).toBe("—");
+    expect(formatMemberSince("")).toBe("—");
   });
 });
 

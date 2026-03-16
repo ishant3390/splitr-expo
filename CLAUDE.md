@@ -45,6 +45,7 @@ app/                    # Screens (Expo Router file-based)
   onboarding.tsx        # First-time user walkthrough (4 steps, AsyncStorage gate)
   pending-expenses.tsx  # View/discard offline-queued expenses
   privacy-security.tsx  # Biometric lock toggle, security settings
+  group-settings.tsx    # Group settings page (identity, members, preferences, danger zone — via gear icon)
   notification-settings.tsx # Push notification preferences
 components/
   ui/                   # Reusable UI components (Button, Card, Avatar, Input, etc.)
@@ -57,13 +58,13 @@ components/
 lib/
   api.ts                # API client (usersApi, groupsApi, categoriesApi, expensesApi, settlementsApi, inviteApi, contactsApi, chatApi)
   types.ts              # TypeScript interfaces/DTOs
-  utils.ts              # cn(), formatCents(), formatDate(), getInitials(), etc.
+  utils.ts              # cn(), formatCents(), formatDate(), formatMemberSince(), getInitials(), etc.
   screen-helpers.ts     # Pure helpers: aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, inferCategoryFromDescription, etc.
   hooks.ts              # React Query hooks for all API data (+ useMergedContacts for @mention fallback)
   query.ts              # QueryClient config, query keys, stale times
   offline.ts            # AsyncStorage-based offline expense queue
   biometrics.ts         # Biometric lock utilities (expo-local-authentication)
-  notifications.ts      # Push notification utilities (foreground handler, permissions, token, preferences)
+  notifications.ts      # Push notification utilities (foreground handler with per-category filtering, permissions, token, preferences, getNotificationCategory mapping)
   haptics.ts            # Haptic feedback wrappers
   mention-utils.ts      # @/# mention detection, filtering, insertion, wire format, recency merge
   mention-recency.ts    # AsyncStorage-backed recent mention tracking (cap 20)
@@ -146,6 +147,7 @@ lib/
   - `member_joined_via_invite` → `/group/{groupId}`
 - **Rate limiting**: BE-handled (5/hr, 15/day expenses; 20/day total)
 - **Coalescing**: BE-handled (first immediate, subsequent batched in 60s window)
+- **Foreground filtering**: `configureForegroundHandler()` reads per-category prefs from AsyncStorage and suppresses display for disabled categories via `getNotificationCategory()` mapping
 
 ## Onboarding
 - **Screen**: `app/onboarding.tsx` — 4-step walkthrough (Welcome, Create Group, Add Expenses, Settle Up)
@@ -253,7 +255,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (825 tests, 59 suites)**: `lib/` at 98%, `components/ui/` at 91%, screens improving
+- **Current baseline (1671 tests, 69 suites)**: `lib/` at 98%, `components/ui/` at 91%, screens improving
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state

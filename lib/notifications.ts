@@ -49,20 +49,54 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
   reminders: true,
 };
 
+// ---- Notification type → category mapping ----
+
+type NotificationCategory = keyof Pick<NotificationPreferences, "expenses" | "settlements" | "groups" | "reminders">;
+
+const TYPE_TO_CATEGORY: Record<string, NotificationCategory> = {
+  expense_created: "expenses",
+  expense_updated: "expenses",
+  expense_deleted: "expenses",
+  coalesced_expenses: "expenses",
+  settlement_created: "settlements",
+  settlement_nudge_debtor: "reminders",
+  settlement_nudge_manual: "reminders",
+  settlement_nudge_creditor: "reminders",
+  member_joined_via_invite: "groups",
+  member_removed: "groups",
+};
+
+/** Map a notification type string to its preference category. */
+export function getNotificationCategory(type: string): NotificationCategory | null {
+  return TYPE_TO_CATEGORY[type] ?? null;
+}
+
 // ---- Foreground handler ----
 
 /**
  * Configure how notifications are handled when the app is in the foreground.
  * Must be called at module load time (before any component renders).
+ * Reads per-category preferences from AsyncStorage and suppresses disabled categories.
  */
 export function configureForegroundHandler() {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
+    handleNotification: async (notification) => {
+      const prefs = await getNotificationPreferences();
+
+      if (!prefs.enabled) {
+        return { shouldPlaySound: false, shouldSetBadge: false, shouldShowBanner: false, shouldShowList: false };
+      }
+
+      const type = notification.request.content.data?.type as string | undefined;
+      if (type) {
+        const category = getNotificationCategory(type);
+        if (category && !prefs[category]) {
+          return { shouldPlaySound: false, shouldSetBadge: false, shouldShowBanner: false, shouldShowList: false };
+        }
+      }
+
+      return { shouldPlaySound: true, shouldSetBadge: true, shouldShowBanner: true, shouldShowList: true };
+    },
   });
 }
 

@@ -21,7 +21,7 @@ import { ThemedSwitch } from "@/components/ui/themed-switch";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { useUserProfile } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
-import { getInitials, formatDate } from "@/lib/utils";
+import { getInitials, formatMemberSince } from "@/lib/utils";
 
 const DARK_MODE_KEY = "@splitr/dark_mode";
 
@@ -123,9 +123,9 @@ export default function ProfileScreen() {
               <View className="flex-1 items-center">
                 <Text className="text-xl font-sans-bold text-primary">
                   {apiUser?.createdAt
-                    ? formatDate(apiUser.createdAt)
+                    ? formatMemberSince(apiUser.createdAt)
                     : user?.createdAt
-                    ? formatDate(new Date(user.createdAt).toISOString())
+                    ? formatMemberSince(new Date(user.createdAt).toISOString())
                     : "—"}
                 </Text>
                 <Text className="text-xs text-muted-foreground font-sans mt-0.5">Member since</Text>

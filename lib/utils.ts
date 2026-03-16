@@ -81,6 +81,13 @@ export function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+/** Format a date as "Mar 2026" for member-since display. */
+export function formatMemberSince(dateString: string): string {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
 export function getInitials(name: string): string {
   return name
     .split(" ")

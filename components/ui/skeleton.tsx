@@ -123,14 +123,20 @@ export function SkeletonGroupItem() {
   return (
     <View
       className="p-4 rounded-2xl bg-card"
-      style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+      style={{ flexDirection: "row", gap: 12 }}
     >
       <Skeleton width={44} height={44} borderRadius={16} />
       <View style={{ flex: 1, gap: 6 }}>
-        <Skeleton width="60%" height={16} borderRadius={6} />
-        <Skeleton width="35%" height={10} borderRadius={4} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Skeleton width="55%" height={16} borderRadius={6} />
+          <Skeleton width={56} height={14} borderRadius={6} />
+        </View>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Skeleton width="30%" height={10} borderRadius={4} />
+          <Skeleton width={48} height={10} borderRadius={4} />
+        </View>
       </View>
-      <Skeleton width={20} height={20} borderRadius={10} />
+      <Skeleton width={18} height={18} borderRadius={9} style={{ alignSelf: "center" }} />
     </View>
   );
 }

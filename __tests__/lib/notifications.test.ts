@@ -51,8 +51,10 @@ import {
   getNotificationPreferences,
   saveNotificationPreferences,
   setupNotificationCategories,
+  getNotificationCategory,
   DEFAULT_NOTIFICATION_PREFS,
   NOTIFICATION_PREFS_KEY,
+  NotificationPreferences,
 } from "@/lib/notifications";
 
 beforeEach(() => {
@@ -68,7 +70,49 @@ beforeEach(() => {
 });
 
 describe("notifications.ts", () => {
+  describe("getNotificationCategory", () => {
+    it("maps expense types to 'expenses'", () => {
+      expect(getNotificationCategory("expense_created")).toBe("expenses");
+      expect(getNotificationCategory("expense_updated")).toBe("expenses");
+      expect(getNotificationCategory("expense_deleted")).toBe("expenses");
+      expect(getNotificationCategory("coalesced_expenses")).toBe("expenses");
+    });
+
+    it("maps settlement_created to 'settlements'", () => {
+      expect(getNotificationCategory("settlement_created")).toBe("settlements");
+    });
+
+    it("maps nudge types to 'reminders'", () => {
+      expect(getNotificationCategory("settlement_nudge_debtor")).toBe("reminders");
+      expect(getNotificationCategory("settlement_nudge_manual")).toBe("reminders");
+      expect(getNotificationCategory("settlement_nudge_creditor")).toBe("reminders");
+    });
+
+    it("maps member types to 'groups'", () => {
+      expect(getNotificationCategory("member_joined_via_invite")).toBe("groups");
+      expect(getNotificationCategory("member_removed")).toBe("groups");
+    });
+
+    it("returns null for unknown types", () => {
+      expect(getNotificationCategory("unknown_type")).toBeNull();
+      expect(getNotificationCategory("")).toBeNull();
+    });
+  });
+
   describe("configureForegroundHandler", () => {
+    function callHandler(type?: string) {
+      configureForegroundHandler();
+      const handler = (Notifications.setNotificationHandler as jest.Mock).mock.calls[0][0];
+      const notification = {
+        request: {
+          content: {
+            data: type ? { type } : {},
+          },
+        },
+      } as unknown as Notifications.Notification;
+      return handler.handleNotification(notification);
+    }
+
     it("calls setNotificationHandler", () => {
       configureForegroundHandler();
       expect(Notifications.setNotificationHandler).toHaveBeenCalledWith(
@@ -78,16 +122,57 @@ describe("notifications.ts", () => {
       );
     });
 
-    it("handler returns all flags true", async () => {
-      configureForegroundHandler();
-      const handler = (Notifications.setNotificationHandler as jest.Mock).mock.calls[0][0];
-      const result = await handler.handleNotification();
+    it("shows notification when all preferences are default (enabled)", async () => {
+      const result = await callHandler("expense_created");
       expect(result).toEqual({
         shouldPlaySound: true,
         shouldSetBadge: true,
         shouldShowBanner: true,
         shouldShowList: true,
       });
+    });
+
+    it("suppresses notification when global enabled is false", async () => {
+      const prefs: NotificationPreferences = { ...DEFAULT_NOTIFICATION_PREFS, enabled: false };
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(prefs));
+      const result = await callHandler("expense_created");
+      expect(result.shouldShowBanner).toBe(false);
+      expect(result.shouldShowList).toBe(false);
+      expect(result.shouldPlaySound).toBe(false);
+    });
+
+    it("suppresses notification when its category is disabled", async () => {
+      const prefs: NotificationPreferences = { ...DEFAULT_NOTIFICATION_PREFS, expenses: false };
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(prefs));
+      const result = await callHandler("expense_created");
+      expect(result.shouldShowBanner).toBe(false);
+      expect(result.shouldShowList).toBe(false);
+    });
+
+    it("shows notification when a different category is disabled", async () => {
+      const prefs: NotificationPreferences = { ...DEFAULT_NOTIFICATION_PREFS, groups: false };
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(prefs));
+      const result = await callHandler("expense_created");
+      expect(result.shouldShowBanner).toBe(true);
+    });
+
+    it("shows notification for unknown type even with some categories disabled", async () => {
+      const prefs: NotificationPreferences = { ...DEFAULT_NOTIFICATION_PREFS, expenses: false };
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(prefs));
+      const result = await callHandler("unknown_type");
+      expect(result.shouldShowBanner).toBe(true);
+    });
+
+    it("shows notification when no type is present in data", async () => {
+      const result = await callHandler();
+      expect(result.shouldShowBanner).toBe(true);
+    });
+
+    it("suppresses reminders category for nudge notifications", async () => {
+      const prefs: NotificationPreferences = { ...DEFAULT_NOTIFICATION_PREFS, reminders: false };
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(prefs));
+      const result = await callHandler("settlement_nudge_debtor");
+      expect(result.shouldShowBanner).toBe(false);
     });
   });
 

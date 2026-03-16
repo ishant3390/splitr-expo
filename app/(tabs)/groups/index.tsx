@@ -13,9 +13,9 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { GroupAvatar } from "@/components/ui/group-avatar";
-import { useGroups, useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
+import { useGroups, useArchiveGroup, useDeleteGroup, useUserBalance } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
-import { cn, extractInviteCode } from "@/lib/utils";
+import { cn, extractInviteCode, formatCents, formatRelativeTime } from "@/lib/utils";
 import { SHADOWS } from "@/lib/shadows";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { GroupDto } from "@/lib/types";
@@ -31,6 +31,7 @@ export default function GroupsScreen() {
   const isDark = colorScheme === "dark";
   const [filter, setFilter] = useState<"active" | "archived">("active");
   const { data: groups = [], isLoading: loading, error: groupsError, refetch } = useGroups(filter);
+  const { data: balanceData, refetch: refetchBalance } = useUserBalance();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -48,6 +49,12 @@ export default function GroupsScreen() {
       (g.description ?? "").toLowerCase().includes(q)
     );
   }, [groups, searchQuery]);
+
+  const balanceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    (balanceData?.groupBalances ?? []).forEach((gb) => map.set(gb.groupId, gb.balanceCents));
+    return map;
+  }, [balanceData?.groupBalances]);
 
   // Long-press action sheet
   const [selectedGroup, setSelectedGroup] = useState<GroupDto | null>(null);
@@ -70,19 +77,20 @@ export default function GroupsScreen() {
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch])
+      refetchBalance();
+    }, [refetch, refetchBalance])
   );
 
   // Fallback: state-based refetch (reliable on web)
   useEffect(() => {
-    if (isFocused) refetch();
+    if (isFocused) { refetch(); refetchBalance(); }
   }, [isFocused]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetch(), refetchBalance()]);
     setRefreshing(false);
-  }, [refetch]);
+  }, [refetch, refetchBalance]);
 
   const handleArchiveConfirm = async () => {
     if (!groupToArchive) return;
@@ -145,12 +153,7 @@ export default function GroupsScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-3 pb-1">
-        <View>
-          <Text className="text-2xl font-sans-bold text-foreground">Groups</Text>
-          <Text className="text-xs text-muted-foreground font-sans">
-            {Platform.OS === "web" ? "Tap ··· or right-click for options" : "Tap ··· or long-press for options"}
-          </Text>
-        </View>
+        <Text className="text-2xl font-sans-bold text-foreground">Groups</Text>
         <View className="flex-row items-center gap-2">
           <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
             <View className="w-9 h-9 rounded-full bg-muted items-center justify-center">
@@ -257,6 +260,38 @@ export default function GroupsScreen() {
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="automatic"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
+          ListHeaderComponent={
+            filter === "active" && balanceData && balanceData.netBalanceCents !== 0 ? (
+              <Card className="p-4 mb-1">
+                <View className="flex-row items-center justify-between">
+                  <View>
+                    <Text className="text-xs text-muted-foreground font-sans">Overall balance</Text>
+                    <Text className={cn(
+                      "text-lg font-sans-bold",
+                      balanceData.netBalanceCents > 0 ? "text-emerald-500" : "text-red-500"
+                    )}>
+                      {balanceData.netBalanceCents > 0 ? "+" : "-"}
+                      {formatCents(Math.abs(balanceData.netBalanceCents))}
+                    </Text>
+                  </View>
+                  <View className="flex-row gap-4">
+                    <View className="items-end">
+                      <Text className="text-xs text-muted-foreground font-sans">Owed</Text>
+                      <Text className="text-sm font-sans-semibold text-emerald-500">
+                        {formatCents(balanceData.totalOwedCents)}
+                      </Text>
+                    </View>
+                    <View className="items-end">
+                      <Text className="text-xs text-muted-foreground font-sans">Owe</Text>
+                      <Text className="text-sm font-sans-semibold text-red-500">
+                        {formatCents(balanceData.totalOwesCents)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </Card>
+            ) : null
+          }
           ListEmptyComponent={
             filter === "active" ? (
               <View>
@@ -285,6 +320,8 @@ export default function GroupsScreen() {
             )
           }
           renderItem={({ item: group, index }: { item: GroupDto; index: number }) => {
+            const balanceCents = balanceMap.get(group.id);
+            const hasBalance = balanceCents !== undefined && balanceCents !== 0;
             return (
               <Animated.View entering={FadeInDown.delay(index * 60).duration(300).springify()}>
               <Pressable
@@ -296,33 +333,48 @@ export default function GroupsScreen() {
                 } : {})}
               >
                 <Card className="p-4">
-                  <View className="flex-row items-center gap-3">
+                  <View className="flex-row gap-3">
                     <GroupAvatar
                       name={group.name}
                       emoji={group.emoji}
                       groupType={group.groupType}
                       id={group.id}
                     />
-                    <View className="flex-1">
-                      <Text className="text-base font-sans-semibold text-card-foreground">
-                        {group.name}
-                      </Text>
-                      <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                        {group.memberCount ?? 0} members
-                        {group.defaultCurrency ? ` \u00B7 ${group.defaultCurrency}` : ""}
-                      </Text>
+                    <View className="flex-1" style={{ gap: 2 }}>
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-base font-sans-semibold text-card-foreground flex-shrink" numberOfLines={1}>
+                          {group.name}
+                        </Text>
+                        <Text className={cn(
+                          "text-sm font-sans-semibold ml-2",
+                          hasBalance
+                            ? (balanceCents! > 0 ? "text-emerald-500" : "text-red-500")
+                            : "text-muted-foreground"
+                        )}>
+                          {hasBalance
+                            ? `${balanceCents! > 0 ? "+" : "-"}${formatCents(Math.abs(balanceCents!), group.defaultCurrency)}`
+                            : "settled up"}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-xs text-muted-foreground font-sans">
+                          {group.memberCount ?? 0} members
+                        </Text>
+                        {group.updatedAt && (
+                          <Text className="text-xs text-muted-foreground font-sans">
+                            {formatRelativeTime(group.updatedAt)}
+                          </Text>
+                        )}
+                      </View>
                     </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Pressable
-                        onPress={() => { hapticWarning(); handleLongPress(group); }}
-                        hitSlop={8}
-                        accessibilityLabel="Group actions"
-                        style={{ padding: 4 }}
-                      >
-                        <MoreVertical size={18} color="#94a3b8" />
-                      </Pressable>
-                      <ChevronRight size={20} color="#94a3b8" />
-                    </View>
+                    <Pressable
+                      onPress={() => { hapticWarning(); handleLongPress(group); }}
+                      hitSlop={8}
+                      accessibilityLabel="Group actions"
+                      style={{ padding: 4, alignSelf: "center" }}
+                    >
+                      <MoreVertical size={18} color="#94a3b8" />
+                    </Pressable>
                   </View>
                 </Card>
               </Pressable>

@@ -34,10 +34,17 @@ const mockUseGroups = jest.fn(() => ({
   refetch: mockRefetch,
 }));
 
+const mockRefetchBalance = jest.fn();
+const mockUseUserBalance = jest.fn(() => ({
+  data: null,
+  refetch: mockRefetchBalance,
+}));
+
 jest.mock("@/lib/hooks", () => ({
   useGroups: (...args: any[]) => mockUseGroups(...args),
   useArchiveGroup: () => ({ mutateAsync: mockArchiveMutateAsync, isPending: false }),
   useDeleteGroup: () => ({ mutateAsync: mockDeleteMutateAsync, isPending: false }),
+  useUserBalance: () => mockUseUserBalance(),
 }));
 
 const mockListMembers = jest.fn(() => Promise.resolve([]));
@@ -81,6 +88,10 @@ beforeEach(() => {
     isLoading: false,
     error: null,
     refetch: mockRefetch,
+  });
+  mockUseUserBalance.mockReturnValue({
+    data: null,
+    refetch: mockRefetchBalance,
   });
 });
 
@@ -157,7 +168,7 @@ describe("GroupsScreen", () => {
     });
   });
 
-  it("shows member count and currency for groups", async () => {
+  it("shows member count for groups", async () => {
     mockUseGroups.mockReturnValue({
       data: [sampleGroups[0]],
       isLoading: false,
@@ -167,7 +178,6 @@ describe("GroupsScreen", () => {
     render(<GroupsScreen />);
     await waitFor(() => {
       expect(screen.getByText(/4 members/)).toBeTruthy();
-      expect(screen.getByText(/EUR/)).toBeTruthy();
     });
   });
 
@@ -680,8 +690,8 @@ describe("GroupsScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/create-group");
   });
 
-  // --- Group with no currency (line 271) ---
-  it("shows member count without currency when defaultCurrency is absent", async () => {
+  // --- Group with no currency ---
+  it("shows member count when defaultCurrency is absent", async () => {
     mockUseGroups.mockReturnValue({
       data: [{ ...sampleGroups[0], defaultCurrency: undefined }],
       isLoading: false,
@@ -836,6 +846,116 @@ describe("GroupsScreen", () => {
     // refetch is called on focus
     await waitFor(() => {
       expect(mockRefetch).toHaveBeenCalled();
+    });
+  });
+
+  // --- Balance on group cards ---
+  it("shows per-group balance on card when positive", async () => {
+    mockUseGroups.mockReturnValue({
+      data: [sampleGroups[0]],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+    mockUseUserBalance.mockReturnValue({
+      data: {
+        totalOwedCents: 4500,
+        totalOwesCents: 0,
+        netBalanceCents: 4500,
+        groupBalances: [{ groupId: "g1", groupName: "Trip to Paris", balanceCents: 4500 }],
+      },
+      refetch: mockRefetchBalance,
+    });
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      // Card shows "+€45.00" for group balance, banner shows "+$45.00" for overall
+      expect(screen.getByText(/\+€45\.00/)).toBeTruthy();
+    });
+  });
+
+  it("shows 'settled up' when group balance is zero", async () => {
+    mockUseGroups.mockReturnValue({
+      data: [sampleGroups[0]],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+    mockUseUserBalance.mockReturnValue({
+      data: {
+        totalOwedCents: 0,
+        totalOwesCents: 0,
+        netBalanceCents: 0,
+        groupBalances: [{ groupId: "g1", groupName: "Trip to Paris", balanceCents: 0 }],
+      },
+      refetch: mockRefetchBalance,
+    });
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("settled up")).toBeTruthy();
+    });
+  });
+
+  it("shows summary balance banner when net balance is non-zero", async () => {
+    mockUseGroups.mockReturnValue({
+      data: sampleGroups,
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+    mockUseUserBalance.mockReturnValue({
+      data: {
+        totalOwedCents: 5000,
+        totalOwesCents: 2000,
+        netBalanceCents: 3000,
+        groupBalances: [
+          { groupId: "g1", groupName: "Trip to Paris", balanceCents: 3000 },
+          { groupId: "g2", groupName: "Roommates", balanceCents: 0 },
+        ],
+      },
+      refetch: mockRefetchBalance,
+    });
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Overall balance")).toBeTruthy();
+      expect(screen.getByText("Owed")).toBeTruthy();
+      expect(screen.getByText("Owe")).toBeTruthy();
+    });
+  });
+
+  it("hides summary banner when net balance is zero", async () => {
+    mockUseGroups.mockReturnValue({
+      data: sampleGroups,
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+    mockUseUserBalance.mockReturnValue({
+      data: {
+        totalOwedCents: 1000,
+        totalOwesCents: 1000,
+        netBalanceCents: 0,
+        groupBalances: [],
+      },
+      refetch: mockRefetchBalance,
+    });
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Trip to Paris")).toBeTruthy();
+    });
+    expect(screen.queryByText("Overall balance")).toBeNull();
+  });
+
+  it("shows relative time for last activity", async () => {
+    const recentDate = new Date(Date.now() - 2 * 3600 * 1000).toISOString(); // 2 hours ago
+    mockUseGroups.mockReturnValue({
+      data: [{ ...sampleGroups[0], updatedAt: recentDate }],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/ago|Just now|Yesterday/)).toBeTruthy();
     });
   });
 });
