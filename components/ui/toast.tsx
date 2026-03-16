@@ -129,7 +129,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         </Pressable>
       )}
       <Pressable onPress={onDismiss} hitSlop={8} style={{ marginLeft: toast.action ? 4 : 0 }}>
-        <X size={16} color={isDark ? "#64748b" : "#94a3b8"} />
+        <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
       </Pressable>
     </Animated.View>
   );

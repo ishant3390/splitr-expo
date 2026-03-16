@@ -46,7 +46,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
             <Text
               style={[
                 styles.tabText,
-                { color: isActive ? (isDark ? "#f8fafc" : "#0f172a") : "#64748b" },
+                { color: isActive ? (isDark ? "#f8fafc" : "#0f172a") : (isDark ? "#94a3b8" : "#64748b") },
               ]}
             >
               {tab.label}

@@ -345,7 +345,7 @@ export default function SettleUpScreen() {
                   >
                     {fromName}
                   </Text>
-                  <ArrowRight size={14} color="#94a3b8" />
+                  <ArrowRight size={14} color={isDark ? "#94a3b8" : "#64748b"} />
                   <Text
                     className="text-sm font-sans-semibold text-card-foreground"
                     numberOfLines={1}
@@ -479,7 +479,7 @@ export default function SettleUpScreen() {
           >
             <HandCoins
               size={16}
-              color={activeTab === "suggestions" ? "#0d9488" : "#94a3b8"}
+              color={activeTab === "suggestions" ? "#0d9488" : (isDark ? "#94a3b8" : "#64748b")}
             />
             <Text
               className={cn(
@@ -501,7 +501,7 @@ export default function SettleUpScreen() {
           >
             <History
               size={16}
-              color={activeTab === "history" ? "#0d9488" : "#94a3b8"}
+              color={activeTab === "history" ? "#0d9488" : (isDark ? "#94a3b8" : "#64748b")}
             />
             <Text
               className={cn(
@@ -569,7 +569,7 @@ export default function SettleUpScreen() {
                       <Text className="text-xs font-sans-semibold text-muted-foreground">
                         {cg.groupName.toUpperCase()} ({cg.suggestions.length})
                       </Text>
-                      <ChevronRight size={14} color="#94a3b8" />
+                      <ChevronRight size={14} color={isDark ? "#94a3b8" : "#64748b"} />
                     </Pressable>
                     {/* Suggestions for this group */}
                     {cg.suggestions.map((s, idx) =>

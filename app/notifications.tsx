@@ -156,7 +156,7 @@ export default function NotificationsScreen() {
         <View className="flex-1 items-center justify-center">
           <EmptyState
             icon={Bell}
-            iconColor="#94a3b8"
+            iconColor={isDark ? "#94a3b8" : "#64748b"}
             title="No notifications yet"
             subtitle="You'll see updates when people add expenses or join your groups"
           />
@@ -217,10 +217,9 @@ export default function NotificationsScreen() {
                     {/* Content */}
                     <View style={{ flex: 1 }}>
                       <Text
+                        className={`text-foreground ${isRead ? "font-sans" : "font-sans-semibold"}`}
                         style={{
                           fontSize: 14,
-                          fontFamily: isRead ? "Inter_400Regular" : "Inter_600SemiBold",
-                          color: isDark ? "#f1f5f9" : "#0f172a",
                           lineHeight: 20,
                         }}
                         numberOfLines={2}
@@ -244,7 +243,7 @@ export default function NotificationsScreen() {
                       <Text style={{
                         fontSize: 12,
                         fontFamily: "Inter_400Regular",
-                        color: "#94a3b8",
+                        color: isDark ? "#94a3b8" : "#64748b",
                         marginTop: 4,
                       }}>
                         {timeAgo(item.createdAt)}
@@ -306,8 +305,8 @@ export default function NotificationsScreen() {
               onPress={() => { hapticSelection(); router.push(item.route as any); }}
               style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 2 }}
             >
-              <Icon size={22} color="#94a3b8" />
-              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: "#94a3b8" }}>
+              <Icon size={22} color={isDark ? "#94a3b8" : "#64748b"} />
+              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: isDark ? "#94a3b8" : "#64748b" }}>
                 {item.label}
               </Text>
             </Pressable>

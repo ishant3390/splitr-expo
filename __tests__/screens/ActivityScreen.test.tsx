@@ -282,7 +282,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Dave joined Road Trip/)).toBeTruthy();
+      expect(screen.getByText(/Dave joined/)).toBeTruthy();
       expect(screen.getByText(/as admin/)).toBeTruthy();
     });
   });
@@ -310,7 +310,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText(/Dave joined Road Trip/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Dave joined/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -367,9 +367,9 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Alice created Trip")).toBeTruthy();
+      expect(screen.getByText("Alice created")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Alice created Trip"));
+    fireEvent.press(screen.getByText("Alice created"));
     expect(mockPush).toHaveBeenCalled();
   });
 
@@ -450,7 +450,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText(/GuestUser joined Trip/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/GuestUser joined/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -788,7 +788,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText(/Someone joined Trip/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Someone joined/).length).toBeGreaterThanOrEqual(1);
     });
   });
 

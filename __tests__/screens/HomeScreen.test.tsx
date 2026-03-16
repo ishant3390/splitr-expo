@@ -609,7 +609,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText(/Dave joined Road Trip/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Dave joined/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -658,9 +658,9 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Alice created Trip")).toBeTruthy();
+      expect(screen.getByText("Alice created")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Alice created Trip"));
+    fireEvent.press(screen.getByText("Alice created"));
     expect(mockPush).toHaveBeenCalled();
   });
 
@@ -1009,7 +1009,7 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText(/GuestDave joined Road Trip/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/GuestDave joined/).length).toBeGreaterThanOrEqual(1);
     });
   });
 

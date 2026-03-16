@@ -162,7 +162,7 @@ export default function HomeScreen() {
             onPress={() => router.push("/notifications" as any)}
             className="w-10 h-10 rounded-full bg-muted items-center justify-center"
           >
-            <Bell size={20} color="#64748b" />
+            <Bell size={20} color={isDark ? "#94a3b8" : "#64748b"} />
           </Pressable>
         </View>
 
@@ -317,21 +317,27 @@ export default function HomeScreen() {
                 <Pressable
                   key={cat.key}
                   onPress={() => { hapticSelection(); setSelectedCategory(cat.key); }}
-                  className={`items-center py-2 px-3 rounded-xl ${
-                    isActive
-                      ? "bg-foreground"
-                      : "bg-muted"
-                  }`}
-                  style={{ minWidth: 64 }}
+                  className="items-center py-2 px-3 rounded-xl"
+                  style={{
+                    minWidth: 64,
+                    backgroundColor: isActive
+                      ? (isDark ? "#f1f5f9" : "#0f172a")
+                      : (isDark ? "#334155" : "#f1f5f9"),
+                  }}
                 >
                   <Icon
                     size={20}
-                    color={isActive ? "#ffffff" : "#64748b"}
+                    color={isActive ? (isDark ? "#0f172a" : "#ffffff") : (isDark ? "#94a3b8" : "#64748b")}
                   />
                   <Text
-                    className={`text-[10px] font-sans-medium mt-1 ${
-                      isActive ? "text-white" : "text-muted-foreground"
-                    }`}
+                    style={{
+                      fontSize: 10,
+                      fontFamily: "Inter_500Medium",
+                      marginTop: 4,
+                      color: isActive
+                        ? (isDark ? "#0f172a" : "#ffffff")
+                        : (isDark ? "#94a3b8" : "#64748b"),
+                    }}
                   >
                     {cat.label}
                   </Text>
@@ -397,10 +403,7 @@ export default function HomeScreen() {
                 {filtered.map((item, idx) => {
                   const actorName = item.actorUserName ?? item.actorGuestName ?? "?";
                   const title = formatActivityTitle(item, backendUser?.id);
-                  const isExpenseOrSettlement = item.activityType.startsWith("expense_") || item.activityType === "settlement_created";
-                  const groupName = isExpenseOrSettlement
-                    ? (resolveActivityGroupName(item) ?? (item.groupId ? groupNameMap.get(item.groupId) : null) ?? null)
-                    : null;
+                  const groupName = resolveActivityGroupName(item) ?? (item.groupId ? groupNameMap.get(item.groupId) : null) ?? null;
                   const isExpenseUpdated = item.activityType === "expense_updated";
                   const oldAmount = item.details?.oldAmount as number | undefined;
                   const newAmount = item.details?.newAmount as number | undefined;

@@ -157,7 +157,7 @@ export default function GroupsScreen() {
         <View className="flex-row items-center gap-2">
           <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
             <View className="w-9 h-9 rounded-full bg-muted items-center justify-center">
-              <Search size={18} color={showSearch ? "#0d9488" : "#64748b"} />
+              <Search size={18} color={showSearch ? "#0d9488" : (isDark ? "#94a3b8" : "#64748b")} />
             </View>
           </Pressable>
           <Button
@@ -186,7 +186,7 @@ export default function GroupsScreen() {
       {/* Search bar */}
       {showSearch && (
         <View className="mx-5 mb-2 flex-row items-center bg-muted rounded-xl px-3 py-2 gap-2">
-          <Search size={16} color="#94a3b8" />
+          <Search size={16} color={isDark ? "#94a3b8" : "#64748b"} />
           <TextInput
             placeholder="Search groups..."
             value={searchQuery}
@@ -197,7 +197,7 @@ export default function GroupsScreen() {
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery("")}>
-              <X size={16} color="#94a3b8" />
+              <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
             </Pressable>
           )}
         </View>
@@ -373,7 +373,7 @@ export default function GroupsScreen() {
                       accessibilityLabel="Group actions"
                       style={{ padding: 4, alignSelf: "center" }}
                     >
-                      <MoreVertical size={18} color="#94a3b8" />
+                      <MoreVertical size={18} color={isDark ? "#94a3b8" : "#64748b"} />
                     </Pressable>
                   </View>
                 </Card>
@@ -510,7 +510,7 @@ export default function GroupsScreen() {
         <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a", marginBottom: 4 }}>
           Join a Group
         </Text>
-        <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#94a3b8", marginBottom: 16 }}>
+        <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b", marginBottom: 16 }}>
           Enter an invite code or paste an invite link
         </Text>
         <TextInput

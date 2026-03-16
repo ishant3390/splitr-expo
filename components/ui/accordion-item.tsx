@@ -59,7 +59,7 @@ export function AccordionItem({ title, children, expanded = false, onToggle }: A
           {title}
         </Text>
         <Animated.View style={chevronStyle}>
-          <ChevronDown size={18} color={isDark ? "#64748b" : "#94a3b8"} />
+          <ChevronDown size={18} color={isDark ? "#94a3b8" : "#64748b"} />
         </Animated.View>
       </Pressable>
       <Animated.View style={contentStyle}>

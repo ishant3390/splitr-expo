@@ -817,78 +817,78 @@ describe("formatActivityTitle", () => {
     expect(formatActivityTitle(a, "me")).toBe("Carol settled up");
   });
 
-  // member_joined
-  it("returns 'You joined Road Trip' for member_joined by current user", () => {
+  // member_joined — group name now shown as subtitle, not in title
+  it("returns 'You joined' for member_joined by current user", () => {
     const a = makeActivity({
       activityType: "member_joined",
       actorUserId: "me",
       groupName: "Road Trip",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You joined Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("You joined");
   });
 
-  it("returns 'Dave joined Road Trip' for member_joined by someone else", () => {
+  it("returns 'Dave joined' for member_joined by someone else", () => {
     const a = makeActivity({
       activityType: "member_joined",
       actorUserId: "u5",
       actorUserName: "Dave",
       groupName: "Road Trip",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Dave joined Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Dave joined");
   });
 
   // member_joined_via_invite
-  it("returns 'John joined Road Trip' for member_joined_via_invite", () => {
+  it("returns 'John joined' for member_joined_via_invite", () => {
     const a = makeActivity({
       activityType: "member_joined_via_invite",
       actorUserId: "u8",
       actorUserName: "John",
       groupName: "Road Trip",
     });
-    expect(formatActivityTitle(a, "me")).toBe("John joined Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("John joined");
   });
 
-  it("returns 'You joined Road Trip' for member_joined_via_invite by current user", () => {
+  it("returns 'You joined' for member_joined_via_invite by current user", () => {
     const a = makeActivity({
       activityType: "member_joined_via_invite",
       actorUserId: "me",
       groupName: "Road Trip",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You joined Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("You joined");
   });
 
-  it("falls back to details.groupName for member_joined_via_invite when groupName is null", () => {
+  it("returns title without group name for member_joined_via_invite when groupName is null", () => {
     const a = makeActivity({
       activityType: "member_joined_via_invite",
       actorUserId: "u8",
       actorUserName: "Chinam",
       details: { groupName: "RoadTrip" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Chinam joined RoadTrip");
+    expect(formatActivityTitle(a, "me")).toBe("Chinam joined");
   });
 
-  it("falls back to details.groupName for member_joined when groupName is null", () => {
+  it("returns title without group name for member_joined when groupName is null", () => {
     const a = makeActivity({
       activityType: "member_joined",
       actorUserId: "u8",
       actorUserName: "Dave",
       details: { groupName: "Beach Trip" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Dave joined Beach Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Dave joined");
   });
 
-  // member_added
-  it("returns 'You added Bob to Road Trip' for member_added by current user", () => {
+  // member_added — group name now shown as subtitle, not in title
+  it("returns 'You added Bob' for member_added by current user", () => {
     const a = makeActivity({
       activityType: "member_added",
       actorUserId: "me",
       groupName: "Road Trip",
       details: { targetUserName: "Bob", targetUserId: "u5" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("You added Bob to Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("You added Bob");
   });
 
-  it("returns 'Ajay added you to Road Trip' when target is current user", () => {
+  it("returns 'Ajay added you' when target is current user", () => {
     const a = makeActivity({
       activityType: "member_added",
       actorUserId: "u1",
@@ -896,10 +896,10 @@ describe("formatActivityTitle", () => {
       groupName: "Road Trip",
       details: { targetUserName: "Bob", targetUserId: "me" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Ajay added you to Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added you");
   });
 
-  it("returns 'Ajay added Bob to Road Trip' for member_added by someone else", () => {
+  it("returns 'Ajay added Bob' for member_added by someone else", () => {
     const a = makeActivity({
       activityType: "member_added",
       actorUserId: "u1",
@@ -907,7 +907,7 @@ describe("formatActivityTitle", () => {
       groupName: "Road Trip",
       details: { targetUserName: "Bob", targetUserId: "u5" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Ajay added Bob to Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added Bob");
   });
 
   it("falls back to memberName in member_added details", () => {
@@ -918,7 +918,7 @@ describe("formatActivityTitle", () => {
       groupName: "Trip",
       details: { memberName: "Charlie" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Ajay added Charlie to Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added Charlie");
   });
 
   it("falls back to addedMemberName in member_added details", () => {
@@ -929,7 +929,7 @@ describe("formatActivityTitle", () => {
       groupName: "Trip",
       details: { addedMemberName: "Dana" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Ajay added Dana to Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added Dana");
   });
 
   it("falls back to 'a member' when no target name in member_added", () => {
@@ -939,7 +939,7 @@ describe("formatActivityTitle", () => {
       actorUserName: "Ajay",
       groupName: "Trip",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Ajay added a member to Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Ajay added a member");
   });
 
   it("omits group name when groupName is null in member_added", () => {
@@ -952,144 +952,144 @@ describe("formatActivityTitle", () => {
     expect(formatActivityTitle(a, "me")).toBe("Ajay added Bob");
   });
 
-  // group_created
-  it("returns 'You created Weekend' for group_created by current user", () => {
+  // group_created — group name now shown as subtitle, not in title
+  it("returns 'You created' for group_created by current user", () => {
     const a = makeActivity({
       activityType: "group_created",
       actorUserId: "me",
       groupName: "Weekend",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You created Weekend");
+    expect(formatActivityTitle(a, "me")).toBe("You created");
   });
 
-  it("returns 'Eve created Weekend' for group_created by someone else", () => {
+  it("returns 'Eve created' for group_created by someone else", () => {
     const a = makeActivity({
       activityType: "group_created",
       actorUserId: "u6",
       actorUserName: "Eve",
       groupName: "Weekend",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve created Weekend");
+    expect(formatActivityTitle(a, "me")).toBe("Eve created");
   });
 
   // group_updated
-  it("returns 'You updated Trip to Paris' for group_updated by current user", () => {
+  it("returns 'You updated' for group_updated by current user", () => {
     const a = makeActivity({
       activityType: "group_updated",
       actorUserId: "me",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You updated Trip to Paris");
+    expect(formatActivityTitle(a, "me")).toBe("You updated");
   });
 
-  it("returns 'Eve updated Trip to Paris' for group_updated by someone else", () => {
+  it("returns 'Eve updated' for group_updated by someone else", () => {
     const a = makeActivity({
       activityType: "group_updated",
       actorUserId: "u6",
       actorUserName: "Eve",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve updated Trip to Paris");
+    expect(formatActivityTitle(a, "me")).toBe("Eve updated");
   });
 
-  it("falls back to details.groupName for group_updated when groupName is null", () => {
+  it("returns title without group name for group_updated when groupName is null", () => {
     const a = makeActivity({
       activityType: "group_updated",
       actorUserId: "u6",
       actorUserName: "Eve",
       details: { groupName: "Road Trip" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve updated Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Eve updated");
   });
 
   // group_archived
-  it("returns 'You archived Trip to Paris' for group_archived by current user", () => {
+  it("returns 'You archived' for group_archived by current user", () => {
     const a = makeActivity({
       activityType: "group_archived",
       actorUserId: "me",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You archived Trip to Paris");
+    expect(formatActivityTitle(a, "me")).toBe("You archived");
   });
 
-  it("returns 'Eve archived Trip to Paris' for group_archived by someone else", () => {
+  it("returns 'Eve archived' for group_archived by someone else", () => {
     const a = makeActivity({
       activityType: "group_archived",
       actorUserId: "u6",
       actorUserName: "Eve",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve archived Trip to Paris");
+    expect(formatActivityTitle(a, "me")).toBe("Eve archived");
   });
 
-  it("falls back to details.groupName for group_archived when groupName is null", () => {
+  it("returns title without group name for group_archived when groupName is null", () => {
     const a = makeActivity({
       activityType: "group_archived",
       actorUserId: "u6",
       actorUserName: "Eve",
       details: { action: "archived", groupName: "Road Trip" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve archived Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Eve archived");
   });
 
   // group_unarchived
-  it("returns 'You unarchived Trip to Paris' for group_unarchived by current user", () => {
+  it("returns 'You unarchived' for group_unarchived by current user", () => {
     const a = makeActivity({
       activityType: "group_unarchived",
       actorUserId: "me",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You unarchived Trip to Paris");
+    expect(formatActivityTitle(a, "me")).toBe("You unarchived");
   });
 
-  it("returns 'Eve unarchived Trip to Paris' for group_unarchived by someone else", () => {
+  it("returns 'Eve unarchived' for group_unarchived by someone else", () => {
     const a = makeActivity({
       activityType: "group_unarchived",
       actorUserId: "u6",
       actorUserName: "Eve",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve unarchived Trip to Paris");
+    expect(formatActivityTitle(a, "me")).toBe("Eve unarchived");
   });
 
-  it("falls back to details.groupName for group_unarchived when groupName is null", () => {
+  it("returns title without group name for group_unarchived when groupName is null", () => {
     const a = makeActivity({
       activityType: "group_unarchived",
       actorUserId: "u6",
       actorUserName: "Eve",
       details: { action: "unarchived", groupName: "Road Trip" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve unarchived Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Eve unarchived");
   });
 
   // group_deleted
-  it("returns 'You deleted Trip to Paris' for group_deleted by current user", () => {
+  it("returns 'You deleted' for group_deleted by current user", () => {
     const a = makeActivity({
       activityType: "group_deleted",
       actorUserId: "me",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You deleted Trip to Paris");
+    expect(formatActivityTitle(a, "me")).toBe("You deleted");
   });
 
-  it("returns 'Eve deleted Trip to Paris' for group_deleted by someone else", () => {
+  it("returns 'Eve deleted' for group_deleted by someone else", () => {
     const a = makeActivity({
       activityType: "group_deleted",
       actorUserId: "u6",
       actorUserName: "Eve",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve deleted Trip to Paris");
+    expect(formatActivityTitle(a, "me")).toBe("Eve deleted");
   });
 
-  it("falls back to details.groupName for group_deleted when groupName is null", () => {
+  it("returns title without group name for group_deleted when groupName is null", () => {
     const a = makeActivity({
       activityType: "group_deleted",
       actorUserId: "u6",
       actorUserName: "Eve",
       details: { groupName: "Road Trip" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve deleted Road Trip");
+    expect(formatActivityTitle(a, "me")).toBe("Eve deleted");
   });
 
   // Fallback for unknown types
@@ -1108,7 +1108,7 @@ describe("formatActivityTitle", () => {
       actorUserId: "me",
       groupName: "Beach Trip",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You left Beach Trip");
+    expect(formatActivityTitle(a, "me")).toBe("You left");
   });
 
   it("returns 'You removed {name}' for member_removed with details", () => {
@@ -1294,15 +1294,15 @@ describe("formatActivityTitle", () => {
     expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("Alice added Dinner");
   });
 
-  it("does not duplicate group name for member_joined with includeGroupName", () => {
+  it("does not include group name in title for member_joined even with includeGroupName", () => {
     const a = makeActivity({
       activityType: "member_joined",
       actorUserId: "u1",
       actorUserName: "Dave",
       groupName: "Road Trip",
     });
-    // member_joined already includes group name in the title, suffix should not add it again
-    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("Dave joined Road Trip");
+    // member_joined shows group name as subtitle, not in title
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("Dave joined");
   });
 
   it("appends group name for expense with no description", () => {

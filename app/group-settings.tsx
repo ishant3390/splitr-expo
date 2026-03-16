@@ -757,7 +757,7 @@ export default function GroupSettingsScreen() {
             Add Member
           </Text>
           <Pressable onPress={() => { setShowAddMember(false); setAddMemberEmail(""); }}>
-            <X size={22} color="#64748b" />
+            <X size={22} color={isDark ? "#94a3b8" : "#64748b"} />
           </Pressable>
         </View>
 
@@ -765,7 +765,7 @@ export default function GroupSettingsScreen() {
           <ActivityIndicator color="#0d9488" />
         ) : contacts.length > 0 ? (
           <View style={{ gap: 8 }}>
-            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#64748b" }}>
+            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: isDark ? "#94a3b8" : "#64748b" }}>
               FROM YOUR OTHER GROUPS
             </Text>
             <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
@@ -799,7 +799,7 @@ export default function GroupSettingsScreen() {
                         ) : null}
                       </Text>
                       {contact.email ? (
-                        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#64748b" }}>
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b" }}>
                           {contact.email}
                         </Text>
                       ) : null}
@@ -813,7 +813,7 @@ export default function GroupSettingsScreen() {
             </ScrollView>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
               <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
-              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#94a3b8" }}>OR ADD SOMEONE NEW</Text>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b" }}>OR ADD SOMEONE NEW</Text>
               <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
             </View>
           </View>
@@ -839,7 +839,7 @@ export default function GroupSettingsScreen() {
           returnKeyType="done"
         />
 
-        <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#64748b", lineHeight: 18 }}>
+        <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b", lineHeight: 18 }}>
           Add an email to send them a direct invite. Without one, share the group link so they can join.
         </Text>
 
@@ -953,8 +953,8 @@ export default function GroupSettingsScreen() {
                 width: "100%",
               }}
             >
-              <QrCode size={18} color="#64748b" />
-              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#64748b" }}>
+              <QrCode size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: isDark ? "#94a3b8" : "#64748b" }}>
                 Show QR Code
               </Text>
             </Pressable>

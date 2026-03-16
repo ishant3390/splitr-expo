@@ -86,13 +86,13 @@ export default function ActivityScreen() {
           <Text className="text-2xl font-sans-bold text-foreground">Activity</Text>
           <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
             <View className="w-9 h-9 rounded-full bg-muted items-center justify-center">
-              <Search size={18} color={showSearch ? "#0d9488" : "#64748b"} />
+              <Search size={18} color={showSearch ? "#0d9488" : (isDark ? "#94a3b8" : "#64748b")} />
             </View>
           </Pressable>
         </View>
         {showSearch && (
           <View className="mt-2 flex-row items-center bg-muted rounded-xl px-3 py-2 gap-2">
-            <Search size={16} color="#94a3b8" />
+            <Search size={16} color={isDark ? "#94a3b8" : "#64748b"} />
             <TextInput
               placeholder="Search activity..."
               value={searchQuery}
@@ -103,7 +103,7 @@ export default function ActivityScreen() {
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery("")}>
-                <X size={16} color="#94a3b8" />
+                <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
               </Pressable>
             )}
           </View>
@@ -125,7 +125,7 @@ export default function ActivityScreen() {
         <View className="flex-1 items-center justify-center px-5">
           <EmptyState
             icon={Clock}
-            iconColor="#94a3b8"
+            iconColor={isDark ? "#94a3b8" : "#64748b"}
             title="No activity yet"
             subtitle="Your expense and settlement activity will appear here"
           />
@@ -157,10 +157,7 @@ export default function ActivityScreen() {
           renderItem={({ item }) => {
             const actorName = item.actorUserName ?? item.actorGuestName ?? "Someone";
             const title = formatActivityTitle(item, backendUser?.id);
-            const isExpenseOrSettlement = item.activityType.startsWith("expense_") || item.activityType === "settlement_created";
-            const groupName = isExpenseOrSettlement
-              ? (resolveActivityGroupName(item) ?? (item.groupId ? groupNameMap.get(item.groupId) : null) ?? null)
-              : null;
+            const groupName = resolveActivityGroupName(item) ?? (item.groupId ? groupNameMap.get(item.groupId) : null) ?? null;
 
             const isExpenseUpdated = item.activityType === "expense_updated";
             const oldAmount = item.details?.oldAmount as number | undefined;

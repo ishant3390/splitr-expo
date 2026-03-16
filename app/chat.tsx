@@ -183,6 +183,8 @@ function shouldShowTimestamp(
 // ---- B27: Typing Dots (iMessage-style) ----
 
 function TypingDot({ delay: d }: { delay: number }) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(0.4);
 
@@ -219,7 +221,7 @@ function TypingDot({ delay: d }: { delay: number }) {
   return (
     <Animated.View
       style={[
-        { width: 8, height: 8, borderRadius: 4, backgroundColor: "#64748b" },
+        { width: 8, height: 8, borderRadius: 4, backgroundColor: isDark ? "#94a3b8" : "#64748b" },
         animStyle,
       ]}
     />
@@ -227,17 +229,19 @@ function TypingDot({ delay: d }: { delay: number }) {
 }
 
 function TypingDotsIndicator({ label }: { label: string }) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   return (
     <View className="px-4 py-2 items-start">
       <View className="flex-row items-start gap-2">
         <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center mt-1">
-          <Bot size={14} color="#64748b" />
+          <Bot size={14} color={isDark ? "#94a3b8" : "#64748b"} />
         </View>
         <View>
           {/* iMessage-style typing bubble */}
-          <View 
-            style={{ 
-              backgroundColor: "#f1f5f9",
+          <View
+            style={{
+              backgroundColor: isDark ? "#334155" : "#f1f5f9",
               borderRadius: 18, 
               paddingHorizontal: 16, 
               paddingVertical: 12,
@@ -600,7 +604,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
               >
                 {showAvatar && (
                   <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center">
-                    <Bot size={14} color="#64748b" />
+                    <Bot size={14} color={isDark ? "#94a3b8" : "#64748b"} />
                   </View>
                 )}
               </View>

@@ -151,7 +151,7 @@ export default function NotificationSettingsScreen() {
                     Tap to enable in system settings
                   </Text>
                 </View>
-                <ChevronRight size={18} color="#94a3b8" />
+                <ChevronRight size={18} color={isDark ? "#94a3b8" : "#64748b"} />
               </View>
             </Card>
           </Pressable>
@@ -296,7 +296,7 @@ export default function NotificationSettingsScreen() {
               >
                 <View className="flex-row items-center gap-3 flex-1">
                   <View className="w-9 h-9 rounded-lg bg-muted items-center justify-center">
-                    <Icon size={18} color="#64748b" />
+                    <Icon size={18} color={isDark ? "#94a3b8" : "#64748b"} />
                   </View>
                   <View className="flex-1">
                     <Text className="text-sm font-sans-medium text-foreground">

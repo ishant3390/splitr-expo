@@ -240,7 +240,7 @@ export function formatActivityTitle(
       return `${actorName} ${verb}${groupSuffix}`;
     case "member_joined":
     case "member_joined_via_invite":
-      return `${actorName} ${verb} ${activity.groupName ?? (activity.details?.groupName as string) ?? ""}`.trim();
+      return `${actorName} ${verb}`; // group name shown in subtitle on cross-group screens
     case "member_added": {
       const targetId = activity.details?.targetUserId as string | undefined;
       const isTargetYou = !!(currentUserId && targetId === currentUserId);
@@ -249,8 +249,7 @@ export function formatActivityTitle(
             activity.details?.addedMemberName ??
             "a member") as string);
       const targetName = isTargetYou ? "you" : firstName(targetFullName);
-      const groupPart = activity.groupName ? ` to ${activity.groupName}` : "";
-      return `${actorName} ${verb} ${targetName}${groupPart}`;
+      return `${actorName} ${verb} ${targetName}`;
     }
     case "member_removed": {
       const removedFullName =
@@ -262,13 +261,13 @@ export function formatActivityTitle(
       return `${actorName} ${verb} ${removedName}`;
     }
     case "member_left":
-      return `${actorName} ${verb} ${activity.groupName ?? (activity.details?.groupName as string) ?? "the group"}`;
+      return `${actorName} ${verb}`;
     case "group_created":
     case "group_archived":
     case "group_unarchived":
     case "group_deleted":
     case "group_updated":
-      return `${actorName} ${verb} ${activity.groupName ?? (activity.details?.groupName as string) ?? ""}`.trim();
+      return `${actorName} ${verb}`;
     default:
       return `${actorName}: ${verb}`;
   }
