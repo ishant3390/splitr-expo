@@ -120,6 +120,7 @@ function AuthGate() {
       <Stack.Screen name="help-support" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="privacy-security" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="payment-methods" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="notifications" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="notification-settings" options={{ animation: "slide_from_right" }} />
       <Stack.Screen
         name="settle-up"

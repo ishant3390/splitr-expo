@@ -421,9 +421,12 @@ export default function EditExpenseScreen() {
       >
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-          <Button variant="ghost" size="icon" onPress={() => goBack()}>
-            <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
-          </Button>
+          <Pressable
+            onPress={() => goBack()}
+            className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
+          >
+            <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+          </Pressable>
           <Text className="text-lg font-sans-semibold text-foreground">Edit Expense</Text>
           <Pressable onPress={handleSave} disabled={submitting}>
             <Text className="text-base font-sans-semibold text-primary">

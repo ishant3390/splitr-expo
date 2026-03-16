@@ -16,6 +16,7 @@ import { GroupAvatar } from "@/components/ui/group-avatar";
 import { useGroups, useArchiveGroup, useDeleteGroup } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { cn, extractInviteCode } from "@/lib/utils";
+import { SHADOWS } from "@/lib/shadows";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { GroupDto } from "@/lib/types";
 import { groupsApi } from "@/lib/api";
@@ -207,6 +208,7 @@ export default function GroupsScreen() {
             "flex-1 items-center py-2 rounded-lg",
             filter === "active" ? "bg-card" : "bg-transparent"
           )}
+          style={filter === "active" ? SHADOWS.card : undefined}
         >
           <Text className={cn(
             "text-sm font-sans-semibold",
@@ -221,6 +223,7 @@ export default function GroupsScreen() {
             "flex-1 items-center py-2 rounded-lg",
             filter === "archived" ? "bg-card" : "bg-transparent"
           )}
+          style={filter === "archived" ? SHADOWS.card : undefined}
         >
           <Text className={cn(
             "text-sm font-sans-semibold",

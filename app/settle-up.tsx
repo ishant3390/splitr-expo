@@ -330,7 +330,7 @@ export default function SettleUpScreen() {
           onPress={() => { hapticHeavy(); openCreateModal(s, cardGroupId, currency); }}
           className="active:opacity-70"
         >
-          <Card className="p-4">
+          <Card className="p-4" style={{ borderLeftWidth: 3, borderLeftColor: "#0d9488" }}>
             <View className="flex-row items-center gap-3">
               <Avatar
                 src={s.fromUser?.avatarUrl}

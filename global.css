@@ -14,6 +14,8 @@
     --color-input: #e2e8f0;
     --color-secondary: #f1f5f9;
     --color-secondary-foreground: #1e293b;
+    --color-surface-tint: #f0fdfa;
+    --color-border-subtle: #f1f5f9;
   }
 
   .dark {
@@ -27,5 +29,7 @@
     --color-input: #334155;
     --color-secondary: #1e293b;
     --color-secondary-foreground: #e2e8f0;
+    --color-surface-tint: #042f2e;
+    --color-border-subtle: rgba(255,255,255,0.06);
   }
 }

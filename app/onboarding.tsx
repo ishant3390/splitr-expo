@@ -6,6 +6,8 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Users, Receipt, HandCoins, Sparkles } from "lucide-react-native";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { SHADOWS } from "@/lib/shadows";
 
 export const ONBOARDING_KEY = "@splitr/onboarding_complete";
 
@@ -81,65 +83,84 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
-      {/* Skip button */}
-      <View className="flex-row justify-end px-5 pt-2">
-        {!isLast ? (
-          <Pressable onPress={handleSkip} testID="onboarding-skip">
-            <Text className="text-sm font-sans-semibold text-muted-foreground">Skip</Text>
-          </Pressable>
-        ) : (
-          <View style={{ height: 20 }} />
-        )}
-      </View>
-
-      {/* Current step content */}
-      <View className="flex-1 items-center justify-center px-8" key={activeIndex}>
-        <Animated.View entering={FadeInDown.delay(100).duration(500).springify()}>
-          <View
-            style={{ backgroundColor: step.iconBg, alignSelf: "center" }}
-            className="w-28 h-28 rounded-3xl items-center justify-center mb-8"
-          >
-            <Icon size={52} color={step.iconColor} />
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(200).duration(500).springify()}>
-          <Text className="text-2xl font-sans-bold text-foreground text-center mb-3">
-            {step.title}
-          </Text>
-          <Text className="text-base font-sans text-muted-foreground text-center leading-relaxed max-w-xs">
-            {step.subtitle}
-          </Text>
-        </Animated.View>
-      </View>
-
-      {/* Bottom controls */}
-      <View className="px-8 pb-6">
-        {/* Dots */}
-        <View className="flex-row items-center justify-center gap-2 mb-6">
-          {STEPS.map((_, i) => (
-            <View
-              key={i}
-              testID={`onboarding-dot-${i}`}
-              className={`rounded-full ${
-                i === activeIndex ? "w-6 h-2 bg-primary" : "w-2 h-2 bg-muted-foreground/30"
-              }`}
-            />
-          ))}
+    <View className="flex-1">
+      <LinearGradient
+        colors={[`${step.iconBg}`, "transparent"] as string[]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.6 }}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+      <SafeAreaView className="flex-1" edges={["top", "bottom"]}>
+        {/* Skip button */}
+        <View className="flex-row justify-end px-5 pt-2">
+          {!isLast ? (
+            <Pressable onPress={handleSkip} testID="onboarding-skip">
+              <Text className="text-sm font-sans-semibold text-muted-foreground">Skip</Text>
+            </Pressable>
+          ) : (
+            <View style={{ height: 20 }} />
+          )}
         </View>
 
-        {/* Next / Get Started */}
-        <Pressable
-          onPress={handleNext}
-          testID="onboarding-next"
-          className="w-full rounded-xl bg-primary py-4 items-center"
-        >
-          <Text className="text-base font-sans-semibold text-primary-foreground">
-            {isLast ? "Get Started" : "Next"}
-          </Text>
-        </Pressable>
-      </View>
-    </SafeAreaView>
+        {/* Current step content */}
+        <View className="flex-1 items-center justify-center px-8" key={activeIndex}>
+          <Animated.View entering={FadeInDown.delay(100).duration(500).springify()}>
+            <LinearGradient
+              colors={[step.iconBg, `${step.iconColor}20`] as string[]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 24,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 32,
+                alignSelf: "center",
+              }}
+            >
+              <Icon size={40} color={step.iconColor} />
+            </LinearGradient>
+          </Animated.View>
+
+          <Animated.View entering={FadeInUp.delay(200).duration(500).springify()}>
+            <Text className="text-2xl font-sans-bold text-foreground text-center mb-3">
+              {step.title}
+            </Text>
+            <Text className="text-base font-sans text-muted-foreground text-center leading-relaxed max-w-xs">
+              {step.subtitle}
+            </Text>
+          </Animated.View>
+        </View>
+
+        {/* Bottom controls */}
+        <View className="px-8 pb-6">
+          {/* Dots */}
+          <View className="flex-row items-center justify-center gap-2 mb-6">
+            {STEPS.map((_, i) => (
+              <View
+                key={i}
+                testID={`onboarding-dot-${i}`}
+                className={`rounded-full ${
+                  i === activeIndex ? "w-6 h-2 bg-primary" : "w-2 h-2 bg-muted-foreground/30"
+                }`}
+                style={i === activeIndex ? SHADOWS.glowTeal : undefined}
+              />
+            ))}
+          </View>
+
+          {/* Next / Get Started */}
+          <Pressable
+            onPress={handleNext}
+            testID="onboarding-next"
+            className="w-full rounded-xl bg-primary py-4 items-center"
+          >
+            <Text className="text-base font-sans-semibold text-primary-foreground">
+              {isLast ? "Get Started" : "Next"}
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }

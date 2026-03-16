@@ -1,7 +1,10 @@
 import React from "react";
-import { Pressable, Text, type PressableProps, ActivityIndicator } from "react-native";
+import { Pressable, Text, View, type PressableProps, ActivityIndicator } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import { clsx } from "clsx";
+import { GRADIENTS } from "@/lib/gradients";
+import { SHADOWS } from "@/lib/shadows";
 
 type ButtonVariant = "default" | "outline" | "ghost" | "destructive" | "accent";
 type ButtonSize = "sm" | "md" | "lg" | "icon";
@@ -16,7 +19,7 @@ interface ButtonProps extends PressableProps {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  default: "bg-primary active:bg-primary/90",
+  default: "overflow-hidden active:opacity-90",
   outline: "bg-transparent border border-border active:bg-muted",
   ghost: "bg-transparent active:bg-muted",
   destructive: "bg-destructive active:bg-destructive/90",
@@ -64,8 +67,39 @@ export function Button({
   const hasFlexOne = className?.includes("flex-1");
   const innerClassName = hasFlexOne ? className!.replace(/flex-1/g, "").trim() : className;
 
+  const isDefault = variant === "default";
+
+  const content = (
+    <>
+      {loading && (
+        <ActivityIndicator
+          size="small"
+          color={variant === "outline" || variant === "ghost" ? "#0d9488" : "#ffffff"}
+          className="mr-2"
+        />
+      )}
+      {typeof children === "string" ? (
+        <Text
+          className={clsx(
+            "font-sans-semibold",
+            variantTextStyles[variant],
+            sizeTextStyles[size],
+            textClassName
+          )}
+        >
+          {children}
+        </Text>
+      ) : (
+        children
+      )}
+    </>
+  );
+
   return (
-    <Animated.View style={animatedStyle} className={hasFlexOne ? "flex-1" : undefined}>
+    <Animated.View
+      style={[animatedStyle, isDefault && SHADOWS.glowTeal]}
+      className={hasFlexOne ? "flex-1" : undefined}
+    >
       <Pressable
         className={clsx(
           "flex-row items-center justify-center",
@@ -86,27 +120,22 @@ export function Button({
         accessibilityRole="button"
         {...props}
       >
-        {loading && (
-          <ActivityIndicator
-            size="small"
-            color={variant === "outline" || variant === "ghost" ? "#0d9488" : "#ffffff"}
-            className="mr-2"
+        {isDefault ? (
+          <LinearGradient
+            colors={GRADIENTS.primaryButton as unknown as string[]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: size === "sm" ? 8 : 12,
+            }}
           />
-        )}
-        {typeof children === "string" ? (
-          <Text
-            className={clsx(
-              "font-sans-semibold",
-              variantTextStyles[variant],
-              sizeTextStyles[size],
-              textClassName
-            )}
-          >
-            {children}
-          </Text>
-        ) : (
-          children
-        )}
+        ) : null}
+        {content}
       </Pressable>
     </Animated.View>
   );

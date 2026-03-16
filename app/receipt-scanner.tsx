@@ -3,6 +3,7 @@ import {
   View,
   Text,
   ScrollView,
+  Pressable,
   Platform,
 } from "react-native";
 import { useColorScheme } from "nativewind";
@@ -251,9 +252,12 @@ export default function ReceiptScannerScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
       {/* Header */}
       <View className="flex-row items-center gap-3 px-4 py-3 border-b border-border">
-        <Button variant="ghost" size="icon" onPress={goBack}>
-          <ArrowLeft size={24} color={iconColor} />
-        </Button>
+        <Pressable
+          onPress={goBack}
+          className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
+        >
+          <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+        </Pressable>
         <Text className="flex-1 text-lg font-sans-semibold text-foreground">
           Scan Receipt
         </Text>

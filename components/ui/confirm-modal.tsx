@@ -41,14 +41,15 @@ export function ConfirmModal({
           onPress={(e) => e.stopPropagation()}
           style={{
             backgroundColor: isDark ? "#1e293b" : "#ffffff",
-            borderRadius: 16,
+            borderRadius: 20,
+            borderCurve: "continuous" as any,
             padding: 24,
             width: "100%",
             maxWidth: 340,
             shadowColor: "#000",
-            shadowOpacity: 0.15,
-            shadowOffset: { width: 0, height: 4 },
-            shadowRadius: 16,
+            shadowOpacity: 0.12,
+            shadowOffset: { width: 0, height: 8 },
+            shadowRadius: 24,
             elevation: 8,
           }}
         >

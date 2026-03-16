@@ -19,6 +19,8 @@ import {
   ActivityIcon,
   ProfileIcon,
 } from "@/components/icons/tab-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { GRADIENTS } from "@/lib/gradients";
 
 const ICON_MAP: Record<string, typeof HomeIcon> = {
   index: HomeIcon,
@@ -199,23 +201,29 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   }));
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingBottom: insets.bottom || 16,
-          backgroundColor: isDark ? "#0f172a" : "#ffffff",
-          borderTopColor: isDark ? "#1e293b" : "#f1f5f9",
-        },
-      ]}
-    >
-      {/* Active indicator pill */}
-      <Animated.View style={[styles.indicator, indicatorStyle]}>
-        <View style={[styles.indicatorPill, { backgroundColor: ACTIVE_COLOR }]} />
-      </Animated.View>
+    <View>
+      {/* Gradient fade above tab bar */}
+      <LinearGradient
+        colors={(isDark ? GRADIENTS.tabBarDark : GRADIENTS.tabBarLight) as unknown as string[]}
+        style={{ position: "absolute", top: -24, left: 0, right: 0, height: 24 }}
+        pointerEvents="none"
+      />
+      <View
+        style={[
+          styles.container,
+          {
+            paddingBottom: insets.bottom || 16,
+            backgroundColor: isDark ? "rgba(15,23,42,0.95)" : "rgba(255,255,255,0.95)",
+          },
+        ]}
+      >
+        {/* Active indicator pill */}
+        <Animated.View style={[styles.indicator, indicatorStyle]}>
+          <View style={[styles.indicatorPill, { backgroundColor: ACTIVE_COLOR, width: 28 }]} />
+        </Animated.View>
 
-      {/* Tab items */}
-      <View style={styles.tabRow}>
+        {/* Tab items */}
+        <View style={styles.tabRow}>
         {state.routes.map((route, index) => {
           if (route.name === "add") {
             return <FABButton key="add" />;
@@ -254,13 +262,13 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           );
         })}
       </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    borderTopWidth: 1,
     paddingTop: 8,
   },
   tabRow: {
@@ -285,10 +293,10 @@ const styles = StyleSheet.create({
   fabShadow: {
     shadowColor: "#0d9488",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
     elevation: 8,
-    backgroundColor: "transparent",
+    borderRadius: 26,
   },
   fab: {
     width: 52,

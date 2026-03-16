@@ -40,6 +40,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedPressable } from "@/components/ui/animated-pressable";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { CheckCircle, Users, Clock, HandCoins } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useColorScheme } from "nativewind";
+import { GRADIENTS } from "@/lib/gradients";
+import { SHADOWS } from "@/lib/shadows";
 import type { ActivityLogDto } from "@/lib/types";
 
 // Airbnb-style category data
@@ -61,6 +65,8 @@ const CATEGORIES = [
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useUser();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const { data: backendUser } = useUserProfile();
   const { getToken } = useAuth();
   const { pendingCount } = useNetwork();
@@ -160,58 +166,69 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View className="px-5 gap-4">
+        <View className="px-5 gap-5">
           {/* Balance Card */}
-          <Card className="p-5 bg-primary border-0 overflow-hidden">
-            <View className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2" />
-            <Text className="text-sm text-primary-foreground/70 font-sans-medium mb-1">
-              Net Balance
-            </Text>
-            <AnimatedNumber
-              value={(totalOwedCents - totalOwesCents) / 100}
-              formatter={(n) => formatCents(Math.round(n * 100))}
-              selectable
-              className="text-3xl font-sans-bold text-primary-foreground mb-4"
-              style={{ fontVariant: ["tabular-nums"] }}
-            />
-            <View className="flex-row gap-6">
-              <View className="flex-row items-center gap-2">
-                <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
-                  <ArrowDownLeft size={16} color="#ffffff" />
-                </View>
-                <View>
-                  <Text className="text-xs text-primary-foreground/60 font-sans">You are owed</Text>
-                  <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
-                    {formatCents(totalOwedCents)}
-                  </Text>
-                </View>
-              </View>
-              <View className="flex-row items-center gap-2">
-                <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
-                  <ArrowUpRight size={16} color="#ffffff" />
-                </View>
-                <View>
-                  <Text className="text-xs text-primary-foreground/60 font-sans">You owe</Text>
-                  <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
-                    {formatCents(totalOwesCents)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Settle-up nudge */}
-            {totalOwesCents > 0 && (
-              <Pressable
-                onPress={() => { hapticLight(); router.push("/settle-up"); }}
-                className="mt-4 flex-row items-center justify-center gap-2 bg-white/15 rounded-xl py-2.5"
+          <View style={SHADOWS.glowTeal}>
+            <View className="rounded-2xl overflow-hidden" style={{ borderCurve: "continuous" as any }}>
+              <LinearGradient
+                colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ padding: 20 }}
               >
-                <HandCoins size={16} color="#ffffff" />
-                <Text className="text-sm font-sans-semibold text-primary-foreground">
-                  Settle up {formatCents(totalOwesCents)}
+                <View className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/[0.08]" style={{ transform: [{ translateX: 16 }, { translateY: -16 }] }} />
+                <View className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/[0.06]" style={{ transform: [{ translateX: -12 }, { translateY: 12 }] }} />
+                <Text className="text-sm text-primary-foreground/70 font-sans-medium mb-1">
+                  Net Balance
                 </Text>
-              </Pressable>
-            )}
-          </Card>
+                <AnimatedNumber
+                  value={(totalOwedCents - totalOwesCents) / 100}
+                  formatter={(n) => formatCents(Math.round(n * 100))}
+                  selectable
+                  className="font-sans-bold text-primary-foreground mb-4"
+                  style={{ fontVariant: ["tabular-nums"], fontSize: 42, lineHeight: 50 }}
+                />
+                <View className="flex-row gap-6">
+                  <View className="flex-row items-center gap-2">
+                    <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
+                      <ArrowDownLeft size={16} color="#ffffff" />
+                    </View>
+                    <View>
+                      <Text className="text-xs text-primary-foreground/60 font-sans">You are owed</Text>
+                      <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
+                        {formatCents(totalOwedCents)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="flex-row items-center gap-2">
+                    <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
+                      <ArrowUpRight size={16} color="#ffffff" />
+                    </View>
+                    <View>
+                      <Text className="text-xs text-primary-foreground/60 font-sans">You owe</Text>
+                      <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
+                        {formatCents(totalOwesCents)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Settle-up nudge */}
+                {totalOwesCents > 0 && (
+                  <Pressable
+                    onPress={() => { hapticLight(); router.push("/settle-up"); }}
+                    className="mt-4 flex-row items-center justify-center gap-2 bg-white/15 rounded-xl py-2.5"
+                    style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
+                  >
+                    <HandCoins size={16} color="#ffffff" />
+                    <Text className="text-sm font-sans-semibold text-primary-foreground">
+                      Settle up {formatCents(totalOwesCents)}
+                    </Text>
+                  </Pressable>
+                )}
+              </LinearGradient>
+            </View>
+          </View>
 
           {/* Pending Expenses Banner */}
           {pendingCount > 0 && (
@@ -300,10 +317,10 @@ export default function HomeScreen() {
                 <Pressable
                   key={cat.key}
                   onPress={() => { hapticSelection(); setSelectedCategory(cat.key); }}
-                  className={`items-center py-2 px-3 rounded-xl border ${
+                  className={`items-center py-2 px-3 rounded-xl ${
                     isActive
-                      ? "bg-foreground border-foreground"
-                      : "bg-card border-border"
+                      ? "bg-foreground"
+                      : "bg-muted"
                   }`}
                   style={{ minWidth: 64 }}
                 >
@@ -408,7 +425,7 @@ export default function HomeScreen() {
                   return (
                     <Animated.View
                       key={item.id}
-                      entering={FadeInDown.delay(idx * 50).duration(300).springify()}
+                      entering={FadeInDown.delay(idx * 40).duration(300).springify()}
                     >
                     <AnimatedPressable
                       onPress={() => { hapticLight(); destination && router.push(destination as any); }}

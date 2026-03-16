@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Platform } from "react-native";
+import { View, Text, Platform, Pressable } from "react-native";
 import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -153,9 +153,12 @@ export default function OTPVerifyScreen() {
     <SafeAreaView className="flex-1 bg-background">
       {/* Header */}
       <View className="flex-row items-center px-4 py-3">
-        <Button variant="ghost" size="icon" onPress={goBack}>
-          <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
-        </Button>
+        <Pressable
+          onPress={goBack}
+          className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
+        >
+          <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+        </Pressable>
         <Text className="flex-1 text-lg font-sans-semibold text-foreground text-center mr-10">
           Verify Account
         </Text>

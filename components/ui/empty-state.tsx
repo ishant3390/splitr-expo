@@ -24,16 +24,35 @@ export function EmptyState({
     <View className="items-center py-12 px-6">
       <View
         style={{
-          width: 64,
-          height: 64,
-          borderRadius: 20,
-          backgroundColor: `${iconColor}15`,
+          width: 72,
+          height: 72,
           alignItems: "center",
           justifyContent: "center",
           marginBottom: 16,
         }}
       >
-        <Icon size={28} color={iconColor} />
+        {/* Outer ring decoration */}
+        <View
+          style={{
+            position: "absolute",
+            width: 84,
+            height: 84,
+            borderRadius: 26,
+            backgroundColor: `${iconColor}08`,
+          }}
+        />
+        <View
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 22,
+            backgroundColor: `${iconColor}15`,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon size={30} color={iconColor} />
+        </View>
       </View>
       <Text className="text-base font-sans-semibold text-foreground text-center mb-1">
         {title}

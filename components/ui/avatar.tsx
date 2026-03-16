@@ -31,7 +31,13 @@ export function Avatar({ src, fallback, size = "md", className }: AvatarProps) {
       {src && !imageError ? (
         <Image
           source={{ uri: src }}
-          style={{ width: s.image, height: s.image }}
+          style={{
+            width: s.image,
+            height: s.image,
+            borderWidth: 2,
+            borderColor: "#ffffff",
+            borderRadius: s.image / 2,
+          }}
           contentFit="cover"
           onError={() => setImageError(true)}
           accessibilityLabel={`Avatar for ${fallback}`}

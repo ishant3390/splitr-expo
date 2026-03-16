@@ -8,6 +8,8 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { GRADIENTS } from "@/lib/gradients";
 
 interface SkeletonProps extends ViewProps {
   width?: number | string;
@@ -25,22 +27,22 @@ export function Skeleton({
 }: SkeletonProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
-  const opacity = useSharedValue(0.4);
+  const translateX = useSharedValue(-1);
 
   useEffect(() => {
-    opacity.value = withRepeat(
-      withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+    translateX.value = withRepeat(
+      withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
       -1,
-      true
+      false
     );
   }, []);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value * 200 }],
   }));
 
   return (
-    <Animated.View
+    <View
       {...props}
       style={[
         {
@@ -48,18 +50,38 @@ export function Skeleton({
           height,
           borderRadius,
           backgroundColor: isDark ? "#334155" : "#e2e8f0",
+          overflow: "hidden",
         },
-        animatedStyle,
         style,
       ]}
-    />
+    >
+      <Animated.View
+        style={[
+          {
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: -100,
+            right: -100,
+          },
+          shimmerStyle,
+        ]}
+      >
+        <LinearGradient
+          colors={GRADIENTS.shimmer as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ flex: 1 }}
+        />
+      </Animated.View>
+    </View>
   );
 }
 
 /** Balance card skeleton for home screen */
 export function SkeletonBalanceCard() {
   return (
-    <View className="p-5 rounded-xl bg-primary/80" style={{ gap: 12 }}>
+    <View className="p-5 rounded-2xl bg-primary/80" style={{ gap: 12 }}>
       <Skeleton width={80} height={12} borderRadius={6} />
       <Skeleton width={160} height={36} borderRadius={8} />
       <View style={{ flexDirection: "row", gap: 24, marginTop: 8 }}>
@@ -80,7 +102,7 @@ export function SkeletonBalanceCard() {
 export function SkeletonActivityItem() {
   return (
     <View
-      className="p-4 rounded-xl bg-card border border-border"
+      className="p-4 rounded-2xl bg-card"
       style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
     >
       <Skeleton width={40} height={40} borderRadius={20} />
@@ -100,7 +122,7 @@ export function SkeletonActivityItem() {
 export function SkeletonGroupItem() {
   return (
     <View
-      className="p-4 rounded-xl bg-card border border-border"
+      className="p-4 rounded-2xl bg-card"
       style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
     >
       <Skeleton width={44} height={44} borderRadius={16} />

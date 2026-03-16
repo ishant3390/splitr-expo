@@ -40,13 +40,29 @@ export function BottomSheetModal({
       exiting={SlideOutDown.springify().damping(20).stiffness(160)}
       style={{
         backgroundColor: isDark ? "#1e293b" : "#ffffff",
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         padding: 24,
         paddingBottom: Platform.OS === "ios" ? 36 : 24,
         gap: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 24,
+        elevation: 8,
       }}
     >
+      {/* Drag handle pill */}
+      <View style={{ alignItems: "center", marginTop: -8, marginBottom: 4 }}>
+        <View
+          style={{
+            width: 40,
+            height: 5,
+            borderRadius: 2.5,
+            backgroundColor: isDark ? "#475569" : "#d1d5db",
+          }}
+        />
+      </View>
       {children}
     </Animated.View>
   );

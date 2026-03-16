@@ -26,11 +26,11 @@ import { getInitials, formatDate } from "@/lib/utils";
 const DARK_MODE_KEY = "@splitr/dark_mode";
 
 const menuItems = [
-  { icon: User, label: "Edit Profile", id: "profile" },
-  { icon: CreditCard, label: "Payment Methods", id: "payment" },
-  { icon: Bell, label: "Notifications", id: "notifications" },
-  { icon: Shield, label: "Privacy & Security", id: "privacy" },
-  { icon: HelpCircle, label: "Help & Support", id: "help" },
+  { icon: User, label: "Edit Profile", id: "profile", iconBg: "#f0fdfa", iconBgDark: "rgba(13,148,136,0.12)", iconColor: "#0d9488" },
+  { icon: CreditCard, label: "Payment Methods", id: "payment", iconBg: "#eef2ff", iconBgDark: "rgba(99,102,241,0.12)", iconColor: "#6366f1" },
+  { icon: Bell, label: "Notifications", id: "notifications", iconBg: "#fffbeb", iconBgDark: "rgba(245,158,11,0.12)", iconColor: "#f59e0b" },
+  { icon: Shield, label: "Privacy & Security", id: "privacy", iconBg: "#ecfdf5", iconBgDark: "rgba(16,185,129,0.12)", iconColor: "#10b981" },
+  { icon: HelpCircle, label: "Help & Support", id: "help", iconBg: "#eff6ff", iconBgDark: "rgba(59,130,246,0.12)", iconColor: "#3b82f6" },
 ];
 
 export default function ProfileScreen() {
@@ -38,6 +38,7 @@ export default function ProfileScreen() {
   const { user } = useUser();
   const router = useRouter();
   const { colorScheme, setColorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const { data: apiUser = null } = useUserProfile();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const toast = useToast();
@@ -109,14 +110,14 @@ export default function ProfileScreen() {
                 <Text className="text-xl font-sans-bold text-foreground">
                   {apiUser?.defaultCurrency ?? "USD"}
                 </Text>
-                <Text className="text-xs text-muted-foreground font-sans">Currency</Text>
+                <Text className="text-xs text-muted-foreground font-sans mt-0.5">Currency</Text>
               </View>
               <View className="w-px bg-border" />
               <View className="flex-1 items-center">
                 <Text className="text-xl font-sans-bold text-foreground">
                   {apiUser?.isPremium ? "Yes" : "No"}
                 </Text>
-                <Text className="text-xs text-muted-foreground font-sans">Premium</Text>
+                <Text className="text-xs text-muted-foreground font-sans mt-0.5">Premium</Text>
               </View>
               <View className="w-px bg-border" />
               <View className="flex-1 items-center">
@@ -127,7 +128,7 @@ export default function ProfileScreen() {
                     ? formatDate(new Date(user.createdAt).toISOString())
                     : "—"}
                 </Text>
-                <Text className="text-xs text-muted-foreground font-sans">Member since</Text>
+                <Text className="text-xs text-muted-foreground font-sans mt-0.5">Member since</Text>
               </View>
             </View>
           </Card>
@@ -137,8 +138,11 @@ export default function ProfileScreen() {
             {/* Dark mode toggle */}
             <View className="flex-row items-center justify-between p-4 border-b border-border">
               <View className="flex-row items-center gap-3">
-                <View className="w-9 h-9 rounded-lg bg-muted items-center justify-center">
-                  <Moon size={18} color="#64748b" />
+                <View
+                  className="w-9 h-9 rounded-lg items-center justify-center"
+                  style={{ backgroundColor: isDark ? "rgba(139,92,246,0.12)" : "#f5f3ff" }}
+                >
+                  <Moon size={18} color="#8b5cf6" />
                 </View>
                 <Text className="text-sm font-sans-medium text-card-foreground">Dark Mode</Text>
               </View>
@@ -156,8 +160,11 @@ export default function ProfileScreen() {
                   }`}
                 >
                   <View className="flex-row items-center gap-3">
-                    <View className="w-9 h-9 rounded-lg bg-muted items-center justify-center">
-                      <Icon size={18} color="#64748b" />
+                    <View
+                      className="w-9 h-9 rounded-lg items-center justify-center"
+                      style={{ backgroundColor: isDark ? item.iconBgDark : item.iconBg }}
+                    >
+                      <Icon size={18} color={item.iconColor} />
                     </View>
                     <Text className="text-sm font-sans-medium text-card-foreground">
                       {item.label}
