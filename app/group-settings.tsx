@@ -30,6 +30,8 @@ import {
   Settings,
 } from "lucide-react-native";
 import QRCode from "react-native-qrcode-svg";
+import { LinearGradient } from "expo-linear-gradient";
+import { GRADIENTS } from "@/lib/gradients";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { GroupAvatar } from "@/components/ui/group-avatar";
@@ -379,7 +381,7 @@ export default function GroupSettingsScreen() {
             <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
           </Pressable>
           <Text className="text-lg font-sans-semibold text-foreground ml-3">
-            Group Settings
+            Settings
           </Text>
         </View>
         <View className="flex-1 items-center justify-center px-5">
@@ -402,43 +404,109 @@ export default function GroupSettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-border">
-        <Pressable
-          onPress={goBack}
-          className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
-        >
-          <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
-        </Pressable>
-        <Text className="text-lg font-sans-semibold text-foreground ml-3">
-          Group Settings
-        </Text>
-        <View style={{ flex: 1 }} />
-      </View>
-
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-8 gap-4 pt-4"
+        contentContainerClassName="pb-8"
         showsVerticalScrollIndicator={false}
       >
-        {/* GROUP DETAILS */}
-        <Text className="text-xs font-sans-semibold text-muted-foreground">GROUP DETAILS</Text>
-        <Card className="p-4">
-          <View className="flex-row items-center gap-3">
-            <GroupAvatar name={group.name} emoji={group.emoji} groupType={group.groupType} id={group.id} size="lg" />
-            <View className="flex-1">
-              <Text className="text-lg font-sans-bold text-foreground">{group.name}</Text>
-              {group.description ? (
-                <Text className="text-sm text-muted-foreground font-sans mt-0.5" numberOfLines={2}>
-                  {group.description}
-                </Text>
-              ) : null}
-              <Text className="text-xs text-muted-foreground font-sans mt-1">
-                {group.groupType ? `${group.groupType} \u00B7 ` : ""}{group.defaultCurrency ?? "USD"}
+        {/* Hero Section */}
+        <LinearGradient
+          colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ overflow: "hidden" }}
+        >
+          {/* Watermark */}
+          <View
+            style={{ position: "absolute", top: -20, right: -20, opacity: 0.08 }}
+            pointerEvents="none"
+          >
+            <Text style={{ fontSize: 160, lineHeight: 180 }}>
+              {group.emoji || group.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+
+          {/* Decorative orb */}
+          <View
+            style={{
+              position: "absolute", bottom: -30, left: -30,
+              width: 100, height: 100, borderRadius: 50,
+              backgroundColor: "rgba(255,255,255,0.06)",
+            }}
+            pointerEvents="none"
+          />
+
+          {/* Navigation */}
+          <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
+            <Pressable
+              onPress={goBack}
+              className="w-10 h-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+            >
+              <ArrowLeft size={22} color="#ffffff" strokeWidth={2.5} />
+            </Pressable>
+            <Text className="text-base font-sans-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>
+              Settings
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Group identity */}
+          <View className="items-center px-5 pt-2 pb-5">
+            <View
+              style={{
+                width: 72, height: 72, borderRadius: 36,
+                borderWidth: 3, borderColor: "rgba(255,255,255,0.3)",
+                overflow: "hidden",
+              }}
+            >
+              <GroupAvatar name={group.name} emoji={group.emoji} groupType={group.groupType} id={group.id} size="lg" />
+            </View>
+            <Text
+              className="text-xl font-sans-bold mt-3"
+              style={{ color: "#ffffff" }}
+            >
+              {group.name}
+            </Text>
+            {group.description ? (
+              <Text
+                className="text-sm font-sans mt-1 text-center"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+                numberOfLines={2}
+              >
+                {group.description}
               </Text>
+            ) : null}
+            <View className="flex-row items-center gap-4 mt-3">
+              <View
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.12)",
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                }}
+              >
+                <Text className="text-xs font-sans-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
+                  {group.groupType ?? "Group"} · {group.defaultCurrency ?? "USD"}
+                </Text>
+              </View>
+              <View
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.12)",
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                }}
+              >
+                <Text className="text-xs font-sans-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
+                  {members.length} {members.length === 1 ? "member" : "members"}
+                </Text>
+              </View>
             </View>
           </View>
-        </Card>
+        </LinearGradient>
+
+      <View className="px-5 gap-4 pt-4">
 
         {/* MEMBERS */}
         <View className="flex-row items-center justify-between">
@@ -690,6 +758,7 @@ export default function GroupSettingsScreen() {
             <Text className="text-sm font-sans-medium text-destructive">Delete Group</Text>
           </Pressable>
         </Card>
+      </View>
       </ScrollView>
 
       {/* Remove Member Confirmation */}

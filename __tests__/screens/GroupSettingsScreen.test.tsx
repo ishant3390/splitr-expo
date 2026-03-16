@@ -166,17 +166,16 @@ beforeEach(() => {
 });
 
 describe("GroupSettingsScreen", () => {
-  it("renders Group Settings header", async () => {
+  it("renders Settings header", async () => {
     render(<GroupSettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Group Settings")).toBeTruthy();
+      expect(screen.getByText("Settings")).toBeTruthy();
     });
   });
 
-  it("renders GROUP DETAILS section with group info", async () => {
+  it("renders group identity in hero with group info", async () => {
     render(<GroupSettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText("GROUP DETAILS")).toBeTruthy();
       expect(screen.getByText("Trip to Paris")).toBeTruthy();
       expect(screen.getByText(/USD/)).toBeTruthy();
     });
@@ -570,7 +569,7 @@ describe("GroupSettingsScreen", () => {
     });
     render(<GroupSettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Group Settings")).toBeTruthy();
+      expect(screen.getByText("Settings")).toBeTruthy();
     });
     expect(screen.queryByText("Simplify debts")).toBeNull();
   });
@@ -588,7 +587,7 @@ describe("GroupSettingsScreen", () => {
     });
     render(<GroupSettingsScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Group Settings")).toBeTruthy();
+      expect(screen.getByText("Settings")).toBeTruthy();
     });
     expect(screen.queryByText("Add")).toBeNull();
     expect(screen.queryByText("Invite Link")).toBeNull();
