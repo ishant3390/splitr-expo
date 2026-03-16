@@ -17,6 +17,7 @@ import {
   Settings,
   HandCoins,
   Receipt,
+  UserPlus,
 } from "lucide-react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Card } from "@/components/ui/card";
@@ -313,20 +314,50 @@ export default function GroupDetailScreen() {
           </View>
 
           {/* Avatar strip */}
-          <Pressable
-            onPress={() => router.push({ pathname: "/group-settings", params: { groupId: id } })}
-            className="px-5 pb-4"
-          >
+          <View className="px-5 pb-4">
             <View className="flex-row items-center gap-3">
-              <AvatarStrip members={members} maxVisible={6} />
-              <Text
-                className="text-xs font-sans"
-                style={{ color: "rgba(255,255,255,0.7)" }}
+              <Pressable
+                onPress={() => router.push({ pathname: "/group-settings", params: { groupId: id } })}
+                className="flex-row items-center"
               >
-                {members.length} {members.length === 1 ? "member" : "members"}
-              </Text>
+                <AvatarStrip members={members} maxVisible={6} />
+              </Pressable>
+              {!isArchived && (
+                <Pressable
+                  onPress={() => {
+                    hapticLight();
+                    router.push({ pathname: "/group-settings", params: { groupId: id, autoAddMember: "true" } });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add member"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    borderWidth: 2,
+                    borderColor: "rgba(255,255,255,0.4)",
+                    borderStyle: "dashed",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    marginLeft: -4,
+                  }}
+                >
+                  <UserPlus size={14} color="rgba(255,255,255,0.8)" />
+                </Pressable>
+              )}
+              <Pressable
+                onPress={() => router.push({ pathname: "/group-settings", params: { groupId: id } })}
+              >
+                <Text
+                  className="text-xs font-sans"
+                  style={{ color: "rgba(255,255,255,0.7)" }}
+                >
+                  {members.length} {members.length === 1 ? "member" : "members"}
+                </Text>
+              </Pressable>
             </View>
-          </Pressable>
+          </View>
 
           {/* Balance display */}
           <View className="px-5 pb-5">

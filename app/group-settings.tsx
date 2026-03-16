@@ -61,7 +61,7 @@ function getInviteUrl(inviteCode: string) {
 
 export default function GroupSettingsScreen() {
   const router = useRouter();
-  const { groupId } = useLocalSearchParams<{ groupId: string }>();
+  const { groupId, autoAddMember } = useLocalSearchParams<{ groupId: string; autoAddMember?: string }>();
   const { getToken } = useAuth();
   const { user: clerkUser } = useUser();
   const toast = useToast();
@@ -191,6 +191,13 @@ export default function GroupSettingsScreen() {
       setTogglingSimplify(false);
     }
   };
+
+  // Auto-open Add Member modal when navigated with autoAddMember param
+  useEffect(() => {
+    if (autoAddMember === "true" && !loading && group) {
+      setShowAddMember(true);
+    }
+  }, [autoAddMember, loading, group]);
 
   // Load contacts when add member modal opens
   useEffect(() => {

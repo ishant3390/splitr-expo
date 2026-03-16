@@ -248,7 +248,7 @@ test("Issue 7 — settle up: balance updates after recording payment", async ({ 
   await page.screenshot({ path: path.join(SHOTS, "issue7-group-detail.png") });
 
   // Note balances before
-  const hasSuggestions = await page.getByText("Settle Up").first().isVisible().catch(() => false);
+  const hasSuggestions = await page.getByText("Settle Up", { exact: true }).first().isVisible().catch(() => false);
   console.log("Issue 7 — Settle Up button visible:", hasSuggestions);
 
   if (!hasSuggestions) {
@@ -256,7 +256,7 @@ test("Issue 7 — settle up: balance updates after recording payment", async ({ 
     return;
   }
 
-  await page.getByText("Settle Up").first().click();
+  await page.getByText("Settle Up", { exact: true }).first().click();
   await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
   await page.waitForTimeout(1000);
 

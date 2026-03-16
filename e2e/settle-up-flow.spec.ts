@@ -22,8 +22,8 @@ test.describe("Settle Up Flow", () => {
     await page.waitForTimeout(1000);
 
     // Click "Settle Up" button on group detail
-    await expect(page.getByText("Settle Up").first()).toBeVisible({ timeout: 5000 });
-    await page.getByText("Settle Up").first().click();
+    await expect(page.getByText("Settle Up", { exact: true }).first()).toBeVisible({ timeout: 5000 });
+    await page.getByText("Settle Up", { exact: true }).first().click();
     await page.waitForTimeout(1000);
 
     return true;

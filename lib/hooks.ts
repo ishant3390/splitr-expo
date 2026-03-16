@@ -316,7 +316,7 @@ export function useCrossGroupSuggestions() {
   const data = useMemo(() => {
     return suggestionQueries
       .map((q) => q.data)
-      .filter((d): d is CrossGroupSuggestion => !!d && d.suggestions.length > 0);
+      .filter((d): d is CrossGroupSuggestion => !!d && (d.suggestions?.length ?? 0) > 0);
   }, [suggestionQueries]);
 
   const isLoading = balanceLoading || suggestionQueries.some((q) => q.isLoading);
@@ -580,7 +580,7 @@ export function useTopDebtor(balanceData?: UserBalanceDto) {
 
   // Find the suggestion where someone owes the current user
   const topDebtor = useMemo(() => {
-    if (!suggestions || !currentEmail) return null;
+    if (!suggestions || !Array.isArray(suggestions) || !currentEmail) return null;
     // Find suggestions where the current user is the payee (toUser)
     const owedToMe = suggestions.filter(
       (s) => s.toUser?.email?.toLowerCase() === currentEmail
