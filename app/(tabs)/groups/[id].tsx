@@ -35,6 +35,8 @@ import { SkeletonList } from "@/components/ui/skeleton";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { AvatarStrip } from "@/components/ui/avatar-strip";
+import { LinearGradient } from "expo-linear-gradient";
+import { GRADIENTS } from "@/lib/gradients";
 import type { GroupDto, GroupMemberDto, ExpenseDto, ActivityLogDto } from "@/lib/types";
 
 export default function GroupDetailScreen() {
@@ -244,41 +246,156 @@ export default function GroupDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-        <Pressable
-          onPress={goBack}
-          className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
-        >
-          <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
-        </Pressable>
-        <View className="flex-row items-center gap-2">
-          {group.emoji ? (
-            <Text className="text-lg">{group.emoji}</Text>
-          ) : null}
-          <Text className="text-lg font-sans-semibold text-foreground">
-            {group.name}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onPress={() => router.push({ pathname: "/group-settings", params: { groupId: id } })}
-            accessibilityLabel="Group settings"
-          >
-            <Settings size={22} color={isDark ? "#94a3b8" : "#64748b"} />
-          </Button>
-        </View>
-      </View>
-
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-8"
+        contentContainerClassName="pb-8"
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />}
       >
+        {/* Hero Section with background emoji watermark */}
+        <LinearGradient
+          colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ overflow: "hidden" }}
+        >
+          {/* Giant emoji watermark */}
+          <View
+            style={{
+              position: "absolute",
+              top: -20,
+              right: -20,
+              opacity: 0.08,
+            }}
+            pointerEvents="none"
+          >
+            <Text style={{ fontSize: 180, lineHeight: 200 }}>
+              {group.emoji || group.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+
+          {/* Navigation bar */}
+          <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
+            <Pressable
+              onPress={goBack}
+              className="w-10 h-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+            >
+              <ArrowLeft size={22} color="#ffffff" strokeWidth={2.5} />
+            </Pressable>
+            <View className="flex-row items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onPress={() => router.push({ pathname: "/group-settings", params: { groupId: id } })}
+                accessibilityLabel="Group settings"
+              >
+                <Settings size={22} color="rgba(255,255,255,0.8)" />
+              </Button>
+            </View>
+          </View>
+
+          {/* Group identity */}
+          <View className="px-5 pt-2 pb-1">
+            <View className="flex-row items-center gap-2.5 mb-1">
+              {group.emoji ? (
+                <Text style={{ fontSize: 28 }}>{group.emoji}</Text>
+              ) : null}
+              <Text
+                className="text-2xl font-sans-bold"
+                style={{ color: "#ffffff" }}
+                numberOfLines={1}
+              >
+                {group.name}
+              </Text>
+            </View>
+          </View>
+
+          {/* Avatar strip */}
+          <Pressable
+            onPress={() => router.push({ pathname: "/group-settings", params: { groupId: id } })}
+            className="px-5 pb-4"
+          >
+            <View className="flex-row items-center gap-3">
+              <AvatarStrip members={members} maxVisible={6} />
+              <Text
+                className="text-xs font-sans"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+              >
+                {members.length} {members.length === 1 ? "member" : "members"}
+              </Text>
+            </View>
+          </Pressable>
+
+          {/* Balance display */}
+          <View className="px-5 pb-5">
+            <View
+              style={{
+                backgroundColor: "rgba(255,255,255,0.12)",
+                borderRadius: 16,
+                padding: 16,
+              }}
+            >
+              <View className="flex-row items-center justify-between">
+                <View>
+                  <Text
+                    className="text-xs font-sans"
+                    style={{ color: "rgba(255,255,255,0.7)" }}
+                  >
+                    Your Balance
+                  </Text>
+                  <Text
+                    selectable
+                    className="text-2xl font-sans-bold mt-0.5"
+                    style={{
+                      color: "#ffffff",
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {myMemberBalance > 0 ? "+" : ""}{formatCents(myMemberBalance, group?.defaultCurrency)}
+                  </Text>
+                  <Text
+                    className="text-xs font-sans mt-0.5"
+                    style={{
+                      color: myMemberBalance > 0
+                        ? "#86efac"
+                        : myMemberBalance < 0
+                        ? "#fca5a5"
+                        : "rgba(255,255,255,0.7)",
+                    }}
+                  >
+                    {myMemberBalance > 0
+                      ? "you are owed"
+                      : myMemberBalance < 0
+                      ? "you owe"
+                      : "all settled up"}
+                  </Text>
+                </View>
+                <View className="items-end">
+                  <Text
+                    className="text-xs font-sans"
+                    style={{ color: "rgba(255,255,255,0.7)" }}
+                  >
+                    Total Spent
+                  </Text>
+                  <Text
+                    selectable
+                    className="text-lg font-sans-semibold mt-0.5"
+                    style={{
+                      color: "#ffffff",
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  >
+                    {formatCents(totalSpent, group?.defaultCurrency)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View className="px-5">
         {/* Archived banner */}
         {isArchived && (
           <Card className="mt-4 p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
@@ -291,54 +408,9 @@ export default function GroupDetailScreen() {
           </Card>
         )}
 
-        {/* Avatar Strip */}
-        <Pressable
-          onPress={() => router.push({ pathname: "/group-settings", params: { groupId: id } })}
-          className="pt-4 pb-2"
-        >
-          <View className="flex-row items-center gap-3">
-            <AvatarStrip members={members} maxVisible={6} />
-            <Text className="text-xs text-muted-foreground font-sans">
-              {members.length} {members.length === 1 ? "member" : "members"}
-            </Text>
-          </View>
-        </Pressable>
-
-        {/* Hero Balance Card */}
-        <Card className="p-5 mt-2 mb-4">
-          <View className="items-center">
-            <Text className="text-xs text-muted-foreground font-sans mb-1">Your Balance</Text>
-            <Text
-              selectable
-              className={cn(
-                "text-3xl font-sans-bold",
-                myMemberBalance > 0 ? "text-success" : myMemberBalance < 0 ? "text-destructive" : "text-foreground"
-              )}
-              style={{ fontVariant: ["tabular-nums"] }}
-            >
-              {myMemberBalance > 0 ? "+" : ""}{formatCents(myMemberBalance, group?.defaultCurrency)}
-            </Text>
-            <Text className="text-xs text-muted-foreground font-sans mt-2">
-              {myMemberBalance > 0
-                ? "you are owed"
-                : myMemberBalance < 0
-                ? "you owe"
-                : "all settled up"}
-            </Text>
-          </View>
-          <View className="border-t border-border mt-3 pt-3">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-muted-foreground font-sans">Total Spent</Text>
-              <Text selectable className="text-sm font-sans-semibold text-foreground" style={{ fontVariant: ["tabular-nums"] }}>
-                {formatCents(totalSpent, group?.defaultCurrency)}
-              </Text>
-            </View>
-          </View>
-        </Card>
-
         {/* Action Row */}
         {!isArchived && (
-          <View className="flex-row gap-3 mb-4">
+          <View className="flex-row gap-3 mt-4 mb-4">
             <Pressable
               onPress={() => router.push({ pathname: "/(tabs)/add", params: { returnGroupId: id } })}
               className="flex-1"
@@ -547,6 +619,7 @@ export default function GroupDetailScreen() {
             )}
           </>
         )}
+        </View>
       </ScrollView>
 
       {/* Delete Expense Confirmation */}

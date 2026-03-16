@@ -195,7 +195,7 @@ describe("GroupDetailScreen — Clean Ledger", () => {
   it("renders group emoji in header", async () => {
     render(<GroupDetailScreen />);
     await waitFor(() => {
-      expect(screen.getByText("✈️")).toBeTruthy();
+      expect(screen.getAllByText("✈️").length).toBeGreaterThan(0);
     });
   });
 
