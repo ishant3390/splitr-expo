@@ -47,10 +47,15 @@ const mockUseUserBalance = jest.fn(() => ({
   refetch: mockRefetchBalance,
 }));
 
+const mockUseGroups = jest.fn(() => ({ data: [] }));
+const mockUseUserProfile = jest.fn(() => ({ data: { id: "backend-user-1", name: "Test User" } }));
+
 jest.mock("@/lib/hooks", () => ({
   useUserActivity: (...args: any[]) => mockUseUserActivity(...args),
   useUserBalance: (...args: any[]) => mockUseUserBalance(...args),
   useTopDebtor: (...args: any[]) => mockUseTopDebtor(...args),
+  useGroups: (...args: any[]) => mockUseGroups(...args),
+  useUserProfile: (...args: any[]) => mockUseUserProfile(...args),
 }));
 
 describe("HomeScreen", () => {
@@ -527,7 +532,6 @@ describe("HomeScreen", () => {
     render(<HomeScreen />);
     await waitFor(() => {
       expect(screen.getByText("Alice added Dinner")).toBeTruthy();
-      expect(screen.getByText("Trip")).toBeTruthy();
     });
   });
 
@@ -872,7 +876,7 @@ describe("HomeScreen", () => {
     render(<HomeScreen />);
     await waitFor(() => {
       expect(screen.getByText("Alice added Coffee")).toBeTruthy();
-      expect(screen.getByText("Caffeine Club")).toBeTruthy();
+      expect(screen.getByText("in Caffeine Club")).toBeTruthy();
     });
   });
 
@@ -922,7 +926,6 @@ describe("HomeScreen", () => {
     render(<HomeScreen />);
     await waitFor(() => {
       expect(screen.getByText("Alice deleted Old Expense")).toBeTruthy();
-      expect(screen.getByText("Trip")).toBeTruthy();
     });
   });
 
@@ -1012,7 +1015,7 @@ describe("HomeScreen", () => {
 
   // --- Involvement indicators (Phase 2) ---
 
-  it("shows your share on expense activity when yourShareCents is present", async () => {
+  it("shows 'you borrowed' on expense activity when yourShareCents is present (no yourPaidCents)", async () => {
     mockUseUserActivity.mockReturnValue({
       data: [
         {
@@ -1030,7 +1033,29 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("-$20.00")).toBeTruthy();
+      expect(screen.getByText("you borrowed $20.00")).toBeTruthy();
+    });
+  });
+
+  it("shows 'you lent' on expense activity when yourPaidCents is present", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amountCents: 6000, involvedCount: 3, yourShareCents: 2000, yourPaidCents: 6000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("you lent $40.00")).toBeTruthy();
     });
   });
 
@@ -1078,5 +1103,78 @@ describe("HomeScreen", () => {
       expect(screen.getByText("Alice settled up")).toBeTruthy();
     });
     expect(screen.queryByText("Not involved")).toBeNull();
+  });
+
+  // --- Group name subtitle ---
+
+  it("shows group name subtitle on activity cards", async () => {
+    mockUseGroups.mockReturnValue({ data: [{ id: "g1", name: "Trip" }] });
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupId: "g1",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amountCents: 5000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
+      expect(screen.getByText("in Trip")).toBeTruthy();
+    });
+  });
+
+  it("hides group name subtitle when groupName is missing", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: null,
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amountCents: 5000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
+    });
+    expect(screen.queryByText(/^in /)).toBeNull();
+  });
+
+  it("shows 'You' when current user is the actor", async () => {
+    mockUseUserProfile.mockReturnValue({ data: { id: "current-user-id", name: "Ajay" } });
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserId: "current-user-id",
+          actorUserName: "Ajay Wadhara",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Tacos", amountCents: 5000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("You added Tacos")).toBeTruthy();
+    });
   });
 });

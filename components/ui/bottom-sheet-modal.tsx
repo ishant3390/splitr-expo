@@ -1,12 +1,13 @@
 import React from "react";
 import {
   Modal,
+  View,
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  useColorScheme,
   type ModalProps,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 
 interface BottomSheetModalProps {
@@ -19,6 +20,10 @@ interface BottomSheetModalProps {
 /**
  * Bottom sheet modal with spring-based slide animation.
  * Uses fade for backdrop + Reanimated spring for content.
+ *
+ * Wraps content in a View with explicit dark/light className so NativeWind
+ * CSS variables (text-foreground, bg-muted, etc.) resolve correctly inside
+ * the Modal's separate view tree.
  */
 export function BottomSheetModal({
   visible,
@@ -26,7 +31,8 @@ export function BottomSheetModal({
   children,
   keyboardAvoiding = false,
 }: BottomSheetModalProps) {
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const content = (
     <Animated.View
@@ -52,22 +58,24 @@ export function BottomSheetModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable
-        onPress={onClose}
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
-      >
-        {keyboardAvoiding ? (
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <View className={isDark ? "dark" : ""} style={{ flex: 1 }}>
+        <Pressable
+          onPress={onClose}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+        >
+          {keyboardAvoiding ? (
+            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+              <Pressable onPress={(e) => e?.stopPropagation?.()}>
+                {content}
+              </Pressable>
+            </KeyboardAvoidingView>
+          ) : (
             <Pressable onPress={(e) => e?.stopPropagation?.()}>
               {content}
             </Pressable>
-          </KeyboardAvoidingView>
-        ) : (
-          <Pressable onPress={(e) => e?.stopPropagation?.()}>
-            {content}
-          </Pressable>
-        )}
-      </Pressable>
+          )}
+        </Pressable>
+      </View>
     </Modal>
   );
 }

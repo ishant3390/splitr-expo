@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, useColorScheme } from "react-native";
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useSignUp } from "@clerk/clerk-expo";
@@ -11,7 +12,8 @@ import { ArrowLeft } from "lucide-react-native";
 export default function SignUpFormScreen() {
   const router = useRouter();
   const toast = useToast();
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(auth)"));
   const { signUp, setActive } = useSignUp();
 

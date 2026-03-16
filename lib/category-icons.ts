@@ -210,6 +210,44 @@ export function getCategoryIcon(iconName?: string): CategoryIconConfig {
   return DEFAULT_ICON;
 }
 
+// ─── Description-based icon inference ────────────────────────────────────────
+
+import { KEYWORD_TO_CATEGORY } from "./category-keywords";
+
+/** Category key → CATEGORY_ICON_MAP key mapping for keyword-inferred categories. */
+const INFERRED_CATEGORY_TO_ICON_KEY: Record<string, string> = {
+  food: "food",
+  transport: "transport",
+  accommodation: "accommodation",
+  entertainment: "entertainment",
+  groceries: "groceries",
+  shopping: "shopping",
+  health: "health",
+  utilities: "utilities",
+  work: "work",
+  education: "education",
+};
+
+/**
+ * Infers a CategoryIconConfig from an expense description using keyword matching.
+ * Returns null if no confident match.
+ */
+export function inferCategoryIconFromDescription(
+  description: string
+): CategoryIconConfig | null {
+  if (!description?.trim()) return null;
+  const lower = description.toLowerCase();
+  for (const { keywords, category } of KEYWORD_TO_CATEGORY) {
+    if (keywords.some((kw) => lower.includes(kw))) {
+      const iconKey = INFERRED_CATEGORY_TO_ICON_KEY[category];
+      if (iconKey && CATEGORY_ICON_MAP[iconKey]) {
+        return CATEGORY_ICON_MAP[iconKey];
+      }
+    }
+  }
+  return null;
+}
+
 // ─── Activity Icons ─────────────────────────────────────────────────────────
 
 export const ACTIVITY_ICON_MAP: Record<string, CategoryIconConfig> = {
@@ -231,15 +269,20 @@ export const ACTIVITY_ICON_MAP: Record<string, CategoryIconConfig> = {
 
 /**
  * Returns icon config for an activity item.
- * Prefers category icon if a categoryName is available, otherwise uses activity type icon.
+ * Priority: categoryName → description inference → activity type icon.
  */
 export function getActivityIcon(
   type: string,
-  categoryName?: string
+  categoryName?: string,
+  description?: string
 ): CategoryIconConfig {
   if (categoryName) {
     const catIcon = getCategoryIcon(categoryName);
     if (catIcon !== DEFAULT_ICON) return catIcon;
+  }
+  if (description) {
+    const inferred = inferCategoryIconFromDescription(description);
+    if (inferred) return inferred;
   }
   return ACTIVITY_ICON_MAP[type] ?? DEFAULT_ICON;
 }

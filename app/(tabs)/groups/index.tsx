@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Platform, useColorScheme, TextInput } from "react-native";
+import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Platform, TextInput } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { hapticLight, hapticWarning, hapticSuccess, hapticSelection } from "@/lib/haptics";
@@ -25,7 +26,7 @@ export default function GroupsScreen() {
   const router = useRouter();
   const toast = useToast();
   const { getToken } = useAuth();
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const [filter, setFilter] = useState<"active" | "archived">("active");
   const { data: groups = [], isLoading: loading, error: groupsError, refetch } = useGroups(filter);

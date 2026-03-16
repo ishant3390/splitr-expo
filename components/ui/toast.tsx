@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
-import { View, Text, Pressable, Animated, Easing, useColorScheme } from "react-native";
+import { View, Text, Pressable, Animated, Easing } from "react-native";
+import { useColorScheme } from "nativewind";
 import { X, CheckCircle2, AlertTriangle, Info } from "lucide-react-native";
 
 type ToastType = "success" | "error" | "info";
@@ -50,7 +51,7 @@ const BG_MAP_DARK = {
 };
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;

@@ -1,5 +1,6 @@
 import React from "react";
-import { View, useColorScheme } from "react-native";
+import { View } from "react-native";
+import { useColorScheme } from "nativewind";
 import { getCategoryIcon, type CategoryIconConfig } from "@/lib/category-icons";
 
 const SIZES = {
@@ -24,7 +25,8 @@ export function CategoryIcon({
   size = "md",
   className,
 }: CategoryIconProps) {
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const resolved = config ?? getCategoryIcon(iconName);
   const { box, icon: iconSize } = SIZES[size];
   const IconComponent = resolved.icon;

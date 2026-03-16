@@ -3,9 +3,9 @@ import {
   View,
   Text,
   ScrollView,
-  useColorScheme,
   Platform,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
@@ -142,7 +142,8 @@ function ConfidenceBadge({ score }: { score: number }) {
 export default function ReceiptScannerScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const toast = useToast();
 
   const [imageUri, setImageUri] = useState<string | null>(null);

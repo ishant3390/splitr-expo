@@ -3,7 +3,7 @@
 import type { GroupMemberDto } from "./types";
 
 // Re-export icon utilities from centralized module
-export { getCategoryIcon, getActivityIcon, getPaymentMethodIcon } from "./category-icons";
+export { getCategoryIcon, getActivityIcon, getPaymentMethodIcon, inferCategoryIconFromDescription } from "./category-icons";
 
 /** Returns true if any member has a non-zero balance (unsettled debts). */
 export function hasUnsettledBalances(members: GroupMemberDto[]): boolean {
@@ -51,48 +51,8 @@ export function validateFixedSplit(fixedAmounts: Record<string, string>, totalCe
 
 // --- Auto-category inference ---
 
-const KEYWORD_TO_CATEGORY: Array<{ keywords: string[]; category: string }> = [
-  {
-    keywords: ["dinner", "lunch", "breakfast", "pizza", "burger", "coffee", "cafe", "restaurant", "food", "meal", "snack", "drink", "bar", "brunch", "sushi", "taco", "sandwich", "bakery", "dessert", "takeout", "takeaway", "doordash", "ubereats", "grubhub"],
-    category: "food",
-  },
-  {
-    keywords: ["uber", "lyft", "taxi", "cab", "gas", "fuel", "parking", "toll", "flight", "train", "bus", "metro", "subway", "transport", "commute", "ferry", "amtrak", "greyhound"],
-    category: "transport",
-  },
-  {
-    keywords: ["hotel", "airbnb", "hostel", "motel", "rent", "mortgage", "lodging", "accommodation"],
-    category: "accommodation",
-  },
-  {
-    keywords: ["movie", "cinema", "netflix", "concert", "show", "gaming", "ticket", "theater", "theatre", "spotify", "hulu", "disney", "streaming", "entertainment"],
-    category: "entertainment",
-  },
-  {
-    keywords: ["grocery", "groceries", "supermarket", "costco", "market", "produce", "walmart", "target", "trader joe", "whole foods", "safeway", "aldi"],
-    category: "groceries",
-  },
-  {
-    keywords: ["amazon", "shop", "store", "mall", "clothes", "clothing", "shoes", "outfit", "fashion", "apparel"],
-    category: "shopping",
-  },
-  {
-    keywords: ["pharmacy", "doctor", "medicine", "hospital", "clinic", "gym", "fitness", "dental", "dentist", "medical", "prescription", "vitamin", "therapy"],
-    category: "health",
-  },
-  {
-    keywords: ["electric", "electricity", "water bill", "internet", "wifi", "phone bill", "cable", "insurance", "utility", "utilities"],
-    category: "utilities",
-  },
-  {
-    keywords: ["office", "work", "business", "conference", "meeting", "subscription", "software", "aws", "github", "slack"],
-    category: "work",
-  },
-  {
-    keywords: ["tuition", "course", "textbook", "books", "school", "class", "workshop", "training", "education", "udemy", "coursera"],
-    category: "education",
-  },
-];
+import { KEYWORD_TO_CATEGORY } from "./category-keywords";
+export { KEYWORD_TO_CATEGORY };
 
 /**
  * Infers the best matching category ID from a description string.
@@ -242,11 +202,12 @@ function firstName(name: string): string {
 
 export function formatActivityTitle(
   activity: ActivityLogDto,
-  currentUserId: string | null | undefined
+  currentUserId: string | null | undefined,
+  options?: { includeGroupName?: boolean }
 ): string {
   const isYou = !!(currentUserId && activity.actorUserId === currentUserId);
   const fullName = activity.actorUserName ?? activity.actorGuestName ?? "Someone";
-  const actorName = isYou ? "You" : firstName(fullName);
+  const actorName = isYou ? "You" : shortenName(fullName);
 
   const verb = ACTIVITY_VERB_MAP[activity.activityType];
   if (!verb) {
@@ -262,15 +223,21 @@ export function formatActivityTitle(
     (activity.details?.description as string) ??
     "";
 
+  // Resolve group suffix for cross-group screens (Home, Activity tab)
+  const resolvedGroupName = activity.groupName ?? (activity.details?.groupName as string) ?? "";
+  const groupSuffix = options?.includeGroupName && resolvedGroupName
+    ? ` in ${resolvedGroupName}`
+    : "";
+
   switch (activity.activityType) {
     case "expense_created":
     case "expense_updated":
     case "expense_deleted":
       return description
-        ? `${actorName} ${verb} ${description}`
-        : `${actorName} ${verb} an expense`;
+        ? `${actorName} ${verb} ${description}${groupSuffix}`
+        : `${actorName} ${verb} an expense${groupSuffix}`;
     case "settlement_created":
-      return `${actorName} ${verb}`;
+      return `${actorName} ${verb}${groupSuffix}`;
     case "member_joined":
     case "member_joined_via_invite":
       return `${actorName} ${verb} ${activity.groupName ?? (activity.details?.groupName as string) ?? ""}`.trim();
@@ -312,13 +279,20 @@ export function formatActivityTitle(
 export interface ActivityInvolvement {
   /** null = not an expense activity or no involvement data from BE */
   text: string | null;
-  /** Tailwind-friendly color token */
-  color: "teal" | "red" | "muted" | null;
+  /** Semantic color token */
+  color: "success" | "destructive" | "muted" | null;
+  /** Optional amount in cents to display alongside the text */
+  amountCents?: number;
 }
 
 /**
  * Returns involvement text + color for an activity item.
- * BE sends `yourShareCents` (absent = not involved) and `involvedCount` on expense activities.
+ * BE sends `yourShareCents` (absent = not involved), `yourPaidCents` (how much user paid),
+ * and `involvedCount` on expense activities.
+ *
+ * When `yourPaidCents` is present and > 0, user is a payer → "you lent" (success/green).
+ * Otherwise user only has a split → "you borrowed" (destructive/red).
+ * Fallback when `yourPaidCents` is absent (backend not yet deployed): treat as non-payer.
  */
 export function formatActivityInvolvement(
   activity: ActivityLogDto
@@ -330,23 +304,108 @@ export function formatActivityInvolvement(
   if (involvedCount == null) return { text: null, color: null };
 
   const yourShareCents = activity.details?.yourShareCents as number | undefined;
+  const yourPaidCents = (activity.details?.yourPaidCents as number | undefined) ?? 0;
 
   if (yourShareCents == null) {
     return { text: "Not involved", color: "muted" };
   }
 
-  // Negative share means you're owed, positive means you owe
-  // But yourShareCents is always the user's split amount (positive),
-  // so we just show their share
-  return {
-    text: formatCentsForInvolvement(yourShareCents),
-    color: "teal",
-  };
+  if (yourPaidCents > 0) {
+    // User is a payer — they lent (paid - share)
+    const lentAmount = yourPaidCents - yourShareCents;
+    return { text: "you lent", color: "success", amountCents: lentAmount };
+  }
+
+  // User only has a split — they borrowed
+  return { text: "you borrowed", color: "destructive", amountCents: yourShareCents };
 }
 
-function formatCentsForInvolvement(cents: number): string {
+/**
+ * Resolves the group name for an activity item.
+ * Falls back to details.groupName when the top-level groupName is absent.
+ */
+export function resolveActivityGroupName(activity: ActivityLogDto): string | null {
+  const name = activity.groupName ?? (activity.details?.groupName as string) ?? null;
+  return name || null;
+}
+
+/** Format cents as a dollar string (no sign prefix). */
+export function formatCentsForInvolvement(cents: number): string {
   const dollars = Math.abs(cents) / 100;
-  return `-$${dollars.toFixed(2)}`;
+  return `$${dollars.toFixed(2)}`;
+}
+
+// --- Expense card display (Splitwise-style) ---
+
+/** Shorten "Ajay Wadhara" → "Ajay W.", single name unchanged, empty → empty */
+export function shortenName(fullName: string): string {
+  if (!fullName) return "";
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length <= 1) return fullName.trim();
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+}
+
+export interface ExpenseCardDisplay {
+  subtitle: string;
+  rightLabel: string;
+  rightAmountCents: number | null;
+  rightColor: "success" | "destructive" | "muted";
+}
+
+/**
+ * Compute Splitwise-style expense card display for the current user.
+ * Shows "You paid £100" / "you lent £50" (green) or "Ajay W. paid £100" / "you borrowed £50" (red).
+ */
+export function computeExpenseCardDisplay(
+  expense: {
+    payers?: Array<{ user?: { id?: string; name?: string } | null; guestUser?: { id?: string; name?: string } | null; amountPaid: number }>;
+    splits?: Array<{ user?: { id?: string } | null; guestUser?: { id?: string } | null; splitAmount: number }>;
+    amountCents?: number;
+    createdBy?: { name?: string } | null;
+  },
+  currentUserId: string | null | undefined,
+  members?: Array<{ user?: { id?: string; name?: string } | null; guestUser?: { id?: string; name?: string } | null; displayName?: string }>,
+  createdBy?: { name?: string } | null,
+  formatAmount?: (cents: number) => string,
+): ExpenseCardDisplay {
+  const fmt = formatAmount ?? ((c: number) => `${(c / 100).toFixed(2)}`);
+  const payers = expense.payers ?? [];
+  const splits = expense.splits ?? [];
+  const totalCents = expense.amountCents ?? payers.reduce((s, p) => s + p.amountPaid, 0);
+
+  // Current user's paid total across all payers
+  const userPaidTotal = currentUserId
+    ? payers.filter((p) => (p.user?.id ?? p.guestUser?.id) === currentUserId).reduce((s, p) => s + p.amountPaid, 0)
+    : 0;
+
+  // Current user's split amount
+  const userSplit = currentUserId
+    ? splits.find((s) => (s.user?.id ?? s.guestUser?.id) === currentUserId)
+    : undefined;
+  const userSplitAmount = userSplit?.splitAmount ?? 0;
+
+  // Resolve primary payer display name
+  const primaryPayer = payers[0];
+  const isCurrentUserPrimaryPayer = !!(currentUserId && (primaryPayer?.user?.id ?? primaryPayer?.guestUser?.id) === currentUserId);
+  const fullPayerName = resolvePayerName(primaryPayer, members, createdBy ?? expense.createdBy);
+  const payerDisplay = isCurrentUserPrimaryPayer ? "You" : shortenName(fullPayerName);
+
+  const subtitle = `${payerDisplay} paid ${fmt(totalCents)}`;
+
+  // Determine right side based on user involvement
+  const isInvolved = userPaidTotal > 0 || userSplitAmount > 0;
+
+  if (!isInvolved || !currentUserId) {
+    return { subtitle, rightLabel: "not involved", rightAmountCents: null, rightColor: "muted" };
+  }
+
+  if (userPaidTotal > 0) {
+    // User is a payer — they lent (paid - their share)
+    return { subtitle, rightLabel: "you lent", rightAmountCents: userPaidTotal - userSplitAmount, rightColor: "success" };
+  }
+
+  // User only has a split (they borrowed)
+  return { subtitle, rightLabel: "you borrowed", rightAmountCents: userSplitAmount, rightColor: "destructive" };
 }
 
 // --- From index.tsx (home screen balance) ---

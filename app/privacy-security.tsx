@@ -7,8 +7,8 @@ import {
   Linking,
   Platform,
   ActivityIndicator,
-  useColorScheme,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth, useUser } from "@clerk/clerk-expo";
@@ -52,7 +52,8 @@ interface SessionInfo {
 
 export default function PrivacySecurityScreen() {
   const router = useRouter();
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const toast = useToast();
   const { getToken, signOut } = useAuth();
   const { user: clerkUser } = useUser();

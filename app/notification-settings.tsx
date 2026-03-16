@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, Pressable, Linking, Platform, useColorScheme } from "react-native";
+import { View, Text, ScrollView, Pressable, Linking, Platform } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
@@ -31,7 +32,8 @@ import {
 
 export default function NotificationSettingsScreen() {
   const router = useRouter();
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const toast = useToast();
   const { getToken } = useAuth();
 

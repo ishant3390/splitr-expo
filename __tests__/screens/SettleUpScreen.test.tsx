@@ -149,6 +149,16 @@ describe("SettleUpScreen — per-group mode", () => {
     });
   });
 
+  it("shows 'Back to Group' CTA in per-group all-settled state", async () => {
+    mockSuggestions.mockResolvedValue([]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Back to Group")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Back to Group"));
+    expect(mockRouterBack).toHaveBeenCalled();
+  });
+
   it("displays group name", async () => {
     render(<SettleUpScreen />);
     await waitFor(() => {
@@ -301,6 +311,22 @@ describe("SettleUpScreen — per-group mode", () => {
     fireEvent.press(screen.getByText(/History/));
     await waitFor(() => {
       expect(screen.getByText("No settlements yet")).toBeTruthy();
+    });
+  });
+
+  it("shows 'View Suggested Payments' CTA in empty history state", async () => {
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Suggested")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/History/));
+    await waitFor(() => {
+      expect(screen.getByText("View Suggested Payments")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("View Suggested Payments"));
+    // Should switch back to suggestions tab
+    await waitFor(() => {
+      expect(screen.getByText("Alice")).toBeTruthy();
     });
   });
 
@@ -758,6 +784,21 @@ describe("SettleUpScreen — cross-group mode", () => {
       expect(screen.getByText(/All settled up!/)).toBeTruthy();
       expect(screen.getByText(/No outstanding debts across any of your groups/)).toBeTruthy();
     });
+  });
+
+  it("shows 'Back to Home' CTA in cross-group all-settled state", async () => {
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [],
+      isLoading: false,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Back to Home")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Back to Home"));
+    expect(mockRouterReplace).toHaveBeenCalledWith("/(tabs)");
   });
 
   it("shows loading skeleton when cross-group data is loading", () => {

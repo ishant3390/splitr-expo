@@ -2,6 +2,7 @@ import {
   getCategoryIcon,
   getActivityIcon,
   getPaymentMethodIcon,
+  inferCategoryIconFromDescription,
   CATEGORY_ICON_MAP,
   ACTIVITY_ICON_MAP,
   PAYMENT_METHOD_ICON_MAP,
@@ -187,5 +188,119 @@ describe("getPaymentMethodIcon", () => {
       expect(config.bg).toMatch(/^#/);
       expect(config.label.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// inferCategoryIconFromDescription
+// ---------------------------------------------------------------------------
+describe("inferCategoryIconFromDescription", () => {
+  it("returns food icon for 'Pizza'", () => {
+    const result = inferCategoryIconFromDescription("Pizza");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#d97706"); // amber food
+  });
+
+  it("returns food icon for 'Dinner at Olive Garden'", () => {
+    const result = inferCategoryIconFromDescription("Dinner at Olive Garden");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#d97706");
+  });
+
+  it("returns transport icon for 'Uber ride'", () => {
+    const result = inferCategoryIconFromDescription("Uber ride");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#2563eb"); // blue transport
+  });
+
+  it("returns transport icon for 'Gas station'", () => {
+    const result = inferCategoryIconFromDescription("Gas station");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#2563eb");
+  });
+
+  it("returns entertainment icon for 'Netflix subscription'", () => {
+    const result = inferCategoryIconFromDescription("Netflix subscription");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#db2777"); // pink entertainment
+  });
+
+  it("returns health icon for 'Pharmacy'", () => {
+    const result = inferCategoryIconFromDescription("Pharmacy");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#dc2626"); // red health
+  });
+
+  it("returns null for random text with no matching keywords", () => {
+    const result = inferCategoryIconFromDescription("Random stuff 12345");
+    expect(result).toBeNull();
+  });
+
+  it("returns null for empty string", () => {
+    expect(inferCategoryIconFromDescription("")).toBeNull();
+  });
+
+  it("returns null for whitespace-only string", () => {
+    expect(inferCategoryIconFromDescription("   ")).toBeNull();
+  });
+
+  it("is case-insensitive", () => {
+    const result = inferCategoryIconFromDescription("COFFEE at Starbucks");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#d97706");
+  });
+
+  it("returns accommodation icon for 'Hotel stay'", () => {
+    const result = inferCategoryIconFromDescription("Hotel stay");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#7c3aed"); // violet accommodation
+  });
+
+  it("returns utilities icon for 'Electricity bill'", () => {
+    const result = inferCategoryIconFromDescription("Electricity bill");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#0284c7"); // sky utilities
+  });
+
+  it("returns education icon for 'Tuition payment'", () => {
+    const result = inferCategoryIconFromDescription("Tuition payment");
+    expect(result).not.toBeNull();
+    expect(result!.color).toBe("#0891b2"); // cyan education
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getActivityIcon with description fallback
+// ---------------------------------------------------------------------------
+describe("getActivityIcon with description fallback", () => {
+  it("returns category icon from description when categoryName is missing", () => {
+    const result = getActivityIcon("expense_created", undefined, "Pizza for the team");
+    expect(result.color).toBe("#d97706"); // food amber, not teal activity
+  });
+
+  it("prefers categoryName over description", () => {
+    const result = getActivityIcon("expense_created", "transport", "Pizza delivery");
+    expect(result.color).toBe("#2563eb"); // transport blue, not food amber
+  });
+
+  it("falls back to activity type when neither categoryName nor description match", () => {
+    const result = getActivityIcon("expense_created", undefined, "Some random thing");
+    expect(result.label).toBe("Added"); // default activity icon
+    expect(result.color).toBe("#0d9488"); // teal
+  });
+
+  it("falls back to description when categoryName is unknown", () => {
+    const result = getActivityIcon("expense_created", "xyz_unknown", "Uber ride home");
+    expect(result.color).toBe("#2563eb"); // transport blue
+  });
+
+  it("handles undefined description gracefully", () => {
+    const result = getActivityIcon("expense_created", undefined, undefined);
+    expect(result.label).toBe("Added");
+  });
+
+  it("handles empty description", () => {
+    const result = getActivityIcon("expense_created", undefined, "");
+    expect(result.label).toBe("Added");
   });
 });

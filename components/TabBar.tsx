@@ -9,7 +9,7 @@ import Animated, {
   withSequence,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useColorScheme } from "react-native";
+import { useColorScheme } from "nativewind";
 import { Plus } from "lucide-react-native";
 import { hapticSelection, hapticMedium } from "@/lib/haptics";
 import { useRouter } from "expo-router";
@@ -170,7 +170,7 @@ function FABButton() {
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
   // Sliding indicator

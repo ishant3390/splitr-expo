@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Platform, useColorScheme } from "react-native";
+import { View, Text, Platform } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSignUp, useSignIn } from "@clerk/clerk-expo";
@@ -10,7 +11,8 @@ import { ArrowLeft, Mail, Phone as PhoneIcon, CheckCircle2 } from "lucide-react-
 
 export default function OTPVerifyScreen() {
   const router = useRouter();
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(auth)"));
   const params = useLocalSearchParams<{ contact: string; phone?: string; mode: string; method?: string }>();
   const { signUp, setActive: setActiveSignUp } = useSignUp();

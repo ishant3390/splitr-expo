@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, useColorScheme } from "react-native";
+import { View, Text } from "react-native";
+import { useColorScheme } from "nativewind";
 
 interface ChatMarkdownProps {
   content: string;
@@ -158,7 +159,8 @@ function InlineRenderer({
 }
 
 export function ChatMarkdown({ content, isUser = false }: ChatMarkdownProps) {
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const blocks = parseBlocks(content);
   const textColor = isUser ? "#ffffff" : isDark ? "#f1f5f9" : "#0f172a";
   const codeBlockBg = isUser ? "rgba(255,255,255,0.1)" : isDark ? "#1e293b" : "#f1f5f9";

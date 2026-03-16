@@ -6,8 +6,8 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
-  useColorScheme,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
@@ -57,7 +57,7 @@ export default function SettleUpScreen() {
   const isCrossGroup = !groupId;
   const { getToken } = useAuth();
   const toast = useToast();
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
   const { data: currentUser } = useUserProfile();
@@ -430,9 +430,9 @@ export default function SettleUpScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-        <Button variant="ghost" size="icon" onPress={goBack}>
-          <ArrowLeft size={24} color={isDark ? "#f1f5f9" : "#0f172a"} />
-        </Button>
+        <Pressable onPress={goBack} className="w-10 h-10 rounded-full bg-muted items-center justify-center">
+          <ArrowLeft size={22} color={isDark ? "#f1f5f9" : "#0f172a"} />
+        </Pressable>
         <Text className="text-lg font-sans-semibold text-foreground">
           Settle Up
         </Text>
@@ -531,6 +531,9 @@ export default function SettleUpScreen() {
                 <Text className="text-sm text-muted-foreground font-sans text-center">
                   No outstanding debts across any of your groups.
                 </Text>
+                <Button variant="outline" className="mt-3" onPress={() => router.replace("/(tabs)")}>
+                  <Text className="text-sm font-sans-semibold text-primary">Back to Home</Text>
+                </Button>
               </Card>
             ) : (
               <View className="gap-5">
@@ -572,6 +575,9 @@ export default function SettleUpScreen() {
                     <Text className="text-sm text-muted-foreground font-sans text-center">
                       No outstanding debts in this group.
                     </Text>
+                    <Button variant="outline" className="mt-3" onPress={goBack}>
+                      <Text className="text-sm font-sans-semibold text-primary">Back to Group</Text>
+                    </Button>
                   </Card>
                 ) : (
                   <View className="gap-3">
@@ -593,6 +599,9 @@ export default function SettleUpScreen() {
                     <Text className="text-sm text-muted-foreground font-sans text-center">
                       Record a payment when someone settles their debt.
                     </Text>
+                    <Button variant="outline" className="mt-3" onPress={() => { hapticSelection(); setActiveTab("suggestions"); }}>
+                      <Text className="text-sm font-sans-semibold text-primary">View Suggested Payments</Text>
+                    </Button>
                   </Card>
                 ) : (
                   <View className="gap-3">

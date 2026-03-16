@@ -3,10 +3,9 @@ import { render } from "@testing-library/react-native";
 import { CategoryIcon } from "../../components/ui/category-icon";
 import { getCategoryIcon, getPaymentMethodIcon } from "../../lib/category-icons";
 
-// Mock useColorScheme
-jest.mock("react-native/Libraries/Utilities/useColorScheme", () => ({
-  __esModule: true,
-  default: jest.fn(() => "light"),
+// Mock useColorScheme from nativewind
+jest.mock("nativewind", () => ({
+  useColorScheme: jest.fn(() => ({ colorScheme: "light", setColorScheme: jest.fn(), toggleColorScheme: jest.fn() })),
 }));
 
 describe("CategoryIcon", () => {
@@ -73,14 +72,14 @@ describe("CategoryIcon", () => {
   });
 
   it("uses darkBg in dark mode", () => {
-    const useColorScheme = require("react-native/Libraries/Utilities/useColorScheme").default;
-    useColorScheme.mockReturnValue("dark");
+    const nativewind = require("nativewind");
+    nativewind.useColorScheme.mockReturnValue({ colorScheme: "dark", setColorScheme: jest.fn(), toggleColorScheme: jest.fn() });
 
     const { toJSON } = render(<CategoryIcon iconName="food" />);
     const tree = toJSON() as any;
     expect(tree.props.style.backgroundColor).toBe("#451a03");
 
-    useColorScheme.mockReturnValue("light");
+    nativewind.useColorScheme.mockReturnValue({ colorScheme: "light", setColorScheme: jest.fn(), toggleColorScheme: jest.fn() });
   });
 
   it("renders with className prop", () => {

@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, Pressable, Modal, useColorScheme } from "react-native";
+import { View, Text, Pressable, Modal } from "react-native";
+import { useColorScheme } from "nativewind";
 
 interface ConfirmModalProps {
   visible: boolean;
@@ -22,7 +23,8 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
       <Pressable

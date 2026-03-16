@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl, TextInput, useColorScheme } from "react-native";
+import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl, TextInput } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -9,16 +10,24 @@ import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
-import { useUserActivity } from "@/lib/hooks";
+import { useUserActivity, useGroups, useUserProfile } from "@/lib/hooks";
 import { formatCents, formatDate, formatRelativeTime, getInitials } from "@/lib/utils";
-import { formatActivityTitle, formatActivityInvolvement } from "@/lib/screen-helpers";
+import { formatActivityTitle, formatActivityInvolvement, formatCentsForInvolvement, resolveActivityGroupName } from "@/lib/screen-helpers";
 import type { ActivityLogDto } from "@/lib/types";
 
 export default function ActivityScreen() {
   const router = useRouter();
   const { user } = useUser();
-  const isDark = useColorScheme() === "dark";
+  const { data: backendUser } = useUserProfile();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const { data: activity = [], isLoading: loading, error: activityError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useUserActivity();
+  const { data: groups = [] } = useGroups();
+  const groupNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    groups.forEach((g) => map.set(g.id, g.name));
+    return map;
+  }, [groups]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -147,8 +156,11 @@ export default function ActivityScreen() {
           )}
           renderItem={({ item }) => {
             const actorName = item.actorUserName ?? item.actorGuestName ?? "Someone";
-            const title = formatActivityTitle(item, user?.id);
-            const groupName = item.groupName ?? (item.details?.groupName as string) ?? "";
+            const title = formatActivityTitle(item, backendUser?.id);
+            const isExpenseOrSettlement = item.activityType.startsWith("expense_") || item.activityType === "settlement_created";
+            const groupName = isExpenseOrSettlement
+              ? (resolveActivityGroupName(item) ?? (item.groupId ? groupNameMap.get(item.groupId) : null) ?? null)
+              : null;
 
             const isExpenseUpdated = item.activityType === "expense_updated";
             const oldAmount = item.details?.oldAmount as number | undefined;
@@ -181,6 +193,11 @@ export default function ActivityScreen() {
                       <Text className="text-sm font-sans-semibold text-card-foreground">
                         {title}
                       </Text>
+                      {groupName && (
+                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                          in {groupName}
+                        </Text>
+                      )}
                       {isExpenseUpdated && amountChanged ? (
                         <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                           {formatCents(oldAmount!)} {"\u2192"} {formatCents(newAmount!)}
@@ -199,10 +216,6 @@ export default function ActivityScreen() {
                         <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                           {item.activityType === "group_created" ? "New group" : item.activityType === "group_archived" ? "Archived" : item.activityType === "group_deleted" ? "Deleted" : item.activityType === "group_updated" ? "Updated" : "Restored"}
                         </Text>
-                      ) : !isMemberActivity && !isGroupLifecycle && groupName ? (
-                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                          {groupName}
-                        </Text>
                       ) : null}
                     </View>
                     <View className="items-end">
@@ -214,12 +227,14 @@ export default function ActivityScreen() {
                       {involvement.text != null && (
                         <Text
                           className={`text-xs font-sans-medium mt-0.5 ${
-                            involvement.color === "teal"
-                              ? "text-primary"
+                            involvement.color === "success"
+                              ? "text-emerald-600"
+                              : involvement.color === "destructive"
+                              ? "text-red-500"
                               : "text-muted-foreground"
                           }`}
                         >
-                          {involvement.text}
+                          {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents)}` : ""}
                         </Text>
                       )}
                       <Text className="text-xs text-muted-foreground font-sans">

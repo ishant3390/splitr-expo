@@ -8,8 +8,8 @@ import {
   Pressable,
   TextInput,
   ScrollView,
-  useColorScheme,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import {
   KeyboardAvoidingView as KBCKeyboardAvoidingView,
   KeyboardProvider,
@@ -1074,7 +1074,8 @@ export default function ChatScreen() {
   const router = useRouter();
   const { receiptMessage } = useLocalSearchParams<{ receiptMessage?: string }>();
   const { getToken } = useAuth();
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const { isOnline: isConnected } = useNetwork();
   const toast = useToast();
   const { data: contacts, isLoading: contactsLoading, refreshRecents } = useMergedContacts();

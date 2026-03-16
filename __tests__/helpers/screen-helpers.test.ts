@@ -13,6 +13,10 @@ import {
   computeBalancesFromMembers,
   formatActivityTitle,
   formatActivityInvolvement,
+  formatCentsForInvolvement,
+  shortenName,
+  computeExpenseCardDisplay,
+  resolveActivityGroupName,
 } from "../../lib/screen-helpers";
 import type { ActivityLogDto } from "../../lib/types";
 
@@ -1202,6 +1206,145 @@ describe("formatActivityTitle", () => {
     });
     expect(formatActivityTitle(a, "me")).toBe("Alice added New Name");
   });
+
+  // --- includeGroupName option ---
+
+  it("appends group name for expense_created when includeGroupName is true", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "me",
+      actorUserName: "Ajay",
+      groupName: "Party",
+      details: { description: "Pizza" },
+    });
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("You added Pizza in Party");
+  });
+
+  it("appends group name for expense_updated when includeGroupName is true", () => {
+    const a = makeActivity({
+      activityType: "expense_updated",
+      actorUserId: "u1",
+      actorUserName: "Bob",
+      groupName: "Trip",
+      details: { newDescription: "Lunch" },
+    });
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("Bob updated Lunch in Trip");
+  });
+
+  it("appends group name for expense_deleted when includeGroupName is true", () => {
+    const a = makeActivity({
+      activityType: "expense_deleted",
+      actorUserId: "u1",
+      actorUserName: "Alice",
+      groupName: "Roommates",
+      details: { description: "Coffee" },
+    });
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("Alice deleted Coffee in Roommates");
+  });
+
+  it("appends group name for settlement_created when includeGroupName is true", () => {
+    const a = makeActivity({
+      activityType: "settlement_created",
+      actorUserId: "me",
+      actorUserName: "Ajay",
+      groupName: "Vacation",
+    });
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("You settled up in Vacation");
+  });
+
+  it("does not append group name when flag is omitted (backward compat)", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "me",
+      actorUserName: "Ajay",
+      groupName: "Party",
+      details: { description: "Pizza" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You added Pizza");
+  });
+
+  it("does not append group name when flag is false", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "me",
+      actorUserName: "Ajay",
+      groupName: "Party",
+      details: { description: "Pizza" },
+    });
+    expect(formatActivityTitle(a, "me", { includeGroupName: false })).toBe("You added Pizza");
+  });
+
+  it("falls back to details.groupName when groupName is missing", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "u1",
+      actorUserName: "Alice",
+      details: { description: "Dinner", groupName: "Fallback Group" },
+    });
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("Alice added Dinner in Fallback Group");
+  });
+
+  it("does not append suffix when no group name is available", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "u1",
+      actorUserName: "Alice",
+      details: { description: "Dinner" },
+    });
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("Alice added Dinner");
+  });
+
+  it("does not duplicate group name for member_joined with includeGroupName", () => {
+    const a = makeActivity({
+      activityType: "member_joined",
+      actorUserId: "u1",
+      actorUserName: "Dave",
+      groupName: "Road Trip",
+    });
+    // member_joined already includes group name in the title, suffix should not add it again
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("Dave joined Road Trip");
+  });
+
+  it("appends group name for expense with no description", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      actorUserId: "me",
+      actorUserName: "Ajay",
+      groupName: "Party",
+    });
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("You added an expense in Party");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveActivityGroupName
+// ---------------------------------------------------------------------------
+
+describe("resolveActivityGroupName", () => {
+  it("returns groupName when present on activity", () => {
+    const a = { groupName: "Trip", details: {} } as unknown as ActivityLogDto;
+    expect(resolveActivityGroupName(a)).toBe("Trip");
+  });
+
+  it("falls back to details.groupName when groupName is null", () => {
+    const a = { groupName: null, details: { groupName: "Fallback Group" } } as unknown as ActivityLogDto;
+    expect(resolveActivityGroupName(a)).toBe("Fallback Group");
+  });
+
+  it("returns null when both are absent", () => {
+    const a = { groupName: null, details: {} } as unknown as ActivityLogDto;
+    expect(resolveActivityGroupName(a)).toBeNull();
+  });
+
+  it("returns null for empty strings", () => {
+    const a = { groupName: "", details: { groupName: "" } } as unknown as ActivityLogDto;
+    expect(resolveActivityGroupName(a)).toBeNull();
+  });
+
+  it("returns null when details is undefined", () => {
+    const a = { groupName: null } as unknown as ActivityLogDto;
+    expect(resolveActivityGroupName(a)).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1270,42 +1413,59 @@ describe("formatActivityInvolvement", () => {
     expect(formatActivityInvolvement(a)).toEqual({ text: "Not involved", color: "muted" });
   });
 
-  it("returns formatted share when yourShareCents is present", () => {
+  // --- Payer: "you lent" (success) ---
+  it("returns 'you lent' when user is payer (yourPaidCents > 0)", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { description: "Dinner", amountCents: 4500, involvedCount: 2, yourShareCents: 2250, yourPaidCents: 4500 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you lent", color: "success", amountCents: 2250 });
+  });
+
+  // --- Non-payer: "you borrowed" (destructive) ---
+  it("returns 'you borrowed' when user is non-payer (yourPaidCents = 0)", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { description: "Dinner", amountCents: 4500, involvedCount: 2, yourShareCents: 2250, yourPaidCents: 0 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you borrowed", color: "destructive", amountCents: 2250 });
+  });
+
+  // --- Fallback: no yourPaidCents field → treat as non-payer ---
+  it("returns 'you borrowed' when yourPaidCents is absent (backend fallback)", () => {
     const a = makeActivity({
       activityType: "expense_created",
       details: { description: "Dinner", amountCents: 6000, involvedCount: 3, yourShareCents: 2000 },
     });
-    expect(formatActivityInvolvement(a)).toEqual({ text: "-$20.00", color: "teal" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you borrowed", color: "destructive", amountCents: 2000 });
   });
 
-  it("formats small cents correctly", () => {
+  it("formats small cents correctly as borrowed", () => {
     const a = makeActivity({
       activityType: "expense_created",
       details: { amountCents: 300, involvedCount: 2, yourShareCents: 150 },
     });
-    expect(formatActivityInvolvement(a)).toEqual({ text: "-$1.50", color: "teal" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you borrowed", color: "destructive", amountCents: 150 });
   });
 
-  it("handles yourShareCents of 0 as involved", () => {
-    // Edge case: 0 cents share (e.g., payer pays full, split is 0 for them)
-    // 0 is a number so it IS present — user is technically involved
+  it("handles yourShareCents of 0 as borrowed with 0 amount", () => {
     const a = makeActivity({
       activityType: "expense_created",
       details: { amountCents: 5000, involvedCount: 2, yourShareCents: 0 },
     });
-    // 0 is falsy but !== undefined, so should show as involved
-    expect(formatActivityInvolvement(a)).toEqual({ text: "-$0.00", color: "teal" });
+    // 0 is falsy but !== undefined, so should show as involved (borrowed $0)
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you borrowed", color: "destructive", amountCents: 0 });
   });
 
-  it("works for expense_updated", () => {
+  it("works for expense_updated as borrowed", () => {
     const a = makeActivity({
       activityType: "expense_updated",
       details: { newDescription: "Lunch", involvedCount: 4, yourShareCents: 1250 },
     });
-    expect(formatActivityInvolvement(a)).toEqual({ text: "-$12.50", color: "teal" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you borrowed", color: "destructive", amountCents: 1250 });
   });
 
-  it("works for expense_deleted", () => {
+  it("works for expense_deleted not involved", () => {
     const a = makeActivity({
       activityType: "expense_deleted",
       details: { description: "Coffee", involvedCount: 2 },
@@ -1313,12 +1473,12 @@ describe("formatActivityInvolvement", () => {
     expect(formatActivityInvolvement(a)).toEqual({ text: "Not involved", color: "muted" });
   });
 
-  it("returns share for expense_deleted when involved", () => {
+  it("returns borrowed for expense_deleted when involved", () => {
     const a = makeActivity({
       activityType: "expense_deleted",
       details: { description: "Coffee", involvedCount: 2, yourShareCents: 350 },
     });
-    expect(formatActivityInvolvement(a)).toEqual({ text: "-$3.50", color: "teal" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you borrowed", color: "destructive", amountCents: 350 });
   });
 
   it("handles penny amounts", () => {
@@ -1326,7 +1486,7 @@ describe("formatActivityInvolvement", () => {
       activityType: "expense_created",
       details: { involvedCount: 3, yourShareCents: 1 },
     });
-    expect(formatActivityInvolvement(a)).toEqual({ text: "-$0.01", color: "teal" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you borrowed", color: "destructive", amountCents: 1 });
   });
 
   it("handles large amounts", () => {
@@ -1334,6 +1494,181 @@ describe("formatActivityInvolvement", () => {
       activityType: "expense_created",
       details: { involvedCount: 5, yourShareCents: 150000 },
     });
-    expect(formatActivityInvolvement(a)).toEqual({ text: "-$1500.00", color: "teal" });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you borrowed", color: "destructive", amountCents: 150000 });
+  });
+
+  it("payer lent amount = paid - share", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { involvedCount: 3, yourShareCents: 1500, yourPaidCents: 4500 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you lent", color: "success", amountCents: 3000 });
+  });
+
+  it("payer who paid exactly their share lends $0", () => {
+    const a = makeActivity({
+      activityType: "expense_created",
+      details: { involvedCount: 2, yourShareCents: 2500, yourPaidCents: 2500 },
+    });
+    expect(formatActivityInvolvement(a)).toEqual({ text: "you lent", color: "success", amountCents: 0 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatCentsForInvolvement
+// ---------------------------------------------------------------------------
+describe("formatCentsForInvolvement", () => {
+  it("formats cents as dollars without sign prefix", () => {
+    expect(formatCentsForInvolvement(2250)).toBe("$22.50");
+  });
+
+  it("formats zero", () => {
+    expect(formatCentsForInvolvement(0)).toBe("$0.00");
+  });
+
+  it("handles negative input via abs", () => {
+    expect(formatCentsForInvolvement(-500)).toBe("$5.00");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// shortenName
+// ---------------------------------------------------------------------------
+describe("shortenName", () => {
+  it("shortens two-part name to first + last initial", () => {
+    expect(shortenName("Ajay Wadhara")).toBe("Ajay W.");
+  });
+
+  it("returns single name unchanged", () => {
+    expect(shortenName("Ajay")).toBe("Ajay");
+  });
+
+  it("shortens multi-part name using first + last initial", () => {
+    expect(shortenName("Ajay Kumar Wadhara")).toBe("Ajay W.");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(shortenName("")).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeExpenseCardDisplay
+// ---------------------------------------------------------------------------
+describe("computeExpenseCardDisplay", () => {
+  const fmt = (c: number) => `£${(c / 100).toFixed(2)}`;
+
+  it("shows 'You paid' and 'you lent' when current user is the payer", () => {
+    const expense = {
+      payers: [{ user: { id: "u1", name: "Ajay Wadhara" }, amountPaid: 10000 }],
+      splits: [
+        { user: { id: "u1" }, splitAmount: 5000 },
+        { user: { id: "u2" }, splitAmount: 5000 },
+      ],
+      amountCents: 10000,
+    };
+    const result = computeExpenseCardDisplay(expense, "u1", [], null, fmt);
+    expect(result.subtitle).toBe("You paid £100.00");
+    expect(result.rightLabel).toBe("you lent");
+    expect(result.rightAmountCents).toBe(5000);
+    expect(result.rightColor).toBe("success");
+  });
+
+  it("shows shortened payer name and 'you borrowed' when current user only has a split", () => {
+    const expense = {
+      payers: [{ user: { id: "u1", name: "Ajay Wadhara" }, amountPaid: 10000 }],
+      splits: [
+        { user: { id: "u1" }, splitAmount: 5000 },
+        { user: { id: "u2" }, splitAmount: 5000 },
+      ],
+      amountCents: 10000,
+    };
+    const result = computeExpenseCardDisplay(expense, "u2", [], null, fmt);
+    expect(result.subtitle).toBe("Ajay W. paid £100.00");
+    expect(result.rightLabel).toBe("you borrowed");
+    expect(result.rightAmountCents).toBe(5000);
+    expect(result.rightColor).toBe("destructive");
+  });
+
+  it("shows 'not involved' when current user is not in payers or splits", () => {
+    const expense = {
+      payers: [{ user: { id: "u1", name: "Ajay Wadhara" }, amountPaid: 10000 }],
+      splits: [{ user: { id: "u1" }, splitAmount: 10000 }],
+      amountCents: 10000,
+    };
+    const result = computeExpenseCardDisplay(expense, "u3", [], null, fmt);
+    expect(result.subtitle).toBe("Ajay W. paid £100.00");
+    expect(result.rightLabel).toBe("not involved");
+    expect(result.rightAmountCents).toBeNull();
+    expect(result.rightColor).toBe("muted");
+  });
+
+  it("handles multi-payer where current user is one payer", () => {
+    const expense = {
+      payers: [
+        { user: { id: "u1", name: "Alice Smith" }, amountPaid: 6000 },
+        { user: { id: "u2", name: "Bob Jones" }, amountPaid: 4000 },
+      ],
+      splits: [
+        { user: { id: "u1" }, splitAmount: 5000 },
+        { user: { id: "u2" }, splitAmount: 5000 },
+      ],
+      amountCents: 10000,
+    };
+    const result = computeExpenseCardDisplay(expense, "u2", [], null, fmt);
+    // u2 paid 4000, split 5000 — but they paid, so "you lent" = 4000 - 5000 = -1000
+    expect(result.rightLabel).toBe("you lent");
+    expect(result.rightAmountCents).toBe(-1000);
+    expect(result.rightColor).toBe("success");
+  });
+
+  it("returns lent 0 when user paid exactly their share", () => {
+    const expense = {
+      payers: [{ user: { id: "u1", name: "Ajay" }, amountPaid: 5000 }],
+      splits: [
+        { user: { id: "u1" }, splitAmount: 5000 },
+        { user: { id: "u2" }, splitAmount: 5000 },
+      ],
+      amountCents: 10000,
+    };
+    const result = computeExpenseCardDisplay(expense, "u1", [], null, fmt);
+    expect(result.rightLabel).toBe("you lent");
+    expect(result.rightAmountCents).toBe(0);
+    expect(result.rightColor).toBe("success");
+  });
+
+  it("uses guest user name for payer", () => {
+    const expense = {
+      payers: [{ guestUser: { id: "g1", name: "Guest User" }, amountPaid: 3000 }],
+      splits: [{ user: { id: "u1" }, splitAmount: 3000 }],
+      amountCents: 3000,
+    };
+    const result = computeExpenseCardDisplay(expense, "u1", [], null, fmt);
+    expect(result.subtitle).toBe("Guest U. paid £30.00");
+    expect(result.rightLabel).toBe("you borrowed");
+    expect(result.rightAmountCents).toBe(3000);
+  });
+
+  it("handles no payers gracefully", () => {
+    const expense = {
+      payers: [],
+      splits: [{ user: { id: "u1" }, splitAmount: 1000 }],
+      amountCents: 1000,
+    };
+    const result = computeExpenseCardDisplay(expense, "u1", [], null, fmt);
+    expect(result.subtitle).toBe("Someone paid £10.00");
+    expect(result.rightLabel).toBe("you borrowed");
+  });
+
+  it("treats null currentUserId as not involved", () => {
+    const expense = {
+      payers: [{ user: { id: "u1", name: "Ajay Wadhara" }, amountPaid: 5000 }],
+      splits: [{ user: { id: "u1" }, splitAmount: 5000 }],
+      amountCents: 5000,
+    };
+    const result = computeExpenseCardDisplay(expense, null, [], null, fmt);
+    expect(result.rightLabel).toBe("not involved");
+    expect(result.rightAmountCents).toBeNull();
+    expect(result.rightColor).toBe("muted");
   });
 });

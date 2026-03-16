@@ -8,8 +8,8 @@ import {
   Platform,
   ActivityIndicator,
   Share,
-  useColorScheme,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
@@ -83,7 +83,8 @@ export default function CreateGroupScreen() {
   const goBack = () =>
     router.canGoBack() ? router.back() : router.replace("/(tabs)/groups");
   const { getToken } = useAuth();
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const toast = useToast();
 
   const [groupName, setGroupName] = useState("");

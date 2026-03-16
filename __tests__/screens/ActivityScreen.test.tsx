@@ -27,8 +27,13 @@ const mockUseUserActivity = jest.fn(() => ({
   isFetchingNextPage: false,
 }));
 
+const mockUseGroups = jest.fn(() => ({ data: [] }));
+const mockUseUserProfile = jest.fn(() => ({ data: { id: "backend-user-1", name: "Test User" } }));
+
 jest.mock("@/lib/hooks", () => ({
   useUserActivity: (...args: any[]) => mockUseUserActivity(...args),
+  useGroups: (...args: any[]) => mockUseGroups(...args),
+  useUserProfile: (...args: any[]) => mockUseUserProfile(...args),
 }));
 
 beforeEach(() => {
@@ -277,7 +282,7 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText(/Dave joined Road Trip/).length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText(/Dave joined Road Trip/)).toBeTruthy();
       expect(screen.getByText(/as admin/)).toBeTruthy();
     });
   });
@@ -542,7 +547,7 @@ describe("ActivityScreen", () => {
     render(<ActivityScreen />);
     await waitFor(() => {
       expect(screen.getByText("Alice added Coffee")).toBeTruthy();
-      expect(screen.getByText("Java Club")).toBeTruthy();
+      expect(screen.getByText("in Java Club")).toBeTruthy();
     });
   });
 
@@ -789,7 +794,7 @@ describe("ActivityScreen", () => {
 
   // --- Involvement indicators (Phase 2) ---
 
-  it("shows your share when yourShareCents is present", async () => {
+  it("shows 'you borrowed' when yourShareCents is present (no yourPaidCents)", async () => {
     mockUseUserActivity.mockReturnValue({
       data: [
         {
@@ -810,7 +815,32 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("-$20.00")).toBeTruthy();
+      expect(screen.getByText("you borrowed $20.00")).toBeTruthy();
+    });
+  });
+
+  it("shows 'you lent' when yourPaidCents is present", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amountCents: 6000, involvedCount: 3, yourShareCents: 2000, yourPaidCents: 6000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    });
+    render(<ActivityScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("you lent $40.00")).toBeTruthy();
     });
   });
 
@@ -864,7 +894,7 @@ describe("ActivityScreen", () => {
       expect(screen.getByText("Alice settled up")).toBeTruthy();
     });
     expect(screen.queryByText("Not involved")).toBeNull();
-    expect(screen.queryByText(/^-\$/)).toBeNull();
+    expect(screen.queryByText(/you (lent|borrowed)/)).toBeNull();
   });
 
   it("does not show involvement when involvedCount is missing (old BE data)", async () => {
@@ -891,6 +921,6 @@ describe("ActivityScreen", () => {
       expect(screen.getByText("Alice added Dinner")).toBeTruthy();
     });
     expect(screen.queryByText("Not involved")).toBeNull();
-    expect(screen.queryByText(/^-\$/)).toBeNull();
+    expect(screen.queryByText(/you (lent|borrowed)/)).toBeNull();
   });
 });

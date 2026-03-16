@@ -10,8 +10,8 @@ import {
   ActivityIndicator,
   InputAccessoryView,
   Keyboard,
-  useColorScheme,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -68,7 +68,8 @@ export default function AddExpenseScreen() {
   const { getToken } = useAuth();
   const { user: clerkUser } = useUser();
   const toast = useToast();
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const [groups, setGroups] = useState<GroupDto[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);

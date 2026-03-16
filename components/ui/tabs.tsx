@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Pressable, Text, StyleSheet } from "react-native";
-import { useColorScheme } from "react-native";
+import { useColorScheme } from "nativewind";
 import { clsx } from "clsx";
 
 interface Tab {
@@ -16,7 +16,7 @@ interface TabsProps {
 }
 
 export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
   return (

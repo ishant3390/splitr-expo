@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
-import { View, Text, FlatList, Pressable, useColorScheme, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native";
+import { useColorScheme } from "nativewind";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { Users, User } from "lucide-react-native";
 import { getInitials } from "@/lib/utils";
@@ -223,7 +224,8 @@ export function MentionDropdown({
   selectedIndex = -1,
   isLoading = false,
 }: MentionDropdownProps) {
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {

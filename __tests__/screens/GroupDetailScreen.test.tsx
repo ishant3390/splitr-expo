@@ -125,12 +125,20 @@ jest.mock("@/lib/screen-helpers", () => ({
   aggregateByPerson: () => [{ name: "Alice", total: 5000 }],
   aggregateByCategory: () => [["Food", 5000]],
   aggregateByMonth: () => [],
-  filterExpenses: (exps: any[], q: string) => {
-    if (!q) return exps;
-    return exps.filter((e: any) => e.description?.toLowerCase().includes(q.toLowerCase()));
+  resolvePayerName: (payer: any, _members: any, createdBy: any) =>
+    payer?.user?.name ?? payer?.guestUser?.name ?? createdBy?.name ?? "Someone",
+  computeExpenseCardDisplay: (expense: any, _userId: any, _members: any, _createdBy: any, formatAmount?: (c: number) => string) => {
+    const fmt = formatAmount ?? ((c: number) => `${(c / 100).toFixed(2)}`);
+    const payer = expense.payers?.[0];
+    const payerName = payer?.user?.name ?? payer?.guestUser?.name ?? "Someone";
+    const totalCents = expense.amountCents ?? 0;
+    return {
+      subtitle: `${payerName} paid ${fmt(totalCents)}`,
+      rightLabel: "not involved",
+      rightAmountCents: null,
+      rightColor: "muted",
+    };
   },
-  sortExpenses: (exps: any[], by: string) => exps,
-  resolvePayerName: () => "Alice",
   formatActivityTitle: (activity: any, _userId: any) => {
     const actor = activity.actorUserName ?? activity.actorGuestName ?? "Someone";
     const verbMap: Record<string, string> = {
@@ -597,30 +605,6 @@ describe("GroupDetailScreen", () => {
     unmount();
   });
 
-  it("shows search toggle for expenses", async () => {
-    mockListExpenses.mockResolvedValue({
-      data: [
-        {
-          id: "e1",
-          description: "Lunch",
-          amountCents: 3000,
-          category: { icon: "food", name: "Food" },
-          payers: [{ user: { id: "u1" }, amountPaid: 3000 }],
-          splits: [{ user: { id: "u1" } }],
-          createdAt: "2026-03-10T10:00:00Z",
-          date: "2026-03-10",
-          createdBy: { id: "u1" },
-        },
-      ],
-      pagination: { hasMore: false },
-    });
-    const { unmount } = render(<GroupDetailScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("ACTIVITY (1)")).toBeTruthy();
-    });
-    unmount();
-  });
-
   it("loads contacts when add member modal opens", async () => {
     mockListContacts.mockResolvedValue([
       { userId: "u3", name: "Charlie", email: "charlie@test.com", isGuest: false },
@@ -793,33 +777,6 @@ describe("GroupDetailScreen", () => {
   });
 
   // --- Sort toggle (lines 804-814) ---
-  it("toggles expense sort between date and amount", async () => {
-    mockListExpenses.mockResolvedValue({
-      data: [
-        {
-          id: "e1",
-          description: "Lunch",
-          amountCents: 3000,
-          category: { icon: "food", name: "Food" },
-          payers: [{ user: { id: "u1" }, amountPaid: 3000 }],
-          splits: [{ user: { id: "u1" } }],
-          createdAt: "2026-03-10T10:00:00Z",
-          date: "2026-03-10",
-          createdBy: { id: "u1" },
-        },
-      ],
-      pagination: { hasMore: false },
-    });
-    render(<GroupDetailScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Date")).toBeTruthy();
-    });
-    fireEvent.press(screen.getByText("Date"));
-    await waitFor(() => {
-      expect(screen.getByText("Amount")).toBeTruthy();
-    });
-  });
-
   // --- Expense with different category icons (lines 867-870) ---
   it("renders expenses with various category icons", async () => {
     mockListExpenses.mockResolvedValue({
@@ -841,7 +798,9 @@ describe("GroupDetailScreen", () => {
     render(<GroupDetailScreen />);
     await waitFor(() => {
       expect(screen.getByText("Taxi")).toBeTruthy();
-      expect(screen.getByText(/2 people/)).toBeTruthy();
+      // Splitwise-style: shows payer info and involvement label
+      expect(screen.getByText(/Alice paid/)).toBeTruthy();
+      expect(screen.getByText("not involved")).toBeTruthy();
     });
   });
 
@@ -1033,29 +992,6 @@ describe("GroupDetailScreen", () => {
   });
 
   // --- Search expenses (lines 818-836, 848-858) ---
-  it("shows empty search results", async () => {
-    mockListExpenses.mockResolvedValue({
-      data: [
-        {
-          id: "e1",
-          description: "Lunch",
-          amountCents: 3000,
-          category: { icon: "food", name: "Food" },
-          payers: [{ user: { id: "u1" }, amountPaid: 3000 }],
-          splits: [{ user: { id: "u1" } }],
-          createdAt: "2026-03-10T10:00:00Z",
-          date: "2026-03-10",
-          createdBy: { id: "u1" },
-        },
-      ],
-      pagination: { hasMore: false },
-    });
-    render(<GroupDetailScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("ACTIVITY (1)")).toBeTruthy();
-    });
-  });
-
   // --- Group description display (lines 532-536) ---
   it("shows group description when present", async () => {
     mockGetGroup.mockResolvedValue({

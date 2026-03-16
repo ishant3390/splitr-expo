@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { View, type ViewProps, useColorScheme } from "react-native";
+import { View, type ViewProps } from "react-native";
+import { useColorScheme } from "nativewind";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -22,7 +23,8 @@ export function Skeleton({
   style,
   ...props
 }: SkeletonProps) {
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const opacity = useSharedValue(0.4);
 
   useEffect(() => {

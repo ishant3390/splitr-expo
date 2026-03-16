@@ -1,5 +1,6 @@
 import React from "react";
-import { TextInput, View, Text, type TextInputProps, useColorScheme } from "react-native";
+import { TextInput, View, Text, type TextInputProps } from "react-native";
+import { useColorScheme } from "nativewind";
 import { clsx } from "clsx";
 
 interface InputProps extends TextInputProps {
@@ -16,7 +17,8 @@ export function Input({
   className,
   ...props
 }: InputProps) {
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   return (
     <View className={clsx("w-full", containerClassName)}>
       {label && (

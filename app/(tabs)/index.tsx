@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
@@ -32,10 +32,10 @@ import { getActivityIcon } from "@/lib/category-icons";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { SkeletonList } from "@/components/ui/skeleton";
-import { useUserActivity, useUserBalance, useTopDebtor } from "@/lib/hooks";
+import { useUserActivity, useUserBalance, useTopDebtor, useGroups, useUserProfile } from "@/lib/hooks";
 import { useNetwork } from "@/components/NetworkProvider";
 import { cn, formatCents, formatDate, formatRelativeTime, getInitials } from "@/lib/utils";
-import { formatActivityTitle, formatActivityInvolvement } from "@/lib/screen-helpers";
+import { formatActivityTitle, formatActivityInvolvement, formatCentsForInvolvement, resolveActivityGroupName } from "@/lib/screen-helpers";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedPressable } from "@/components/ui/animated-pressable";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -61,6 +61,7 @@ const CATEGORIES = [
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useUser();
+  const { data: backendUser } = useUserProfile();
   const { getToken } = useAuth();
   const { pendingCount } = useNetwork();
   const toast = useToast();
@@ -88,6 +89,13 @@ export default function HomeScreen() {
   const totalOwesCents = balanceData?.totalOwesCents ?? 0;
 
   const topDebtor = useTopDebtor(balanceData);
+
+  const { data: groups = [] } = useGroups();
+  const groupNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    groups.forEach((g) => map.set(g.id, g.name));
+    return map;
+  }, [groups]);
 
   const handleNudge = async () => {
     if (!topDebtor || nudging) return;
@@ -371,8 +379,11 @@ export default function HomeScreen() {
               <View className="gap-2">
                 {filtered.map((item, idx) => {
                   const actorName = item.actorUserName ?? item.actorGuestName ?? "?";
-                  const title = formatActivityTitle(item, user?.id);
-                  const groupName = item.groupName ?? (item.details?.groupName as string) ?? "";
+                  const title = formatActivityTitle(item, backendUser?.id);
+                  const isExpenseOrSettlement = item.activityType.startsWith("expense_") || item.activityType === "settlement_created";
+                  const groupName = isExpenseOrSettlement
+                    ? (resolveActivityGroupName(item) ?? (item.groupId ? groupNameMap.get(item.groupId) : null) ?? null)
+                    : null;
                   const isExpenseUpdated = item.activityType === "expense_updated";
                   const oldAmount = item.details?.oldAmount as number | undefined;
                   const newAmount = item.details?.newAmount as number | undefined;
@@ -391,7 +402,8 @@ export default function HomeScreen() {
 
                   // Get icon config for this activity item
                   const categoryName = (item.details?.categoryName ?? item.details?.category) as string | undefined;
-                  const activityIconConfig = getActivityIcon(item.activityType, categoryName);
+                  const expenseDescription = (item.details?.newDescription ?? item.details?.description) as string | undefined;
+                  const activityIconConfig = getActivityIcon(item.activityType, categoryName, expenseDescription);
 
                   return (
                     <Animated.View
@@ -409,6 +421,11 @@ export default function HomeScreen() {
                             <Text className="text-sm font-sans-semibold text-card-foreground">
                               {title}
                             </Text>
+                            {groupName && (
+                              <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                                in {groupName}
+                              </Text>
+                            )}
                             {isExpenseUpdated && amountChanged ? (
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                                 {formatCents(oldAmount!)} → {formatCents(newAmount!)}
@@ -427,10 +444,6 @@ export default function HomeScreen() {
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                                 {item.activityType === "group_created" ? "New group" : item.activityType === "group_archived" ? "Archived" : item.activityType === "group_deleted" ? "Deleted" : item.activityType === "group_updated" ? "Updated" : "Restored"}
                               </Text>
-                            ) : !isMemberActivity && !isGroupLifecycle && groupName ? (
-                              <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                                {groupName}
-                              </Text>
                             ) : null}
                           </View>
                           <View className="items-end">
@@ -442,12 +455,14 @@ export default function HomeScreen() {
                             {involvement.text != null && (
                               <Text
                                 className={`text-xs font-sans-medium mt-0.5 ${
-                                  involvement.color === "teal"
-                                    ? "text-primary"
+                                  involvement.color === "success"
+                                    ? "text-emerald-600"
+                                    : involvement.color === "destructive"
+                                    ? "text-red-500"
                                     : "text-muted-foreground"
                                 }`}
                               >
-                                {involvement.text}
+                                {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents)}` : ""}
                               </Text>
                             )}
                             <Text className="text-xs text-muted-foreground font-sans">

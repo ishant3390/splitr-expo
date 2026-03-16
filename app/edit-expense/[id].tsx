@@ -8,8 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  useColorScheme,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -52,7 +52,8 @@ export default function EditExpenseScreen() {
       router.replace("/(tabs)");
     }
   };
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const params = useLocalSearchParams<{ id: string; groupId: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const groupId = Array.isArray(params.groupId) ? params.groupId[0] : params.groupId;

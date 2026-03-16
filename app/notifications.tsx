@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, SectionList, Pressable, RefreshControl, useColorScheme } from "react-native";
+import { View, Text, SectionList, Pressable, RefreshControl } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
@@ -69,7 +70,8 @@ function groupByDay(items: NotificationDto[]): { title: string; data: Notificati
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const { data: notifications = [], isLoading: loading, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());

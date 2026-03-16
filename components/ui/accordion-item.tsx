@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { View, Text, Pressable, useColorScheme } from "react-native";
+import { View, Text, Pressable } from "react-native";
+import { useColorScheme } from "nativewind";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,7 +20,8 @@ interface AccordionItemProps {
 }
 
 export function AccordionItem({ title, children, expanded = false, onToggle }: AccordionItemProps) {
-  const isDark = useColorScheme() === "dark";
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
   const rotation = useSharedValue(expanded ? 180 : 0);
   const height = useSharedValue(expanded ? 1 : 0);
   const opacity = useSharedValue(expanded ? 1 : 0);

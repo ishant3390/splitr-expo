@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,8 @@ import {
   Platform,
   Share,
   RefreshControl,
-  TextInput,
-  useColorScheme,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useAuth, useUser } from "@clerk/clerk-expo";
@@ -27,8 +26,6 @@ import {
   QrCode,
   RefreshCw,
   User,
-  Search,
-  ArrowUpDown,
   PlusCircle,
   Receipt,
   Bell,
@@ -55,7 +52,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, formatRelativeTime, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticLight, hapticSuccess, hapticWarning, hapticSelection, hapticError } from "@/lib/haptics";
-import { dedupeMembers, aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, resolvePayerName, hasUnsettledBalances } from "@/lib/screen-helpers";
+import { dedupeMembers, aggregateByPerson, aggregateByCategory, aggregateByMonth, resolvePayerName, hasUnsettledBalances, computeExpenseCardDisplay } from "@/lib/screen-helpers";
 import * as Clipboard from "expo-clipboard";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
@@ -74,7 +71,7 @@ export default function GroupDetailScreen() {
   const { getToken } = useAuth();
   const { user: clerkUser } = useUser();
   const toast = useToast();
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
   const [group, setGroup] = useState<GroupDto | null>(null);
@@ -83,13 +80,18 @@ export default function GroupDetailScreen() {
   const [activityItems, setActivityItems] = useState<ActivityLogDto[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Resolve current user's backend ID from members list (Clerk ID ≠ backend ID)
+  const currentBackendUserId = useMemo(() => {
+    const myEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+    if (!myEmail) return undefined;
+    const myMember = members.find(
+      (m) => m.user?.email?.toLowerCase() === myEmail.toLowerCase()
+    );
+    return myMember?.user?.id;
+  }, [clerkUser?.primaryEmailAddress?.emailAddress, members]);
+
   // Pull-to-refresh
   const [refreshing, setRefreshing] = useState(false);
-
-  // Search & sort
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
-  const [sortBy, setSortBy] = useState<"date" | "amount">("date");
 
   // Insights
   const [showInsights, setShowInsights] = useState(false);
@@ -869,48 +871,12 @@ export default function GroupDetailScreen() {
           </View>
         )}
 
-        {/* Activity header with search & sort */}
+        {/* Activity header */}
         <View className="flex-row items-center justify-between mb-3">
           <Text className="text-sm font-sans-semibold text-muted-foreground">
             ACTIVITY ({expenses.length + activityItems.length})
           </Text>
-          <View className="flex-row items-center gap-2">
-            <Pressable onPress={() => { hapticLight(); setShowSearch(!showSearch); }}>
-              <Search size={16} color={showSearch ? "#0d9488" : "#94a3b8"} />
-            </Pressable>
-            <Pressable onPress={() => {
-              hapticSelection();
-              setSortBy(sortBy === "date" ? "amount" : "date");
-            }}>
-              <View className="flex-row items-center gap-1">
-                <ArrowUpDown size={14} color="#94a3b8" />
-                <Text className="text-xs font-sans text-muted-foreground">
-                  {sortBy === "date" ? "Date" : "Amount"}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
         </View>
-
-        {/* Search input */}
-        {showSearch && (
-          <View className="mb-3 flex-row items-center bg-muted rounded-xl px-3 py-2 gap-2">
-            <Search size={16} color="#94a3b8" />
-            <TextInput
-              placeholder="Search activity..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#f1f5f9" : "#0f172a" }}
-              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
-            />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery("")}>
-                <X size={16} color="#94a3b8" />
-              </Pressable>
-            )}
-          </View>
-        )}
 
         {expenses.length === 0 && activityItems.length === 0 ? (
           <EmptyState
@@ -927,55 +893,20 @@ export default function GroupDetailScreen() {
             | { kind: "expense"; data: ExpenseDto; sortDate: number }
             | { kind: "activity"; data: ActivityLogDto; sortDate: number };
 
-          const filteredExpenses = (searchQuery ? filterExpenses(expenses, searchQuery) : expenses) as ExpenseDto[];
-          const filteredActivity = searchQuery
-            ? activityItems.filter((a) => {
-                const q = searchQuery.toLowerCase();
-                const actor = (a.actorUserName ?? a.actorGuestName ?? "").toLowerCase();
-                const desc = ((a.details?.description ?? "") as string).toLowerCase();
-                const type = a.activityType.replace(/_/g, " ").toLowerCase();
-                return actor.includes(q) || desc.includes(q) || type.includes(q);
-              })
-            : activityItems;
-
           const unified: UnifiedItem[] = [
-            ...filteredExpenses.map((e): UnifiedItem => ({
+            ...expenses.map((e): UnifiedItem => ({
               kind: "expense",
               data: e,
-              sortDate: new Date(e.date || e.createdAt).getTime(),
+              sortDate: new Date(e.createdAt).getTime(),
             })),
-            ...filteredActivity.map((a): UnifiedItem => ({
+            ...activityItems.map((a): UnifiedItem => ({
               kind: "activity",
               data: a,
               sortDate: new Date(a.createdAt).getTime(),
             })),
           ];
 
-          // Sort: date desc by default, amount desc if selected (activity items without amount go to end)
-          if (sortBy === "amount") {
-            unified.sort((a, b) => {
-              const amtA = a.kind === "expense"
-                ? (a.data.amountCents ?? 0)
-                : ((a.data.details?.amount ?? a.data.details?.amountCents ?? 0) as number);
-              const amtB = b.kind === "expense"
-                ? (b.data.amountCents ?? 0)
-                : ((b.data.details?.amount ?? b.data.details?.amountCents ?? 0) as number);
-              return amtB - amtA;
-            });
-          } else {
-            unified.sort((a, b) => b.sortDate - a.sortDate);
-          }
-
-          if (unified.length === 0) {
-            return (
-              <EmptyState
-                icon={Search}
-                iconColor="#64748b"
-                title={`No results for "${searchQuery}"`}
-                subtitle="Try a different search term"
-              />
-            );
-          }
+          unified.sort((a, b) => b.sortDate - a.sortDate);
 
           return (
           <View className="gap-2">
@@ -984,9 +915,10 @@ export default function GroupDetailScreen() {
                 const expense = item.data;
                 const resolvedCategory = expense.category?.id ? (categoryMap[expense.category.id] ?? expense.category) : expense.category;
                 const categoryIconName = resolvedCategory?.icon ?? resolvedCategory?.name;
-                const payer = expense.payers?.[0];
-                const payerName = resolvePayerName(payer, members, expense.createdBy);
-                const splitCount = expense.splits?.length ?? 1;
+                const display = computeExpenseCardDisplay(
+                  expense, currentBackendUserId, members, expense.createdBy,
+                  (cents) => formatCents(cents, expense.currency ?? group?.defaultCurrency),
+                );
                 const expenseDate = expense.date || expense.createdAt;
 
                 return (
@@ -1024,17 +956,31 @@ export default function GroupDetailScreen() {
                             {expense.description}
                           </Text>
                           <Text className="text-xs text-muted-foreground font-sans">
-                            {payerName} paid
+                            {display.subtitle}
                             {expenseDate ? ` \u00B7 ${formatDate(expenseDate)}` : ""}
                           </Text>
                         </View>
                         <View className="items-end">
-                          <Text selectable className="text-sm font-sans-bold text-foreground" style={{ fontVariant: ["tabular-nums"] }}>
-                            {formatCents(expense.amountCents, expense.currency ?? group?.defaultCurrency)}
+                          <Text className="text-[10px] text-muted-foreground font-sans">
+                            {display.rightLabel}
                           </Text>
-                          <Text className="text-xs text-muted-foreground font-sans">
-                            {splitCount} {splitCount === 1 ? "person" : "people"}
-                          </Text>
+                          {display.rightAmountCents != null ? (
+                            <Text
+                              selectable
+                              className={`text-sm font-sans-bold ${
+                                display.rightColor === "success"
+                                  ? "text-success"
+                                  : display.rightColor === "destructive"
+                                    ? "text-destructive"
+                                    : "text-muted-foreground"
+                              }`}
+                              style={{ fontVariant: ["tabular-nums"] }}
+                            >
+                              {formatCents(display.rightAmountCents, expense.currency ?? group?.defaultCurrency)}
+                            </Text>
+                          ) : (
+                            <Text className="text-xs text-muted-foreground font-sans">—</Text>
+                          )}
                         </View>
                       </View>
                     </Card>
@@ -1046,7 +992,9 @@ export default function GroupDetailScreen() {
 
               // Activity item (settlement, member join, etc.)
               const actItem = item.data;
-              const title = formatActivityTitle(actItem, clerkUser?.id);
+              // Inject group name for in-group activities where backend omits it
+              const actItemWithGroup = actItem.groupName ? actItem : { ...actItem, groupName: group?.name };
+              const title = formatActivityTitle(actItemWithGroup, currentBackendUserId);
               const displayAmount = (actItem.details?.amount ?? actItem.details?.amountCents) as number | undefined;
               const isSettlement = actItem.activityType.startsWith("settlement_");
 
@@ -1095,7 +1043,7 @@ export default function GroupDetailScreen() {
             })}
 
             {/* Load More */}
-            {hasMoreExpenses && !searchQuery && (
+            {hasMoreExpenses && (
               <Pressable
                 onPress={loadMoreExpenses}
                 disabled={loadingMoreExpenses}
