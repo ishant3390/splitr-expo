@@ -162,7 +162,7 @@ describe("SettleUpScreen — per-group mode", () => {
   it("displays group name", async () => {
     render(<SettleUpScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Trip")).toBeTruthy();
+      expect(screen.getAllByText("Trip").length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -285,7 +285,7 @@ describe("SettleUpScreen — per-group mode", () => {
     });
   });
 
-  it("validates empty amount on create", async () => {
+  it("displays amount as read-only text in create modal", async () => {
     render(<SettleUpScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Record.*\$50\.00 payment/)).toBeTruthy();
@@ -294,13 +294,10 @@ describe("SettleUpScreen — per-group mode", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Record Payment").length).toBeGreaterThan(0);
     });
-    // Clear the amount field
-    const amountInput = screen.getByDisplayValue("50.00");
-    fireEvent.changeText(amountInput, "");
-    const submitButtons = screen.getAllByText("Record Payment");
-    fireEvent.press(submitButtons[submitButtons.length - 1]);
-    // Should not call create
-    expect(mockCreateSettlement).not.toHaveBeenCalled();
+    // Amount should be displayed as text, not editable
+    expect(screen.getAllByText(/\$50\.00/).length).toBeGreaterThanOrEqual(1);
+    // No TextInput for amount should exist
+    expect(screen.queryByDisplayValue("50.00")).toBeNull();
   });
 
   it("switches to History tab and shows empty state", async () => {
@@ -498,8 +495,8 @@ describe("SettleUpScreen — per-group mode", () => {
     });
   });
 
-  // --- Invalid amount on create (lines 197-202) ---
-  it("shows error when amount is invalid (zero)", async () => {
+  // --- Amount is read-only (pre-filled from suggestion) ---
+  it("submits pre-filled amount without allowing edits", async () => {
     render(<SettleUpScreen />);
     await waitFor(() => {
       expect(screen.getByText(/Record.*\$50\.00 payment/)).toBeTruthy();
@@ -508,12 +505,15 @@ describe("SettleUpScreen — per-group mode", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Record Payment").length).toBeGreaterThan(0);
     });
-    const amountInput = screen.getByDisplayValue("50.00");
-    fireEvent.changeText(amountInput, "0");
+    // Amount is read-only text, just submit
     const submitButtons = screen.getAllByText("Record Payment");
     fireEvent.press(submitButtons[submitButtons.length - 1]);
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("Please enter a valid amount.");
+      expect(mockCreateSettlement).toHaveBeenCalledWith(
+        "g1",
+        expect.objectContaining({ amount: 5000 }),
+        "mock-token"
+      );
     });
   });
 
@@ -667,6 +667,11 @@ describe("SettleUpScreen — per-group mode", () => {
     fireEvent.press(screen.getByText(/Record.*\$50\.00 payment/));
     await waitFor(() => {
       expect(screen.getByText("Payment Method")).toBeTruthy();
+    });
+    // Expand optional fields
+    fireEvent.press(screen.getByText("Add reference or note"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., @username, transaction ID")).toBeTruthy();
     });
     // Fill in optional fields
     const refInput = screen.getByPlaceholderText("e.g., @username, transaction ID");

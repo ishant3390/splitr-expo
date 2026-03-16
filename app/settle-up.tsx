@@ -16,7 +16,9 @@ import {
   ArrowRight,
   BellRing,
   Check,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   HandCoins,
   History,
   Trash2,
@@ -81,6 +83,7 @@ export default function SettleUpScreen() {
 
   // Create settlement modal state
   const [showCreate, setShowCreate] = useState(false);
+  const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [createFrom, setCreateFrom] = useState<SettlementSuggestionDto | null>(null);
   const [createGroupId, setCreateGroupId] = useState<string | null>(null);
   const [createCurrency, setCreateCurrency] = useState<string>("USD");
@@ -205,6 +208,7 @@ export default function SettleUpScreen() {
     setPaymentMethod("cash");
     setPaymentReference("");
     setNotes("");
+    setShowOptionalFields(false);
     setShowCreate(true);
   };
 
@@ -414,6 +418,15 @@ export default function SettleUpScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+        <View className="flex-row items-center px-4 py-3 border-b border-border">
+          <Pressable
+            onPress={goBack}
+            className="flex-row items-center gap-2 px-3 py-2 -ml-2 rounded-xl active:bg-muted"
+          >
+            <ArrowLeft size={20} color="#0d9488" />
+            <Text className="text-sm font-sans-semibold text-primary">Back</Text>
+          </Pressable>
+        </View>
         <View className="px-5 pt-6">
           <SkeletonList count={4} type="activity" />
         </View>
@@ -430,13 +443,19 @@ export default function SettleUpScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-        <Pressable onPress={goBack} className="w-10 h-10 rounded-full bg-muted items-center justify-center">
-          <ArrowLeft size={22} color={isDark ? "#f1f5f9" : "#0f172a"} />
+        <Pressable
+          onPress={goBack}
+          className="flex-row items-center gap-2 px-3 py-2 -ml-2 rounded-xl active:bg-muted"
+        >
+          <ArrowLeft size={20} color="#0d9488" />
+          <Text className="text-sm font-sans-semibold text-primary">
+            {isCrossGroup ? "Home" : group?.name || "Back"}
+          </Text>
         </Pressable>
         <Text className="text-lg font-sans-semibold text-foreground">
           Settle Up
         </Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 80 }} />
       </View>
 
       {/* Group name (per-group mode only) */}
@@ -682,143 +701,198 @@ export default function SettleUpScreen() {
 
       {/* Create Settlement Modal */}
       <BottomSheetModal visible={showCreate} onClose={() => setShowCreate(false)} keyboardAvoiding>
-        {/* Modal header */}
-        <View className="flex-row items-center justify-between">
-          <Text className="text-lg font-sans-bold text-foreground">
-            Record Payment
-          </Text>
-          <Pressable onPress={() => setShowCreate(false)}>
-            <X size={22} color="#64748b" />
-          </Pressable>
+        {/* Drag handle */}
+        <View className="items-center -mt-2 mb-2">
+          <View
+            style={{ width: 36, height: 4, borderRadius: 2 }}
+            className="bg-border"
+          />
         </View>
 
-        {/* Who pays whom */}
         {createFrom && (
-          <View className="flex-row items-center justify-center gap-3 py-2">
-            <View className="items-center gap-1">
-              <Avatar
-                src={createFrom.fromUser?.avatarUrl}
-                fallback={getInitials(
-                  createFrom.fromUser?.name ??
-                    createFrom.fromGuest?.name ??
-                    "?"
-                )}
-                size="md"
-              />
-              <Text
-                className="text-xs font-sans-medium text-foreground"
-                numberOfLines={1}
+          <View className="items-center">
+            {/* People row */}
+            <View
+              className="flex-row items-center justify-center w-full py-3"
+              style={{ gap: 12 }}
+            >
+              {/* From person */}
+              <View className="items-center" style={{ width: 80 }}>
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: isDark ? "rgba(13,148,136,0.15)" : "rgba(13,148,136,0.08)",
+                    padding: 3,
+                    marginBottom: 6,
+                  }}
+                >
+                  <View style={{ width: 46, height: 46, borderRadius: 23, overflow: "hidden" }}>
+                    <Avatar
+                      src={createFrom.fromUser?.avatarUrl}
+                      fallback={getInitials(
+                        createFrom.fromUser?.name ??
+                          createFrom.fromGuest?.name ??
+                          "?"
+                      )}
+                      size="lg"
+                      className="w-full h-full"
+                    />
+                  </View>
+                </View>
+                <Text className="text-sm font-sans-semibold text-foreground text-center" numberOfLines={1}>
+                  {(createFrom.fromUser?.name ?? createFrom.fromGuest?.name ?? "?").split(" ")[0]}
+                </Text>
+              </View>
+
+              {/* Arrow */}
+              <View
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: "#0d9488",
+                  marginBottom: 20,
+                }}
+                className="items-center justify-center"
               >
-                {(
-                  createFrom.fromUser?.name ??
-                  createFrom.fromGuest?.name ??
-                  "?"
-                )
-                  .split(" ")[0]}
-              </Text>
+                <ArrowRight size={15} color="#ffffff" />
+              </View>
+
+              {/* To person */}
+              <View className="items-center" style={{ width: 80 }}>
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: isDark ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.08)",
+                    padding: 3,
+                    marginBottom: 6,
+                  }}
+                >
+                  <View style={{ width: 46, height: 46, borderRadius: 23, overflow: "hidden" }}>
+                    <Avatar
+                      src={createFrom.toUser?.avatarUrl}
+                      fallback={getInitials(
+                        createFrom.toUser?.name ??
+                          createFrom.toGuest?.name ??
+                          "?"
+                      )}
+                      size="lg"
+                      className="w-full h-full"
+                    />
+                  </View>
+                </View>
+                <Text className="text-sm font-sans-semibold text-foreground text-center" numberOfLines={1}>
+                  {(createFrom.toUser?.name ?? createFrom.toGuest?.name ?? "?").split(" ")[0]}
+                </Text>
+              </View>
             </View>
-            <View className="items-center gap-0.5">
-              <ArrowRight size={20} color="#0d9488" />
-              <Text className="text-xs text-muted-foreground font-sans">
-                pays
-              </Text>
-            </View>
-            <View className="items-center gap-1">
-              <Avatar
-                src={createFrom.toUser?.avatarUrl}
-                fallback={getInitials(
-                  createFrom.toUser?.name ??
-                    createFrom.toGuest?.name ??
-                    "?"
-                )}
-                size="md"
-              />
+
+            {/* Amount — read-only display */}
+            <View className="items-center py-4">
               <Text
-                className="text-xs font-sans-medium text-foreground"
-                numberOfLines={1}
+                style={{ fontSize: 48, lineHeight: 56 }}
+                className="font-sans-bold text-foreground"
               >
-                {(
-                  createFrom.toUser?.name ??
-                  createFrom.toGuest?.name ??
-                  "?"
-                )
-                  .split(" ")[0]}
+                {createCurrency === "USD" ? "$" : createCurrency === "EUR" ? "€" : createCurrency === "GBP" ? "£" : createCurrency}
+                {amount}
               </Text>
             </View>
           </View>
         )}
 
-        {/* Amount */}
-        <Input
-          label="Amount"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-          placeholder="0.00"
-        />
+        {/* Divider */}
+        <View className="h-px bg-border" />
 
         {/* Payment method */}
-        <View>
-          <Text className="text-sm font-sans-medium text-foreground mb-2">
+        <View className="pt-4 pb-2">
+          <Text className="text-xs font-sans-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Payment Method
           </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {PAYMENT_METHODS.map((m) => {
-              const isSelected = paymentMethod === m.key;
-              return (
-                <Pressable
-                  key={m.key}
-                  onPress={() => { hapticSelection(); setPaymentMethod(m.key); }}
-                  className={cn(
-                    "flex-row items-center gap-1.5 px-3 py-2 rounded-xl border",
-                    isSelected
-                      ? "bg-primary border-primary"
-                      : "bg-card border-border"
-                  )}
-                >
-                  <CategoryIcon config={getPaymentMethodIcon(m.key)} size="sm" />
-                  <Text
-                    className={cn(
-                      "text-sm font-sans-medium",
-                      isSelected
-                        ? "text-primary-foreground"
-                        : "text-foreground"
-                    )}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
+            <View className="flex-row" style={{ gap: 8, paddingHorizontal: 4 }}>
+              {PAYMENT_METHODS.map((m) => {
+                const isSelected = paymentMethod === m.key;
+                return (
+                  <Pressable
+                    key={m.key}
+                    onPress={() => { hapticSelection(); setPaymentMethod(m.key); }}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? "#0d9488" : isDark ? "#334155" : "#e2e8f0",
+                      backgroundColor: isSelected ? (isDark ? "#0d9488" + "18" : "#0d9488" + "08") : "transparent",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
                   >
-                    {m.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                    <CategoryIcon config={getPaymentMethodIcon(m.key)} size="sm" />
+                    <Text
+                      className={cn(
+                        "text-sm font-sans-medium",
+                        isSelected ? "text-primary" : "text-foreground"
+                      )}
+                    >
+                      {m.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
         </View>
 
-        {/* Reference */}
-        <Input
-          label="Reference (optional)"
-          value={paymentReference}
-          onChangeText={setPaymentReference}
-          placeholder="e.g., @username, transaction ID"
-        />
+        {/* Optional fields toggle */}
+        <Pressable
+          onPress={() => { hapticSelection(); setShowOptionalFields(!showOptionalFields); }}
+          className="flex-row items-center justify-center gap-1.5 py-2"
+        >
+          <Text className="text-sm font-sans-medium text-muted-foreground">
+            {showOptionalFields ? "Hide details" : "Add reference or note"}
+          </Text>
+          {showOptionalFields ? (
+            <ChevronUp size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+          ) : (
+            <ChevronDown size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+          )}
+        </Pressable>
 
-        {/* Notes */}
-        <Input
-          label="Notes (optional)"
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="e.g., Dinner split"
-        />
+        {/* Optional fields — collapsible */}
+        {showOptionalFields && (
+          <Animated.View entering={FadeInDown.duration(200)} className="gap-3">
+            <Input
+              label="Reference"
+              value={paymentReference}
+              onChangeText={setPaymentReference}
+              placeholder="e.g., @username, transaction ID"
+            />
+            <Input
+              label="Notes"
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="e.g., Dinner split"
+            />
+          </Animated.View>
+        )}
 
         {/* Submit */}
         <Button
           variant="default"
+          size="lg"
           onPress={handleCreate}
           disabled={submitting || !amount}
+          className="mt-2"
         >
           {submitting ? (
             <ActivityIndicator size="small" color="#ffffff" />
           ) : (
-            <Text className="text-base font-sans-semibold text-primary-foreground">
+            <Text className="text-base font-sans-bold text-primary-foreground">
               Record Payment
             </Text>
           )}
