@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 import { hapticLight, hapticSelection, hapticSuccess, hapticError } from "@/lib/haptics";
@@ -46,6 +47,55 @@ import { GRADIENTS } from "@/lib/gradients";
 import { SHADOWS } from "@/lib/shadows";
 import type { ActivityLogDto } from "@/lib/types";
 
+// Nudge persistence
+const NUDGE_DISMISS_PREFIX = "@splitr/nudge_dismissed_";
+const NUDGE_REMINDED_PREFIX = "@splitr/nudge_reminded_";
+const NUDGE_DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function getNudgeKey(prefix: string, groupId: string, userId: string) {
+  return `${prefix}${groupId}_${userId}`;
+}
+
+async function isNudgeDismissed(groupId: string, userId: string): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(getNudgeKey(NUDGE_DISMISS_PREFIX, groupId, userId));
+    if (!raw) return false;
+    const dismissedAt = parseInt(raw, 10);
+    if (Date.now() - dismissedAt > NUDGE_DISMISS_TTL_MS) {
+      await AsyncStorage.removeItem(getNudgeKey(NUDGE_DISMISS_PREFIX, groupId, userId));
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function dismissNudge(groupId: string, userId: string) {
+  await AsyncStorage.setItem(getNudgeKey(NUDGE_DISMISS_PREFIX, groupId, userId), String(Date.now()));
+}
+
+async function getRemindedAt(groupId: string, userId: string): Promise<number | null> {
+  try {
+    const raw = await AsyncStorage.getItem(getNudgeKey(NUDGE_REMINDED_PREFIX, groupId, userId));
+    return raw ? parseInt(raw, 10) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveRemindedAt(groupId: string, userId: string) {
+  await AsyncStorage.setItem(getNudgeKey(NUDGE_REMINDED_PREFIX, groupId, userId), String(Date.now()));
+}
+
+function formatRemindedAgo(timestamp: number): string {
+  const diffMs = Date.now() - timestamp;
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays === 0) return "Reminded today";
+  if (diffDays === 1) return "Reminded yesterday";
+  return `Reminded ${diffDays} days ago`;
+}
+
 // Airbnb-style category data
 const CATEGORIES = [
   { key: "all", label: "All", icon: Zap },
@@ -74,7 +124,8 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [nudging, setNudging] = useState(false);
-  const [nudged, setNudged] = useState(false);
+  const [nudgeRemindedAt, setNudgeRemindedAt] = useState<number | null>(null);
+  const [nudgeStateLoaded, setNudgeStateLoaded] = useState(false);
 
   const {
     data: activity = [],
@@ -103,21 +154,57 @@ export default function HomeScreen() {
     return map;
   }, [groups]);
 
+  // Load persisted nudge state when topDebtor changes
+  useEffect(() => {
+    if (!topDebtor) {
+      setNudgeStateLoaded(true);
+      return;
+    }
+    const debtorUserId = topDebtor.suggestion.fromUser?.id;
+    if (!debtorUserId) {
+      setNudgeStateLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const [dismissed, reminded] = await Promise.all([
+        isNudgeDismissed(topDebtor.groupId, debtorUserId),
+        getRemindedAt(topDebtor.groupId, debtorUserId),
+      ]);
+      if (cancelled) return;
+      setNudgeDismissed(dismissed);
+      setNudgeRemindedAt(reminded);
+      setNudgeStateLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [topDebtor?.groupId, topDebtor?.suggestion.fromUser?.id]);
+
+  const handleNudgeDismiss = async () => {
+    if (!topDebtor?.suggestion.fromUser?.id) return;
+    setNudgeDismissed(true);
+    await dismissNudge(topDebtor.groupId, topDebtor.suggestion.fromUser.id);
+  };
+
   const handleNudge = async () => {
     if (!topDebtor || nudging) return;
+    const debtorUserId = topDebtor.suggestion.fromUser?.id;
+    if (!debtorUserId) return;
     setNudging(true);
     try {
       const token = await getToken();
       if (!token) return;
-      await groupsApi.nudge(topDebtor.groupId, topDebtor.suggestion.fromUser!.id, token);
+      await groupsApi.nudge(topDebtor.groupId, debtorUserId, token);
       hapticSuccess();
       toast.success("Reminder sent!");
-      setNudged(true);
+      await saveRemindedAt(topDebtor.groupId, debtorUserId);
+      setNudgeRemindedAt(Date.now());
     } catch (err: any) {
       const msg = err?.message ?? "";
       if (msg.includes("422") || msg.includes("429") || msg.toLowerCase().includes("cooldown") || msg.toLowerCase().includes("reminder recently")) {
         toast.info("Reminder was sent recently. Try again later.");
-        setNudged(true);
+        // Still save reminded state — backend confirms a reminder was sent recently
+        await saveRemindedAt(topDebtor.groupId, debtorUserId);
+        setNudgeRemindedAt(Date.now());
       } else {
         toast.error("Failed to send reminder.");
       }
@@ -259,50 +346,81 @@ export default function HomeScreen() {
           )}
 
           {/* Nudge Reminder Card */}
-          {totalOwedCents > 0 && topDebtor && !nudgeDismissed && !nudged && (
-            <Animated.View entering={FadeInDown.duration(300).springify()}>
-              <Card className="p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
-                <View className="flex-row items-start gap-3">
-                  <View className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center mt-0.5">
-                    <Bell size={18} color="#f59e0b" />
+          {totalOwedCents > 0 && topDebtor && nudgeStateLoaded && !nudgeDismissed && (
+            nudgeRemindedAt ? (
+              /* Soft "reminded" state — subtle card with option to remind again */
+              <Animated.View entering={FadeInDown.duration(300).springify()}>
+                <Card className="p-3 border-border">
+                  <View className="flex-row items-center gap-3">
+                    <View className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 items-center justify-center">
+                      <CheckCircle size={16} color="#10b981" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-sans-medium text-card-foreground">
+                        {topDebtor.suggestion.fromUser?.name ?? "Someone"} owes you {formatCents(topDebtor.suggestion.amount)}
+                      </Text>
+                      <Text className="text-xs font-sans text-muted-foreground mt-0.5">
+                        {formatRemindedAgo(nudgeRemindedAt)}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={handleNudge}
+                      disabled={nudging}
+                      className="px-3 py-1.5 rounded-lg bg-muted"
+                    >
+                      <Text className="text-xs font-sans-medium text-muted-foreground">
+                        {nudging ? "Sending..." : "Remind Again"}
+                      </Text>
+                    </Pressable>
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-sans-semibold text-amber-900 dark:text-amber-100">
-                      {topDebtor.suggestion.fromUser?.name ?? "Someone"}{" "}
-                      {topDebtor.othersCount > 0
-                        ? `and ${topDebtor.othersCount} other${topDebtor.othersCount > 1 ? "s" : ""} owe you ${formatCents(totalOwedCents)}`
-                        : `owes you ${formatCents(topDebtor.suggestion.amount)}`}
-                    </Text>
-                    <Text className="text-xs font-sans text-amber-700 dark:text-amber-300 mt-0.5">
-                      Send a friendly reminder to settle up
-                    </Text>
-                    <View className="flex-row gap-2 mt-3">
-                      <Pressable
-                        onPress={handleNudge}
-                        disabled={nudging}
-                        className={cn(
-                          "flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-lg",
-                          nudging ? "bg-amber-200 dark:bg-amber-800" : "bg-amber-400 dark:bg-amber-700"
-                        )}
-                      >
-                        <Bell size={14} color="#ffffff" />
-                        <Text className="text-xs font-sans-semibold text-white">
-                          {nudging ? "Sending..." : "Send Reminder"}
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => setNudgeDismissed(true)}
-                        className="px-3.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900"
-                      >
-                        <Text className="text-xs font-sans-medium text-amber-700 dark:text-amber-300">
-                          Dismiss
-                        </Text>
-                      </Pressable>
+                </Card>
+              </Animated.View>
+            ) : (
+              /* Full nudge card — first time seeing this debtor */
+              <Animated.View entering={FadeInDown.duration(300).springify()}>
+                <Card className="p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                  <View className="flex-row items-start gap-3">
+                    <View className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center mt-0.5">
+                      <Bell size={18} color="#f59e0b" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-sans-semibold text-amber-900 dark:text-amber-100">
+                        {topDebtor.suggestion.fromUser?.name ?? "Someone"}{" "}
+                        {topDebtor.othersCount > 0
+                          ? `and ${topDebtor.othersCount} other${topDebtor.othersCount > 1 ? "s" : ""} owe you ${formatCents(totalOwedCents)}`
+                          : `owes you ${formatCents(topDebtor.suggestion.amount)}`}
+                      </Text>
+                      <Text className="text-xs font-sans text-amber-700 dark:text-amber-300 mt-0.5">
+                        Send a friendly reminder to settle up
+                      </Text>
+                      <View className="flex-row gap-2 mt-3">
+                        <Pressable
+                          onPress={handleNudge}
+                          disabled={nudging}
+                          className={cn(
+                            "flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-lg",
+                            nudging ? "bg-amber-200 dark:bg-amber-800" : "bg-amber-400 dark:bg-amber-700"
+                          )}
+                        >
+                          <Bell size={14} color="#ffffff" />
+                          <Text className="text-xs font-sans-semibold text-white">
+                            {nudging ? "Sending..." : "Send Reminder"}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={handleNudgeDismiss}
+                          className="px-3.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900"
+                        >
+                          <Text className="text-xs font-sans-medium text-amber-700 dark:text-amber-300">
+                            Dismiss
+                          </Text>
+                        </Pressable>
+                      </View>
                     </View>
                   </View>
-                </View>
-              </Card>
-            </Animated.View>
+                </Card>
+              </Animated.View>
+            )
           )}
 
           {/* Airbnb-style Category Bar */}
