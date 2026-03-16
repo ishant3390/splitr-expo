@@ -6,12 +6,16 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
 import { Clock, AlertTriangle, Search, X } from "lucide-react-native";
+import { CategoryIcon } from "@/components/ui/category-icon";
+import { getActivityIcon } from "@/lib/category-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { GRADIENTS } from "@/lib/gradients";
 import { Card } from "@/components/ui/card";
-import { Avatar } from "@/components/ui/avatar";
+
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useGroups, useUserProfile } from "@/lib/hooks";
-import { formatCents, formatDate, formatRelativeTime, getInitials } from "@/lib/utils";
+import { formatCents, formatDate, formatRelativeTime } from "@/lib/utils";
 import { formatActivityTitle, formatActivityInvolvement, formatCentsForInvolvement, resolveActivityGroupName } from "@/lib/screen-helpers";
 import type { ActivityLogDto } from "@/lib/types";
 
@@ -81,34 +85,72 @@ export default function ActivityScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-      <View className="px-5 pt-3 pb-2">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-sans-bold text-foreground">Activity</Text>
+      {/* Hero Section */}
+      <LinearGradient
+        colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ overflow: "hidden" }}
+      >
+        {/* Watermark */}
+        <View
+          style={{ position: "absolute", bottom: -20, right: -15, opacity: 0.06 }}
+          pointerEvents="none"
+        >
+          <Clock size={160} color="#ffffff" strokeWidth={1} />
+        </View>
+
+        {/* Decorative orb */}
+        <View
+          style={{
+            position: "absolute", top: -30, left: -30,
+            width: 100, height: 100, borderRadius: 50,
+            backgroundColor: "rgba(255,255,255,0.06)",
+          }}
+          pointerEvents="none"
+        />
+
+        {/* Title + search */}
+        <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
+          <Text className="text-2xl font-sans-bold" style={{ color: "#ffffff" }}>
+            Activity
+          </Text>
           <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
-            <View className="w-9 h-9 rounded-full bg-muted items-center justify-center">
-              <Search size={18} color={showSearch ? "#0d9488" : (isDark ? "#94a3b8" : "#64748b")} />
+            <View
+              className="w-9 h-9 rounded-full items-center justify-center"
+              style={{ backgroundColor: showSearch ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }}
+            >
+              <Search size={18} color="#ffffff" />
             </View>
           </Pressable>
         </View>
+
+        {/* Search bar */}
         {showSearch && (
-          <View className="mt-2 flex-row items-center bg-muted rounded-xl px-3 py-2 gap-2">
-            <Search size={16} color={isDark ? "#94a3b8" : "#64748b"} />
+          <View
+            className="mx-5 mb-2 flex-row items-center rounded-xl px-3 py-2 gap-2"
+            style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+          >
+            <Search size={16} color="rgba(255,255,255,0.7)" />
             <TextInput
               placeholder="Search activity..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
-              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#f1f5f9" : "#0f172a" }}
-              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
+              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#ffffff" }}
+              placeholderTextColor="rgba(255,255,255,0.5)"
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery("")}>
-                <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
+                <X size={16} color="rgba(255,255,255,0.7)" />
               </Pressable>
             )}
           </View>
         )}
-      </View>
+
+        {/* Bottom spacing */}
+        <View style={{ height: 12 }} />
+      </LinearGradient>
 
       {activityError && sections.length === 0 ? (
         <View className="flex-1 items-center justify-center px-5">
@@ -155,7 +197,6 @@ export default function ActivityScreen() {
             </Text>
           )}
           renderItem={({ item }) => {
-            const actorName = item.actorUserName ?? item.actorGuestName ?? "Someone";
             const title = formatActivityTitle(item, backendUser?.id);
             const groupName = resolveActivityGroupName(item) ?? (item.groupId ? groupNameMap.get(item.groupId) : null) ?? null;
 
@@ -185,7 +226,14 @@ export default function ActivityScreen() {
               >
                 <Card className="p-4">
                   <View className="flex-row items-center gap-3">
-                    <Avatar fallback={getInitials(actorName)} size="md" />
+                    <CategoryIcon
+                      config={getActivityIcon(
+                        item.activityType,
+                        (item.details?.categoryName ?? item.details?.category) as string | undefined,
+                        (item.details?.newDescription ?? item.details?.description) as string | undefined,
+                        backendUser?.defaultCurrency,
+                      )}
+                    />
                     <View className="flex-1">
                       <Text className="text-sm font-sans-semibold text-card-foreground">
                         {title}

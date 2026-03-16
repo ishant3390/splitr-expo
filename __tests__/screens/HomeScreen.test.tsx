@@ -288,7 +288,7 @@ describe("HomeScreen", () => {
     });
     fireEvent.press(screen.getByText("Send Reminder"));
     await waitFor(() => {
-      expect(mockToast.info).toHaveBeenCalledWith("You already sent a reminder. Try again later.");
+      expect(mockToast.info).toHaveBeenCalledWith("Reminder was sent recently. Try again later.");
     });
   });
 
@@ -814,7 +814,7 @@ describe("HomeScreen", () => {
     });
     fireEvent.press(screen.getByText("Send Reminder"));
     await waitFor(() => {
-      expect(mockToast.info).toHaveBeenCalledWith("You already sent a reminder. Try again later.");
+      expect(mockToast.info).toHaveBeenCalledWith("Reminder was sent recently. Try again later.");
     });
   });
 

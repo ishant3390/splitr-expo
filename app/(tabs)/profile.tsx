@@ -15,6 +15,8 @@ import {
   ChevronRight,
   Moon,
 } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { GRADIENTS } from "@/lib/gradients";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemedSwitch } from "@/components/ui/themed-switch";
@@ -81,57 +83,131 @@ export default function ProfileScreen() {
         contentContainerClassName="pb-8"
         showsVerticalScrollIndicator={false}
       >
-        <View className="px-5 pt-3 pb-4">
-          <Text className="text-2xl font-sans-bold text-foreground">Profile</Text>
-        </View>
+        {/* Hero Section */}
+        <LinearGradient
+          colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ overflow: "hidden" }}
+        >
+          {/* Watermark */}
+          <View
+            style={{ position: "absolute", bottom: -30, right: -20, opacity: 0.06 }}
+            pointerEvents="none"
+          >
+            <User size={180} color="#ffffff" strokeWidth={1} />
+          </View>
 
-        <View className="px-5 gap-4">
-          {/* User info card */}
-          <Card className="p-5">
-            <View className="flex-row items-center gap-4 mb-4">
+          {/* Decorative orb */}
+          <View
+            style={{
+              position: "absolute", top: -30, left: -30,
+              width: 100, height: 100, borderRadius: 50,
+              backgroundColor: "rgba(255,255,255,0.06)",
+            }}
+            pointerEvents="none"
+          />
+
+          {/* Title */}
+          <View className="px-5 pt-3 pb-2">
+            <Text className="text-2xl font-sans-bold" style={{ color: "#ffffff" }}>
+              Profile
+            </Text>
+          </View>
+
+          {/* Avatar + Name + Email */}
+          <View className="items-center px-5 pt-2 pb-4">
+            <View
+              style={{
+                width: 76, height: 76, borderRadius: 38,
+                borderWidth: 3, borderColor: "rgba(255,255,255,0.3)",
+                overflow: "hidden",
+              }}
+            >
               <Avatar
                 src={user?.imageUrl}
                 fallback={getInitials(user?.fullName ?? "?")}
                 size="lg"
+                className="w-full h-full"
               />
-              <View className="flex-1">
-                <Text className="text-lg font-sans-bold text-card-foreground">
-                  {user?.fullName ?? ""}
-                </Text>
-                <Text className="text-sm text-muted-foreground font-sans">
-                  {user?.primaryEmailAddress?.emailAddress ?? ""}
-                </Text>
-              </View>
             </View>
+            <Text
+              className="text-lg font-sans-bold mt-3"
+              style={{ color: "#ffffff" }}
+            >
+              {user?.fullName ?? ""}
+            </Text>
+            <Text
+              className="text-sm font-sans mt-0.5"
+              style={{ color: "rgba(255,255,255,0.7)" }}
+            >
+              {user?.primaryEmailAddress?.emailAddress ?? ""}
+            </Text>
+          </View>
 
-            {/* Stats */}
-            <View className="flex-row gap-4 pt-4 border-t border-border">
+          {/* Stats row */}
+          <View className="px-5 pb-5">
+            <View
+              style={{
+                backgroundColor: "rgba(255,255,255,0.12)",
+                borderRadius: 16,
+                padding: 14,
+                flexDirection: "row",
+              }}
+            >
               <View className="flex-1 items-center">
-                <Text className="text-xl font-sans-bold text-foreground">
+                <Text
+                  className="text-lg font-sans-bold"
+                  style={{ color: "#ffffff" }}
+                >
                   {apiUser?.defaultCurrency ?? "USD"}
                 </Text>
-                <Text className="text-xs text-muted-foreground font-sans mt-0.5">Currency</Text>
+                <Text
+                  className="text-xs font-sans mt-0.5"
+                  style={{ color: "rgba(255,255,255,0.6)" }}
+                >
+                  Currency
+                </Text>
               </View>
-              <View className="w-px bg-border" />
+              <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
               <View className="flex-1 items-center">
-                <Text className="text-xl font-sans-bold text-foreground">
+                <Text
+                  className="text-lg font-sans-bold"
+                  style={{ color: "#ffffff" }}
+                >
                   {apiUser?.isPremium ? "Yes" : "No"}
                 </Text>
-                <Text className="text-xs text-muted-foreground font-sans mt-0.5">Premium</Text>
+                <Text
+                  className="text-xs font-sans mt-0.5"
+                  style={{ color: "rgba(255,255,255,0.6)" }}
+                >
+                  Premium
+                </Text>
               </View>
-              <View className="w-px bg-border" />
+              <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
               <View className="flex-1 items-center">
-                <Text className="text-xl font-sans-bold text-primary">
+                <Text
+                  className="text-lg font-sans-bold"
+                  style={{ color: "#ffffff" }}
+                >
                   {apiUser?.createdAt
                     ? formatMemberSince(apiUser.createdAt)
                     : user?.createdAt
                     ? formatMemberSince(new Date(user.createdAt).toISOString())
                     : "—"}
                 </Text>
-                <Text className="text-xs text-muted-foreground font-sans mt-0.5">Member since</Text>
+                <Text
+                  className="text-xs font-sans mt-0.5"
+                  style={{ color: "rgba(255,255,255,0.6)" }}
+                >
+                  Member since
+                </Text>
               </View>
             </View>
-          </Card>
+          </View>
+        </LinearGradient>
+
+        <View className="px-5 pt-4 gap-4">
 
           {/* Settings */}
           <Card className="overflow-hidden">

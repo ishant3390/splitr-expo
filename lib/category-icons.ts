@@ -61,6 +61,13 @@ import {
   Wallet,
   Archive,
   ArchiveRestore,
+  Coins,
+  ReceiptPoundSterling,
+  ReceiptEuro,
+  ReceiptIndianRupee,
+  ReceiptJapaneseYen,
+  ReceiptSwissFranc,
+  ReceiptText,
 } from "lucide-react-native";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -180,12 +187,32 @@ export const CATEGORY_ICON_MAP: Record<string, CategoryIconConfig> = {
 };
 
 const DEFAULT_ICON: CategoryIconConfig = {
-  icon: MoreHorizontal,
+  icon: Coins,
   color: "#64748b",
   bg: "#f1f5f9",
   darkBg: "#1e293b",
   label: "Other",
 };
+
+/** Currency code → receipt icon for currency-aware fallbacks */
+const CURRENCY_RECEIPT_MAP: Record<string, LucideIcon> = {
+  GBP: ReceiptPoundSterling,
+  EUR: ReceiptEuro,
+  INR: ReceiptIndianRupee,
+  JPY: ReceiptJapaneseYen,
+  CHF: ReceiptSwissFranc,
+  USD: Receipt,
+};
+
+/**
+ * Returns a currency-specific receipt icon config.
+ * Uses the user's default currency to show a localized receipt icon
+ * when no category match is found for an expense.
+ */
+export function getCurrencyReceiptIcon(currency?: string): CategoryIconConfig {
+  const icon = (currency ? CURRENCY_RECEIPT_MAP[currency.toUpperCase()] : null) ?? ReceiptText;
+  return { icon, color: "#0d9488", bg: "#f0fdfa", darkBg: "rgba(13,148,136,0.12)", label: "Expense" };
+}
 
 /**
  * Resolves a backend icon name string to a CategoryIconConfig.
@@ -269,12 +296,14 @@ export const ACTIVITY_ICON_MAP: Record<string, CategoryIconConfig> = {
 
 /**
  * Returns icon config for an activity item.
- * Priority: categoryName → description inference → activity type icon.
+ * Priority: categoryName → description inference → activity type icon → currency receipt.
+ * Pass defaultCurrency to get a currency-specific receipt icon as the expense fallback.
  */
 export function getActivityIcon(
   type: string,
   categoryName?: string,
-  description?: string
+  description?: string,
+  defaultCurrency?: string,
 ): CategoryIconConfig {
   if (categoryName) {
     const catIcon = getCategoryIcon(categoryName);
@@ -284,7 +313,12 @@ export function getActivityIcon(
     const inferred = inferCategoryIconFromDescription(description);
     if (inferred) return inferred;
   }
-  return ACTIVITY_ICON_MAP[type] ?? DEFAULT_ICON;
+  if (ACTIVITY_ICON_MAP[type]) return ACTIVITY_ICON_MAP[type];
+  // For expense types with no category/description match, use currency receipt
+  if (type.startsWith("expense_") && defaultCurrency) {
+    return getCurrencyReceiptIcon(defaultCurrency);
+  }
+  return DEFAULT_ICON;
 }
 
 // ─── Payment Method Icons ───────────────────────────────────────────────────

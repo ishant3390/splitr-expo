@@ -3,6 +3,8 @@ import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Pla
 import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { GRADIENTS } from "@/lib/gradients";
 import { hapticLight, hapticWarning, hapticSuccess, hapticSelection } from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
@@ -151,91 +153,199 @@ export default function GroupsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-5 pt-3 pb-1">
-        <Text className="text-2xl font-sans-bold text-foreground">Groups</Text>
-        <View className="flex-row items-center gap-2">
-          <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
-            <View className="w-9 h-9 rounded-full bg-muted items-center justify-center">
-              <Search size={18} color={showSearch ? "#0d9488" : (isDark ? "#94a3b8" : "#64748b")} />
-            </View>
-          </Pressable>
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={() => { setShowJoinModal(true); setInviteCodeInput(""); setJoinInputError(null); }}
-          >
-            <View className="flex-row items-center gap-1.5">
-              <UserPlus size={16} color="#0d9488" />
-              <Text className="text-sm font-sans-semibold text-primary">Join</Text>
-            </View>
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onPress={() => router.push("/create-group")}
-          >
-            <View className="flex-row items-center gap-1.5">
-              <Plus size={16} color="#ffffff" />
-              <Text className="text-sm font-sans-semibold text-primary-foreground">New</Text>
-            </View>
-          </Button>
+      {/* Hero Section */}
+      <LinearGradient
+        colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ overflow: "hidden" }}
+      >
+        {/* Watermark */}
+        <View
+          style={{ position: "absolute", bottom: -30, right: -20, opacity: 0.06 }}
+          pointerEvents="none"
+        >
+          <Users size={180} color="#ffffff" strokeWidth={1} />
         </View>
-      </View>
 
-      {/* Search bar */}
-      {showSearch && (
-        <View className="mx-5 mb-2 flex-row items-center bg-muted rounded-xl px-3 py-2 gap-2">
-          <Search size={16} color={isDark ? "#94a3b8" : "#64748b"} />
-          <TextInput
-            placeholder="Search groups..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoFocus
-            style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#f1f5f9" : "#0f172a" }}
-            placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery("")}>
-              <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
+        {/* Decorative orb */}
+        <View
+          style={{
+            position: "absolute", top: -30, left: -30,
+            width: 100, height: 100, borderRadius: 50,
+            backgroundColor: "rgba(255,255,255,0.06)",
+          }}
+          pointerEvents="none"
+        />
+
+        {/* Title row + actions */}
+        <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
+          <Text className="text-2xl font-sans-bold" style={{ color: "#ffffff" }}>
+            Groups
+          </Text>
+          <View className="flex-row items-center gap-2">
+            <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
+              <View
+                className="w-9 h-9 rounded-full items-center justify-center"
+                style={{ backgroundColor: showSearch ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }}
+              >
+                <Search size={18} color="#ffffff" />
+              </View>
             </Pressable>
-          )}
+            <Pressable
+              onPress={() => { setShowJoinModal(true); setInviteCodeInput(""); setJoinInputError(null); }}
+              style={{
+                flexDirection: "row", alignItems: "center", gap: 6,
+                paddingHorizontal: 12, paddingVertical: 7,
+                borderRadius: 8, borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.3)",
+                backgroundColor: "rgba(255,255,255,0.1)",
+              }}
+            >
+              <UserPlus size={15} color="#ffffff" />
+              <Text className="text-sm font-sans-semibold" style={{ color: "#ffffff" }}>Join</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/create-group")}
+              accessibilityRole="button"
+              style={{
+                flexDirection: "row", alignItems: "center", gap: 6,
+                paddingHorizontal: 12, paddingVertical: 7,
+                borderRadius: 8,
+                backgroundColor: "rgba(255,255,255,0.2)",
+              }}
+            >
+              <Plus size={15} color="#ffffff" />
+              <Text className="text-sm font-sans-semibold" style={{ color: "#ffffff" }}>New</Text>
+            </Pressable>
+          </View>
         </View>
-      )}
 
-      {/* Active / Archived filter */}
-      <View className="flex-row mx-5 mb-3 rounded-xl bg-muted p-1">
-        <Pressable
-          onPress={() => { hapticSelection(); setFilter("active"); }}
-          className={cn(
-            "flex-1 items-center py-2 rounded-lg",
-            filter === "active" ? "bg-card" : "bg-transparent"
-          )}
-          style={filter === "active" ? SHADOWS.card : undefined}
+        {/* Search bar */}
+        {showSearch && (
+          <View
+            className="mx-5 mb-2 flex-row items-center rounded-xl px-3 py-2 gap-2"
+            style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+          >
+            <Search size={16} color="rgba(255,255,255,0.7)" />
+            <TextInput
+              placeholder="Search groups..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#ffffff" }}
+              placeholderTextColor="rgba(255,255,255,0.5)"
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <X size={16} color="rgba(255,255,255,0.7)" />
+              </Pressable>
+            )}
+          </View>
+        )}
+
+        {/* Balance summary (active filter only) */}
+        {filter === "active" && balanceData && balanceData.netBalanceCents !== 0 && (
+          <View className="px-5 pb-3">
+            <View
+              style={{
+                backgroundColor: "rgba(255,255,255,0.12)",
+                borderRadius: 16,
+                padding: 16,
+              }}
+            >
+              {/* Net balance — hero number */}
+              <View className="items-center pb-3">
+                <Text className="text-xs font-sans" style={{ color: "rgba(255,255,255,0.6)" }}>
+                  Overall balance
+                </Text>
+                <Text
+                  selectable
+                  className="text-3xl font-sans-bold mt-1"
+                  style={{
+                    color: "#ffffff",
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {balanceData.netBalanceCents > 0 ? "+" : "-"}
+                  {formatCents(Math.abs(balanceData.netBalanceCents))}
+                </Text>
+                <Text
+                  className="text-xs font-sans mt-0.5"
+                  style={{
+                    color: balanceData.netBalanceCents > 0 ? "#86efac" : "#fca5a5",
+                  }}
+                >
+                  {balanceData.netBalanceCents > 0 ? "you are owed" : "you owe"}
+                </Text>
+              </View>
+
+              {/* Divider */}
+              <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", marginBottom: 12 }} />
+
+              {/* Owed / Owe breakdown */}
+              <View className="flex-row">
+                <View className="flex-1 items-center">
+                  <Text className="text-xs font-sans" style={{ color: "rgba(255,255,255,0.6)" }}>
+                    Owed to you
+                  </Text>
+                  <Text
+                    selectable
+                    className="text-lg font-sans-bold mt-0.5"
+                    style={{ color: "#86efac", fontVariant: ["tabular-nums"] }}
+                  >
+                    {formatCents(balanceData.totalOwedCents)}
+                  </Text>
+                </View>
+                <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
+                <View className="flex-1 items-center">
+                  <Text className="text-xs font-sans" style={{ color: "rgba(255,255,255,0.6)" }}>
+                    You owe
+                  </Text>
+                  <Text
+                    selectable
+                    className="text-lg font-sans-bold mt-0.5"
+                    style={{ color: "#fca5a5", fontVariant: ["tabular-nums"] }}
+                  >
+                    {formatCents(balanceData.totalOwesCents)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Active / Archived filter tabs */}
+        <View
+          className="flex-row mx-5 mb-4 rounded-xl p-1"
+          style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
         >
-          <Text className={cn(
-            "text-sm font-sans-semibold",
-            filter === "active" ? "text-foreground" : "text-muted-foreground"
-          )}>
-            Active
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => { hapticSelection(); setFilter("archived"); }}
-          className={cn(
-            "flex-1 items-center py-2 rounded-lg",
-            filter === "archived" ? "bg-card" : "bg-transparent"
-          )}
-          style={filter === "archived" ? SHADOWS.card : undefined}
-        >
-          <Text className={cn(
-            "text-sm font-sans-semibold",
-            filter === "archived" ? "text-foreground" : "text-muted-foreground"
-          )}>
-            Archived
-          </Text>
-        </Pressable>
-      </View>
+          <Pressable
+            onPress={() => { hapticSelection(); setFilter("active"); }}
+            className="flex-1 items-center py-2 rounded-lg"
+            style={filter === "active" ? { backgroundColor: "rgba(255,255,255,0.2)" } : undefined}
+          >
+            <Text
+              className="text-sm font-sans-semibold"
+              style={{ color: filter === "active" ? "#ffffff" : "rgba(255,255,255,0.5)" }}
+            >
+              Active
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => { hapticSelection(); setFilter("archived"); }}
+            className="flex-1 items-center py-2 rounded-lg"
+            style={filter === "archived" ? { backgroundColor: "rgba(255,255,255,0.2)" } : undefined}
+          >
+            <Text
+              className="text-sm font-sans-semibold"
+              style={{ color: filter === "archived" ? "#ffffff" : "rgba(255,255,255,0.5)" }}
+            >
+              Archived
+            </Text>
+          </Pressable>
+        </View>
+      </LinearGradient>
 
       {loading ? (
         <View className="flex-1 px-5 pt-3">
@@ -256,42 +366,10 @@ export default function GroupsScreen() {
         <FlatList
           data={filteredGroups}
           keyExtractor={(item) => item.id}
-          contentContainerClassName="px-5 pb-24 gap-3"
+          contentContainerClassName="px-5 pb-24 pt-4 gap-3"
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="automatic"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
-          ListHeaderComponent={
-            filter === "active" && balanceData && balanceData.netBalanceCents !== 0 ? (
-              <Card className="p-4 mb-1">
-                <View className="flex-row items-center justify-between">
-                  <View>
-                    <Text className="text-xs text-muted-foreground font-sans">Overall balance</Text>
-                    <Text className={cn(
-                      "text-lg font-sans-bold",
-                      balanceData.netBalanceCents > 0 ? "text-emerald-500" : "text-red-500"
-                    )}>
-                      {balanceData.netBalanceCents > 0 ? "+" : "-"}
-                      {formatCents(Math.abs(balanceData.netBalanceCents))}
-                    </Text>
-                  </View>
-                  <View className="flex-row gap-4">
-                    <View className="items-end">
-                      <Text className="text-xs text-muted-foreground font-sans">Owed</Text>
-                      <Text className="text-sm font-sans-semibold text-emerald-500">
-                        {formatCents(balanceData.totalOwedCents)}
-                      </Text>
-                    </View>
-                    <View className="items-end">
-                      <Text className="text-xs text-muted-foreground font-sans">Owe</Text>
-                      <Text className="text-sm font-sans-semibold text-red-500">
-                        {formatCents(balanceData.totalOwesCents)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </Card>
-            ) : null
-          }
           ListEmptyComponent={
             filter === "active" ? (
               <View>
@@ -321,7 +399,8 @@ export default function GroupsScreen() {
           }
           renderItem={({ item: group, index }: { item: GroupDto; index: number }) => {
             const balanceCents = balanceMap.get(group.id);
-            const hasBalance = balanceCents !== undefined && balanceCents !== 0;
+            const balanceKnown = balanceCents !== undefined;
+            const hasBalance = balanceKnown && balanceCents !== 0;
             return (
               <Animated.View entering={FadeInDown.delay(index * 60).duration(300).springify()}>
               <Pressable
@@ -345,16 +424,18 @@ export default function GroupsScreen() {
                         <Text className="text-base font-sans-semibold text-card-foreground flex-shrink" numberOfLines={1}>
                           {group.name}
                         </Text>
-                        <Text className={cn(
-                          "text-sm font-sans-semibold ml-2",
-                          hasBalance
-                            ? (balanceCents! > 0 ? "text-emerald-500" : "text-red-500")
-                            : "text-muted-foreground"
-                        )}>
-                          {hasBalance
-                            ? `${balanceCents! > 0 ? "+" : "-"}${formatCents(Math.abs(balanceCents!), group.defaultCurrency)}`
-                            : "settled up"}
-                        </Text>
+                        {balanceKnown && (
+                          <Text className={cn(
+                            "text-sm font-sans-semibold ml-2",
+                            hasBalance
+                              ? (balanceCents! > 0 ? "text-emerald-500" : "text-red-500")
+                              : "text-muted-foreground"
+                          )}>
+                            {hasBalance
+                              ? `${balanceCents! > 0 ? "+" : "-"}${formatCents(Math.abs(balanceCents!), group.defaultCurrency)}`
+                              : "settled up"}
+                          </Text>
+                        )}
                       </View>
                       <View className="flex-row items-center justify-between">
                         <Text className="text-xs text-muted-foreground font-sans">

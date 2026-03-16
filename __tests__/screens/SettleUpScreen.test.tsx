@@ -145,7 +145,7 @@ describe("SettleUpScreen — per-group mode", () => {
     mockSuggestions.mockResolvedValue([]);
     render(<SettleUpScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/All settled/)).toBeTruthy();
+      expect(screen.getAllByText(/All settled/).length).toBeGreaterThan(0);
     });
   });
 
@@ -203,7 +203,7 @@ describe("SettleUpScreen — per-group mode", () => {
     });
     fireEvent.press(screen.getByText("Remind"));
     await waitFor(() => {
-      expect(mockToast.info).toHaveBeenCalledWith("You already sent a reminder. Try again later.");
+      expect(mockToast.info).toHaveBeenCalledWith("Reminder was sent recently. Try again later.");
     });
   });
 
@@ -438,7 +438,7 @@ describe("SettleUpScreen — per-group mode", () => {
     mockSuggestions.mockResolvedValue([]);
     render(<SettleUpScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/All settled/)).toBeTruthy();
+      expect(screen.getAllByText(/All settled/).length).toBeGreaterThan(0);
     });
     // Confetti component renders (mocked as null but still called)
     // The component is rendered when !loading && suggestions.length === 0 && activeTab === "suggestions"
@@ -462,7 +462,7 @@ describe("SettleUpScreen — per-group mode", () => {
     mockListSettlements.mockResolvedValue(null);
     render(<SettleUpScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/All settled/)).toBeTruthy();
+      expect(screen.getAllByText(/All settled/).length).toBeGreaterThan(0);
     });
   });
 

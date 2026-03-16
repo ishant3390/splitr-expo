@@ -16,7 +16,6 @@ import {
   Plus,
   Settings,
   HandCoins,
-  User,
   Receipt,
 } from "lucide-react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -34,6 +33,7 @@ import { dedupeMembers, computeExpenseCardDisplay, formatActivityTitle } from "@
 import { SkeletonList } from "@/components/ui/skeleton";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { getActivityIcon } from "@/lib/category-icons";
 import { AvatarStrip } from "@/components/ui/avatar-strip";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
@@ -570,6 +570,12 @@ export default function GroupDetailScreen() {
                     const title = formatActivityTitle(actItemWithGroup, currentBackendUserId);
                     const displayAmount = (actItem.details?.amount ?? actItem.details?.amountCents) as number | undefined;
                     const isSettlement = actItem.activityType.startsWith("settlement_");
+                    const actIconConfig = getActivityIcon(
+                      actItem.activityType,
+                      (actItem.details?.categoryName ?? actItem.details?.category) as string | undefined,
+                      (actItem.details?.newDescription ?? actItem.details?.description) as string | undefined,
+                      group?.defaultCurrency,
+                    );
 
                     return (
                       <Animated.View
@@ -585,16 +591,7 @@ export default function GroupDetailScreen() {
                         >
                           <Card className="p-4">
                             <View className="flex-row items-center gap-3">
-                              <View className={cn(
-                                "w-10 h-10 rounded-xl items-center justify-center",
-                                isSettlement ? "bg-emerald-500/10" : "bg-primary/10"
-                              )}>
-                                {isSettlement ? (
-                                  <HandCoins size={20} color="#10b981" />
-                                ) : (
-                                  <User size={20} color="#0d9488" />
-                                )}
-                              </View>
+                              <CategoryIcon config={actIconConfig} />
                               <View className="flex-1">
                                 <Text className="text-sm font-sans-semibold text-card-foreground">
                                   {title}

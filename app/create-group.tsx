@@ -34,6 +34,8 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import QRCode from "react-native-qrcode-svg";
+import { LinearGradient } from "expo-linear-gradient";
+import { GRADIENTS } from "@/lib/gradients";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
@@ -208,37 +210,95 @@ export default function CreateGroupScreen() {
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* Header */}
-        <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-          <Pressable
-            onPress={goBack}
-            className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
+        {/* Hero Header */}
+        <LinearGradient
+          colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ overflow: "hidden" }}
+        >
+          {/* Emoji watermark */}
+          <View
+            style={{ position: "absolute", top: -10, right: -15, opacity: 0.08 }}
+            pointerEvents="none"
           >
-            <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
-          </Pressable>
-          <Text className="text-lg font-sans-semibold text-foreground">
-            New Group
-          </Text>
-          <Button
-            variant="ghost"
-            size="sm"
-            onPress={handleCreate}
-            disabled={submitting || !groupName.trim()}
-          >
-            {submitting ? (
-              <ActivityIndicator size="small" color="#0d9488" />
-            ) : (
-              <Text
-                className={cn(
-                  "text-base font-sans-semibold",
-                  groupName.trim() ? "text-primary" : "text-muted-foreground"
-                )}
-              >
-                Create
-              </Text>
-            )}
-          </Button>
-        </View>
+            <Text style={{ fontSize: 140, lineHeight: 160 }}>{selectedEmoji}</Text>
+          </View>
+
+          {/* Decorative orb */}
+          <View
+            style={{
+              position: "absolute", bottom: -30, left: -30,
+              width: 100, height: 100, borderRadius: 50,
+              backgroundColor: "rgba(255,255,255,0.06)",
+            }}
+            pointerEvents="none"
+          />
+
+          {/* Nav bar */}
+          <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
+            <Pressable
+              onPress={goBack}
+              className="w-10 h-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+            >
+              <ArrowLeft size={22} color="#ffffff" strokeWidth={2.5} />
+            </Pressable>
+            <Pressable
+              onPress={handleCreate}
+              disabled={submitting || !groupName.trim()}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: groupName.trim() ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)",
+              }}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Text
+                  className="text-sm font-sans-semibold"
+                  style={{ color: groupName.trim() ? "#ffffff" : "rgba(255,255,255,0.4)" }}
+                >
+                  Create
+                </Text>
+              )}
+            </Pressable>
+          </View>
+
+          {/* Title */}
+          <View className="px-5 pt-1 pb-2">
+            <Text className="text-2xl font-sans-bold" style={{ color: "#ffffff" }}>
+              New Group
+            </Text>
+            <Text className="text-sm font-sans mt-1" style={{ color: "rgba(255,255,255,0.7)" }}>
+              Split expenses with friends
+            </Text>
+          </View>
+
+          {/* Emoji avatar — centered on hero */}
+          <View className="items-center pb-5 pt-2">
+            <Pressable
+              onPress={() => setShowEmojiPicker(!showEmojiPicker)}
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 24,
+                backgroundColor: "rgba(255,255,255,0.2)",
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 2,
+                borderColor: "rgba(255,255,255,0.3)",
+              }}
+            >
+              <Text style={{ fontSize: 36 }}>{selectedEmoji}</Text>
+            </Pressable>
+            <Text className="text-xs font-sans mt-2" style={{ color: "rgba(255,255,255,0.6)" }}>
+              Tap to change icon
+            </Text>
+          </View>
+        </LinearGradient>
 
         <ScrollView
           className="flex-1"
@@ -249,24 +309,6 @@ export default function CreateGroupScreen() {
         >
           {/* Group Avatar + Name */}
           <View className="items-center gap-4">
-            <Pressable
-              onPress={() => setShowEmojiPicker(!showEmojiPicker)}
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 24,
-                backgroundColor: activeType?.bg ?? "#f1f5f9",
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 2,
-                borderColor: activeType?.color ?? "#e2e8f0",
-              }}
-            >
-              <Text style={{ fontSize: 36 }}>{selectedEmoji}</Text>
-            </Pressable>
-            <Text className="text-xs text-muted-foreground font-sans">
-              Tap to change icon
-            </Text>
 
             {showEmojiPicker && (
               <Card className="p-3 w-full">

@@ -58,7 +58,7 @@ describe("ActivityScreen", () => {
   it("shows empty state when no activity", async () => {
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("No activity yet")).toBeTruthy();
+      expect(screen.getAllByText("No activity yet").length).toBeGreaterThan(0);
     });
   });
 

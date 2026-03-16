@@ -424,7 +424,7 @@ export default function HomeScreen() {
                   // Get icon config for this activity item
                   const categoryName = (item.details?.categoryName ?? item.details?.category) as string | undefined;
                   const expenseDescription = (item.details?.newDescription ?? item.details?.description) as string | undefined;
-                  const activityIconConfig = getActivityIcon(item.activityType, categoryName, expenseDescription);
+                  const activityIconConfig = getActivityIcon(item.activityType, categoryName, expenseDescription, backendUser?.defaultCurrency);
 
                   return (
                     <Animated.View

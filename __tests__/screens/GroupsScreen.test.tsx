@@ -917,8 +917,8 @@ describe("GroupsScreen", () => {
     render(<GroupsScreen />);
     await waitFor(() => {
       expect(screen.getByText("Overall balance")).toBeTruthy();
-      expect(screen.getByText("Owed")).toBeTruthy();
-      expect(screen.getByText("Owe")).toBeTruthy();
+      expect(screen.getByText("Owed to you")).toBeTruthy();
+      expect(screen.getByText("You owe")).toBeTruthy();
     });
   });
 
@@ -943,6 +943,30 @@ describe("GroupsScreen", () => {
       expect(screen.getByText("Trip to Paris")).toBeTruthy();
     });
     expect(screen.queryByText("Overall balance")).toBeNull();
+  });
+
+  it("does not show balance text when groupBalances has no entry for a group", async () => {
+    mockUseGroups.mockReturnValue({
+      data: [sampleGroups[0]],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    });
+    mockUseUserBalance.mockReturnValue({
+      data: {
+        totalOwedCents: 5000,
+        totalOwesCents: 2000,
+        netBalanceCents: 3000,
+        groupBalances: [], // no entry for g1
+      },
+      refetch: mockRefetchBalance,
+    });
+    render(<GroupsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Trip to Paris")).toBeTruthy();
+    });
+    // Should NOT show "settled up" since we don't have data for this group
+    expect(screen.queryByText("settled up")).toBeNull();
   });
 
   it("shows relative time for last activity", async () => {

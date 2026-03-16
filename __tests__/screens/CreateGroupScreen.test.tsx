@@ -144,8 +144,9 @@ describe("CreateGroupScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Tap to change icon")).toBeTruthy();
     });
-    // The emoji displayed is the airplane
-    fireEvent.press(screen.getByText("\u2708\uFE0F"));
+    // The emoji displayed is the airplane (may appear in watermark too)
+    const emojiElements = screen.getAllByText("\u2708\uFE0F");
+    fireEvent.press(emojiElements[0]);
     // Should show emoji picker grid
   });
 

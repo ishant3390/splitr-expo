@@ -25,6 +25,8 @@ import {
   X,
 } from "lucide-react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { GRADIENTS } from "@/lib/gradients";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -443,85 +445,9 @@ export default function SettleUpScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-        <Pressable
-          onPress={goBack}
-          className="flex-row items-center gap-2 px-3 py-2 -ml-2 rounded-xl active:bg-muted"
-        >
-          <ArrowLeft size={20} color="#0d9488" />
-          <Text className="text-sm font-sans-semibold text-primary">
-            {isCrossGroup ? "Home" : group?.name || "Back"}
-          </Text>
-        </Pressable>
-        <Text className="text-lg font-sans-semibold text-foreground">
-          Settle Up
-        </Text>
-        <View style={{ width: 80 }} />
-      </View>
-
-      {/* Group name (per-group mode only) */}
-      {!isCrossGroup && (
-        <View className="px-5 pt-4 pb-2">
-          <Text className="text-sm text-muted-foreground font-sans">
-            {group?.name}
-          </Text>
-        </View>
-      )}
-
-      {/* Tab switcher (per-group mode only) */}
-      {!isCrossGroup && (
-        <View className="flex-row mx-5 mb-4 rounded-xl bg-muted p-1">
-          <Pressable
-            onPress={() => { hapticSelection(); setActiveTab("suggestions"); }}
-            className={cn(
-              "flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg",
-              activeTab === "suggestions" ? "bg-card" : "bg-transparent"
-            )}
-          >
-            <HandCoins
-              size={16}
-              color={activeTab === "suggestions" ? "#0d9488" : (isDark ? "#94a3b8" : "#64748b")}
-            />
-            <Text
-              className={cn(
-                "text-sm font-sans-semibold",
-                activeTab === "suggestions"
-                  ? "text-primary"
-                  : "text-muted-foreground"
-              )}
-            >
-              Suggested
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => { hapticSelection(); setActiveTab("history"); }}
-            className={cn(
-              "flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg",
-              activeTab === "history" ? "bg-card" : "bg-transparent"
-            )}
-          >
-            <History
-              size={16}
-              color={activeTab === "history" ? "#0d9488" : (isDark ? "#94a3b8" : "#64748b")}
-            />
-            <Text
-              className={cn(
-                "text-sm font-sans-semibold",
-                activeTab === "history"
-                  ? "text-primary"
-                  : "text-muted-foreground"
-              )}
-            >
-              History ({settlements.length})
-            </Text>
-          </Pressable>
-        </View>
-      )}
-
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-8"
+        contentContainerClassName="pb-8"
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
@@ -536,10 +462,168 @@ export default function SettleUpScreen() {
               }
               setRefreshing(false);
             }}
-            tintColor="#0d9488"
+            tintColor="#ffffff"
           />
         }
       >
+        {/* Hero Section */}
+        <LinearGradient
+          colors={(isDark ? GRADIENTS.heroEmeraldDark : GRADIENTS.heroEmerald) as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ overflow: "hidden" }}
+        >
+          {/* Watermark HandCoins icon */}
+          <View
+            style={{
+              position: "absolute",
+              bottom: -30,
+              right: -20,
+              opacity: 0.06,
+            }}
+            pointerEvents="none"
+          >
+            <HandCoins size={200} color="#ffffff" strokeWidth={1} />
+          </View>
+
+          {/* Decorative orb */}
+          <View
+            style={{
+              position: "absolute",
+              top: -40,
+              left: -40,
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: "rgba(255,255,255,0.06)",
+            }}
+            pointerEvents="none"
+          />
+
+          {/* Navigation */}
+          <View className="flex-row items-center px-4 pt-3 pb-2">
+            <Pressable
+              onPress={goBack}
+              className="w-10 h-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+            >
+              <ArrowLeft size={22} color="#ffffff" strokeWidth={2.5} />
+            </Pressable>
+          </View>
+
+          {/* Title + Summary */}
+          <View className="px-5 pt-1 pb-2">
+            <Text
+              className="text-2xl font-sans-bold"
+              style={{ color: "#ffffff" }}
+            >
+              Settle Up
+            </Text>
+            {!isCrossGroup && group?.name ? (
+              <Text
+                className="text-sm font-sans mt-1"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+              >
+                {group.name}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Summary stat */}
+          <View className="px-5 pb-4">
+            <View
+              style={{
+                backgroundColor: "rgba(255,255,255,0.12)",
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: "rgba(255,255,255,0.15)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <HandCoins size={18} color="#ffffff" />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-lg font-sans-bold"
+                  style={{ color: "#ffffff" }}
+                >
+                  {allSettled
+                    ? "All settled!"
+                    : isCrossGroup
+                    ? `${crossGroupTotalSuggestions} payment${crossGroupTotalSuggestions === 1 ? "" : "s"} needed`
+                    : `${suggestions.length} payment${suggestions.length === 1 ? "" : "s"} needed`
+                  }
+                </Text>
+                <Text
+                  className="text-xs font-sans"
+                  style={{ color: "rgba(255,255,255,0.7)" }}
+                >
+                  {allSettled
+                    ? "No outstanding debts"
+                    : isCrossGroup
+                    ? `Across ${crossGroupSuggestions.length} group${crossGroupSuggestions.length === 1 ? "" : "s"}`
+                    : "Simplified debt suggestions"
+                  }
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Tab switcher (per-group mode only) — inside hero */}
+          {!isCrossGroup && (
+            <View
+              className="flex-row mx-5 mb-4 rounded-xl p-1"
+              style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
+            >
+              <Pressable
+                onPress={() => { hapticSelection(); setActiveTab("suggestions"); }}
+                className="flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg"
+                style={activeTab === "suggestions" ? { backgroundColor: "rgba(255,255,255,0.2)" } : undefined}
+              >
+                <HandCoins
+                  size={16}
+                  color={activeTab === "suggestions" ? "#ffffff" : "rgba(255,255,255,0.5)"}
+                />
+                <Text
+                  className="text-sm font-sans-semibold"
+                  style={{ color: activeTab === "suggestions" ? "#ffffff" : "rgba(255,255,255,0.5)" }}
+                >
+                  Suggested
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => { hapticSelection(); setActiveTab("history"); }}
+                className="flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg"
+                style={activeTab === "history" ? { backgroundColor: "rgba(255,255,255,0.2)" } : undefined}
+              >
+                <History
+                  size={16}
+                  color={activeTab === "history" ? "#ffffff" : "rgba(255,255,255,0.5)"}
+                />
+                <Text
+                  className="text-sm font-sans-semibold"
+                  style={{ color: activeTab === "history" ? "#ffffff" : "rgba(255,255,255,0.5)" }}
+                >
+                  History ({settlements.length})
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </LinearGradient>
+
+        <View className="px-5 pt-4">
         {/* ============ CROSS-GROUP MODE ============ */}
         {isCrossGroup ? (
           <>
@@ -699,6 +783,7 @@ export default function SettleUpScreen() {
             )}
           </>
         )}
+        </View>
       </ScrollView>
 
       {/* Create Settlement Modal */}
