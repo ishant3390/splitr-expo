@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import {
   ChevronDown,
@@ -56,15 +56,8 @@ export default function AddExpenseScreen() {
   const params = useLocalSearchParams<{ returnGroupId?: string; quick?: string }>();
   const returnGroupId = Array.isArray(params.returnGroupId) ? params.returnGroupId[0] : params.returnGroupId;
   const isQuickMode = params.quick === "true";
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else if (returnGroupId) {
-      router.replace(`/(tabs)/groups/${returnGroupId}`);
-    } else {
-      router.replace("/(tabs)");
-    }
-  };
+  const exitDestination = returnGroupId ? `/(tabs)/groups/${returnGroupId}` : "/(tabs)";
+  const goBack = () => router.replace(exitDestination as any);
   const { getToken } = useAuth();
   const { user: clerkUser } = useUser();
   const toast = useToast();
@@ -184,6 +177,20 @@ export default function AddExpenseScreen() {
     };
     load();
   }, [selectedGroup?.id]);
+
+  // Reset user-entered fields every time the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      setDescription("");
+      setAmount("");
+      setExpenseDate(new Date());
+      setReceiptUri(null);
+      setSplitType("equal");
+      setSplitPercentages({});
+      setSplitFixedAmounts({});
+      userPickedCategoryRef.current = false;
+    }, [])
+  );
 
   // Auto-select category based on description, unless user already picked one manually
   useEffect(() => {
@@ -360,9 +367,12 @@ export default function AddExpenseScreen() {
           groupId: selectedGroup.id,
           categoryId: selectedCategoryId,
         })).catch(() => {});
-        // Show success animation briefly before navigating back
+        // Show success animation briefly then navigate back
         setShowSuccess(true);
-        setTimeout(() => { setShowSuccess(false); goBack(); }, 800);
+        setTimeout(() => {
+          setShowSuccess(false);
+          router.replace(exitDestination as any);
+        }, 800);
         return;
       } else {
         // Offline: queue for later sync
@@ -380,7 +390,7 @@ export default function AddExpenseScreen() {
         hapticSuccess();
         toast.info(`"${finalDescription}" saved. It will sync when you're back online.`);
       }
-      goBack();
+      router.replace(exitDestination as any);
     } catch (err: any) {
       hapticError();
       toast.error("Something went wrong. Try again later.");

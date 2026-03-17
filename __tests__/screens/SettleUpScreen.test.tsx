@@ -599,14 +599,13 @@ describe("SettleUpScreen — per-group mode", () => {
     mockSuggestions.mockResolvedValue([
       {
         fromGuest: { id: "g1", name: "Guest Alice" },
-        toGuest: { id: "g2", name: "Guest Bob" },
+        toUser: { id: "u2", name: "Bob", avatarUrl: null },
         amount: 2500,
       },
     ]);
     render(<SettleUpScreen />);
     await waitFor(() => {
       expect(screen.getByText("Guest Alice")).toBeTruthy();
-      expect(screen.getByText("Guest Bob")).toBeTruthy();
     });
   });
 

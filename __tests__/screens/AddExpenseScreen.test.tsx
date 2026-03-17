@@ -6,17 +6,21 @@ const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
 
-jest.mock("expo-router", () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: mockReplace,
-    back: mockBack,
-    canGoBack: jest.fn(() => true),
-  }),
-  useLocalSearchParams: () => ({}),
-  useSegments: () => [],
-  Link: "Link",
-}));
+jest.mock("expo-router", () => {
+  const React = require("react");
+  return {
+    useRouter: () => ({
+      push: mockPush,
+      replace: mockReplace,
+      back: mockBack,
+      canGoBack: jest.fn(() => true),
+    }),
+    useLocalSearchParams: () => ({}),
+    useSegments: () => [],
+    Link: "Link",
+    useFocusEffect: (cb: () => void) => React.useEffect(cb, []),
+  };
+});
 
 const mockToast = {
   success: jest.fn(),
@@ -156,13 +160,13 @@ describe("AddExpenseScreen", () => {
   });
 
   // --- Cancel / goBack (lines 57-65) ---
-  it("navigates back on Cancel press", async () => {
+  it("navigates to home on Cancel press when no returnGroupId", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
       expect(screen.getByText("Cancel")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Cancel"));
-    expect(mockBack).toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)");
   });
 
   // --- Form validation (lines 234-274) ---
@@ -606,15 +610,15 @@ describe("AddExpenseScreen", () => {
     spy.mockRestore();
   });
 
-  // --- goBack with returnGroupId uses router.back() when canGoBack ---
-  it("calls router.back when returnGroupId is set and canGoBack", async () => {
+  // --- goBack with returnGroupId navigates to that group ---
+  it("navigates to group screen on Cancel when returnGroupId is set", async () => {
     const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ returnGroupId: "g1" });
     render(<AddExpenseScreen />);
     await waitFor(() => {
       expect(screen.getByText("Cancel")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Cancel"));
-    expect(mockBack).toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/groups/g1");
     spy.mockRestore();
   });
 
