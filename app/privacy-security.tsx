@@ -339,7 +339,7 @@ export default function PrivacySecurityScreen() {
           </View>
 
           {/* Active Sessions */}
-          <Animated.View entering={FadeInDown.delay(100).duration(400).springify()}>
+          <Animated.View entering={FadeInDown.delay(100).duration(300).springify()}>
             <Text className="text-base font-sans-semibold text-foreground mb-3">
               Active Sessions
             </Text>
@@ -403,7 +403,7 @@ export default function PrivacySecurityScreen() {
           </Animated.View>
 
           {/* Data & Storage */}
-          <Animated.View entering={FadeInDown.delay(200).duration(400).springify()}>
+          <Animated.View entering={FadeInDown.delay(200).duration(300).springify()}>
             <Text className="text-base font-sans-semibold text-foreground mb-3">
               Data & Storage
             </Text>
@@ -459,7 +459,7 @@ export default function PrivacySecurityScreen() {
           </Animated.View>
 
           {/* Security Info */}
-          <Animated.View entering={FadeInDown.delay(300).duration(400).springify()}>
+          <Animated.View entering={FadeInDown.delay(300).duration(300).springify()}>
             <Text className="text-base font-sans-semibold text-foreground mb-3">
               How We Protect Your Data
             </Text>
@@ -509,7 +509,7 @@ export default function PrivacySecurityScreen() {
           </Animated.View>
 
           {/* Legal */}
-          <Animated.View entering={FadeInDown.delay(350).duration(400).springify()}>
+          <Animated.View entering={FadeInDown.delay(350).duration(300).springify()}>
             <Text className="text-base font-sans-semibold text-foreground mb-3">
               Legal
             </Text>
@@ -532,7 +532,7 @@ export default function PrivacySecurityScreen() {
           </Animated.View>
 
           {/* Danger Zone */}
-          <Animated.View entering={FadeInDown.delay(450).duration(400).springify()}>
+          <Animated.View entering={FadeInDown.delay(450).duration(300).springify()}>
             <Text className="text-base font-sans-semibold text-foreground mb-3">
               Account
             </Text>

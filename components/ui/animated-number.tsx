@@ -1,5 +1,13 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { Text, type TextProps } from "react-native";
+import {
+  useSharedValue,
+  withTiming,
+  Easing,
+  useAnimatedReaction,
+  runOnJS,
+  useReducedMotion,
+} from "react-native-reanimated";
 
 interface AnimatedNumberProps extends Omit<TextProps, "children"> {
   value: number;
@@ -10,7 +18,8 @@ interface AnimatedNumberProps extends Omit<TextProps, "children"> {
 
 /**
  * Animates a number from its previous value to the new target.
- * Uses JS-based requestAnimationFrame with cubic ease-out.
+ * Runs entirely on the UI thread via Reanimated shared values.
+ * Falls back to instant update when user prefers reduced motion.
  */
 export function AnimatedNumber({
   value,
@@ -18,40 +27,40 @@ export function AnimatedNumber({
   formatter = (n) => n.toFixed(0),
   ...textProps
 }: AnimatedNumberProps) {
-  const [display, setDisplay] = useState(formatter(value));
-  const prevValue = useRef(value);
-  const rafRef = useRef<number>();
+  const shouldReduce = useReducedMotion();
+  const animatedValue = useSharedValue(value);
+  const [display, setDisplay] = React.useState(formatter(value));
+  const formatterRef = useRef(formatter);
+  formatterRef.current = formatter;
+
+  const updateDisplay = useCallback((v: number) => {
+    setDisplay(formatterRef.current(v));
+  }, []);
 
   useEffect(() => {
-    const from = prevValue.current;
-    const to = value;
-    prevValue.current = value;
-
-    // Skip animation if no change
-    if (from === to) {
-      setDisplay(formatter(to));
-      return;
+    if (shouldReduce) {
+      animatedValue.value = value;
+    } else {
+      animatedValue.value = withTiming(value, {
+        duration,
+        easing: Easing.out(Easing.cubic),
+      });
     }
+    // Always set final display — in production, useAnimatedReaction will override
+    // with intermediate values during the animation for smooth counting
+    setDisplay(formatter(value));
+  }, [value, duration, shouldReduce]);
 
-    const startTime = Date.now();
-
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // cubic ease-out
-      const current = from + (to - from) * eased;
-      setDisplay(formatter(current));
-
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate);
+  // Bridge UI-thread animated value changes to JS-thread display updates.
+  // In production, this fires on every animation frame for smooth counting.
+  useAnimatedReaction(
+    () => animatedValue.value,
+    (current, previous) => {
+      if (previous !== null && current !== previous) {
+        runOnJS(updateDisplay)(current);
       }
-    };
-
-    animate();
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [value, duration, formatter]);
+    }
+  );
 
   return (
     <Text {...textProps}>

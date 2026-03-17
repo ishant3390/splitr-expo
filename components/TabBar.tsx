@@ -57,10 +57,10 @@ function TabIcon({ name, isFocused }: { name: string; isFocused: boolean }) {
 
   useEffect(() => {
     if (isFocused) {
-      // Overshoot bounce: 1 -> 1.15 -> 1.05 (subtle deformation)
+      // Overshoot bounce: 1 -> 1.08 -> 1.02 (subtle, not distracting on repeat)
       scale.value = withSequence(
-        withSpring(1.15, { damping: 8, stiffness: 250, mass: 0.5 }),
-        withSpring(1.05, SPRING_SMOOTH)
+        withSpring(1.08, { damping: 10, stiffness: 250, mass: 0.5 }),
+        withSpring(1.02, SPRING_SMOOTH)
       );
       translateY.value = withSpring(-3, SPRING_SMOOTH);
       filledOpacity.value = withTiming(1, { duration: 150 });

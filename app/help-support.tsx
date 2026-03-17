@@ -81,7 +81,7 @@ export default function HelpSupportScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* FAQ Section */}
-        <Animated.View entering={FadeInDown.duration(400).springify()}>
+        <Animated.View entering={FadeInDown.duration(300).springify()}>
           <Text className="text-base font-sans-semibold text-foreground mb-3">
             Frequently Asked Questions
           </Text>
@@ -100,7 +100,7 @@ export default function HelpSupportScreen() {
         </Animated.View>
 
         {/* Contact Section */}
-        <Animated.View entering={FadeInDown.delay(150).duration(400).springify()}>
+        <Animated.View entering={FadeInDown.delay(150).duration(300).springify()}>
           <Text className="text-base font-sans-semibold text-foreground mb-3">
             Get in Touch
           </Text>
@@ -129,7 +129,7 @@ export default function HelpSupportScreen() {
         </Animated.View>
 
         {/* Rate Us */}
-        <Animated.View entering={FadeInDown.delay(300).duration(400).springify()}>
+        <Animated.View entering={FadeInDown.delay(300).duration(300).springify()}>
           <Card className="p-5 items-center gap-3">
             <View className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center">
               <Star size={22} color="#f59e0b" />
@@ -148,7 +148,7 @@ export default function HelpSupportScreen() {
         </Animated.View>
 
         {/* App Info */}
-        <Animated.View entering={FadeInDown.delay(400).duration(400).springify()}>
+        <Animated.View entering={FadeInDown.delay(400).duration(300).springify()}>
           <View className="items-center gap-1 pt-4">
             <View className="w-10 h-10 rounded-xl bg-primary items-center justify-center mb-2">
               <Text className="text-lg font-sans-bold text-primary-foreground">S</Text>

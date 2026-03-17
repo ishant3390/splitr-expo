@@ -31,7 +31,7 @@ export function Skeleton({
 
   useEffect(() => {
     translateX.value = withRepeat(
-      withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+      withTiming(1, { duration: 850, easing: Easing.inOut(Easing.ease) }),
       -1,
       false
     );

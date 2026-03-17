@@ -547,7 +547,7 @@ export default function HomeScreen() {
                   return (
                     <Animated.View
                       key={item.id}
-                      entering={FadeInDown.delay(idx * 40).duration(300).springify()}
+                      entering={FadeInDown.delay(Math.min(idx, 5) * 50).duration(300).springify()}
                     >
                     <AnimatedPressable
                       onPress={() => { hapticLight(); destination && router.push(destination as any); }}

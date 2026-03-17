@@ -175,6 +175,11 @@ jest.mock("react-native-reanimated", () => {
     withDelay: (_d: any, v: any) => v,
     withSequence: (...args: any[]) => args[0],
     runOnJS: (fn: any) => fn,
+    useReducedMotion: () => false,
+    useAnimatedReaction: () => {
+      // No-op in tests — components should handle display updates
+      // via useEffect for the test environment where withTiming resolves instantly
+    },
     interpolateColor: () => "#000000",
     Easing: { out: () => ({}), cubic: {}, in: () => ({}), inOut: () => ({}) },
     createAnimatedComponent: (comp: any) => comp,

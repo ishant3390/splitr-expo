@@ -20,7 +20,7 @@ function Particle({ index, total }: { index: number; total: number }) {
   const size = useMemo(() => 6 + Math.random() * 8, []);
   const color = useMemo(() => COLORS[index % COLORS.length], [index]);
   const isSquare = useMemo(() => Math.random() > 0.5, []);
-  const delay = useMemo(() => Math.random() * 400, []);
+  const delay = useMemo(() => Math.random() * 200, []);
 
   const progress = useSharedValue(0);
   const opacity = useSharedValue(1);

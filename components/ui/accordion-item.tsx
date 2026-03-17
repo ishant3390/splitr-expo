@@ -27,9 +27,9 @@ export function AccordionItem({ title, children, expanded = false, onToggle }: A
   const opacity = useSharedValue(expanded ? 1 : 0);
 
   useEffect(() => {
-    rotation.value = withTiming(expanded ? 180 : 0, { duration: 250, easing: Easing.out(Easing.cubic) });
-    height.value = withTiming(expanded ? 1 : 0, { duration: 250, easing: Easing.out(Easing.cubic) });
-    opacity.value = withTiming(expanded ? 1 : 0, { duration: 200 });
+    rotation.value = withTiming(expanded ? 180 : 0, { duration: 180, easing: Easing.out(Easing.cubic) });
+    height.value = withTiming(expanded ? 1 : 0, { duration: 180, easing: Easing.out(Easing.cubic) });
+    opacity.value = withTiming(expanded ? 1 : 0, { duration: 150 });
   }, [expanded]);
 
   const handlePress = () => {

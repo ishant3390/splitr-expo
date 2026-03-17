@@ -472,7 +472,7 @@ export default function AddExpenseScreen() {
           </Animated.View>
 
           {/* Description */}
-          <Animated.View entering={FadeInDown.delay(100).duration(400).springify()}>
+          <Animated.View entering={FadeInDown.delay(100).duration(300).springify()}>
           <Input
             label="Description"
             placeholder="What was this for?"
@@ -514,7 +514,7 @@ export default function AddExpenseScreen() {
           </Animated.View>
 
           {/* Date */}
-          {!isQuickMode && <Animated.View entering={FadeInDown.delay(150).duration(400).springify()}>
+          {!isQuickMode && <Animated.View entering={FadeInDown.delay(150).duration(300).springify()}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Date</Text>
             <Pressable
               onPress={() => {
@@ -562,7 +562,7 @@ export default function AddExpenseScreen() {
           </Animated.View>}
 
           {/* Category */}
-          {!isQuickMode && <Animated.View entering={FadeInDown.delay(200).duration(400).springify()}>
+          {!isQuickMode && <Animated.View entering={FadeInDown.delay(200).duration(300).springify()}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Category</Text>
             {categories.length === 0 ? (
               <ActivityIndicator color="#0d9488" />
@@ -596,7 +596,7 @@ export default function AddExpenseScreen() {
           </Animated.View>}
 
           {/* Group selector — compact chip style, auto-selects first group */}
-          <Animated.View entering={FadeInDown.delay(300).duration(400).springify()}>
+          <Animated.View entering={FadeInDown.delay(300).duration(300).springify()}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Group</Text>
             <Pressable onPress={() => setShowGroupPicker(!showGroupPicker)}>
               <Card className="p-3.5 flex-row items-center justify-between">
@@ -648,7 +648,7 @@ export default function AddExpenseScreen() {
 
           {/* Quick mode submit button */}
           {isQuickMode && (
-            <Animated.View entering={FadeInDown.delay(200).duration(400).springify()}>
+            <Animated.View entering={FadeInDown.delay(200).duration(300).springify()}>
               <Button variant="default" onPress={handleSubmit} disabled={submitting || !amount || !description.trim()}>
                 {submitting ? (
                   <ActivityIndicator size="small" color="#ffffff" />
@@ -897,7 +897,7 @@ export default function AddExpenseScreen() {
             justifyContent: "center",
           }}
         >
-          <Animated.View entering={FadeInDown.duration(400).springify()}>
+          <Animated.View entering={FadeInDown.duration(300).springify()}>
             <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center mb-4">
               <Check size={40} color="#ffffff" />
             </View>

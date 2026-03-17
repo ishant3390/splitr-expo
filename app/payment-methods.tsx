@@ -111,7 +111,7 @@ export default function PaymentMethodsScreen() {
             return (
               <Animated.View
                 key={idx}
-                entering={FadeInDown.delay(200 + idx * 100).duration(400).springify()}
+                entering={FadeInDown.delay(200 + idx * 100).duration(300).springify()}
               >
                 <Card className="p-4">
                   <View className="flex-row items-center gap-3">
@@ -134,7 +134,7 @@ export default function PaymentMethodsScreen() {
         </View>
 
         {/* Notify CTA */}
-        <Animated.View entering={FadeInDown.delay(550).duration(400).springify()}>
+        <Animated.View entering={FadeInDown.delay(550).duration(300).springify()}>
           {notified ? (
             <Animated.View entering={FadeIn.duration(300)}>
               <Card className="p-5 items-center gap-3 bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800">

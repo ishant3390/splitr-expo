@@ -17,7 +17,7 @@ interface ImagePreviewModalProps {
   onClose: () => void;
 }
 
-export const SPRING_CONFIG = { damping: 15, stiffness: 150 };
+export const SPRING_CONFIG = { damping: 20, stiffness: 300 };
 export const MIN_SCALE = 1;
 export const MAX_SCALE = 4;
 

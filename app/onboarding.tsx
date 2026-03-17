@@ -104,7 +104,7 @@ export default function OnboardingScreen() {
 
         {/* Current step content */}
         <View className="flex-1 items-center justify-center px-8" key={activeIndex}>
-          <Animated.View entering={FadeInDown.delay(100).duration(500).springify()}>
+          <Animated.View entering={FadeInDown.delay(100).duration(350).springify()}>
             <LinearGradient
               colors={[step.iconBg, `${step.iconColor}20`] as string[]}
               start={{ x: 0, y: 0 }}
@@ -123,7 +123,7 @@ export default function OnboardingScreen() {
             </LinearGradient>
           </Animated.View>
 
-          <Animated.View entering={FadeInUp.delay(200).duration(500).springify()}>
+          <Animated.View entering={FadeInUp.delay(200).duration(350).springify()}>
             <Text className="text-2xl font-sans-bold text-foreground text-center mb-3">
               {step.title}
             </Text>

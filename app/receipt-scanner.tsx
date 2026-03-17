@@ -266,13 +266,13 @@ export default function ReceiptScannerScreen() {
       {!imageUri ? (
         /* ---- Capture Screen ---- */
         <View className="flex-1 items-center justify-center px-5 gap-6">
-          <Animated.View entering={FadeInDown.delay(100).duration(400).springify()}>
+          <Animated.View entering={FadeInDown.delay(100).duration(300).springify()}>
             <View className="w-24 h-24 rounded-3xl bg-primary/10 items-center justify-center">
               <ScanText size={48} color="#0d9488" />
             </View>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(200).duration(400).springify()}>
+          <Animated.View entering={FadeInDown.delay(200).duration(300).springify()}>
             <View className="items-center">
               <Text className="text-xl font-sans-bold text-foreground mb-2">
                 Scan a Receipt
@@ -283,7 +283,7 @@ export default function ReceiptScannerScreen() {
             </View>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(300).duration(400).springify()} className="w-full gap-3 mt-4">
+          <Animated.View entering={FadeInDown.delay(300).duration(300).springify()} className="w-full gap-3 mt-4">
             {Platform.OS !== "web" && (
               <Button variant="default" size="lg" onPress={() => captureImage(true)} className="w-full">
                 <View className="flex-row items-center gap-2">
@@ -385,7 +385,7 @@ export default function ReceiptScannerScreen() {
 
           {result && (
             /* ---- Results ---- */
-            <Animated.View entering={FadeInDown.duration(400).springify()}>
+            <Animated.View entering={FadeInDown.duration(300).springify()}>
               {/* Merchant & date header */}
               <View className="flex-row items-start justify-between mb-4">
                 <View className="flex-1 mr-3">

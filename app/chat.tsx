@@ -283,7 +283,7 @@ function SendButton({
     // Spring pop when button becomes enabled or disabled
     if (prevEnabled.current !== enabled) {
       scale.value = withSequence(
-        withSpring(enabled ? 1.2 : 0.85, { damping: 8, stiffness: 200 }),
+        withSpring(enabled ? 1.05 : 0.95, { damping: 12, stiffness: 200 }),
         withSpring(1, { damping: 12, stiffness: 180 })
       );
       prevEnabled.current = enabled;
@@ -494,9 +494,10 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
     const showTs = shouldShowTimestamp(item, previousMessage);
     const timeStr = item.createdAt ? formatMessageTime(item.createdAt) : "";
 
-    // Message entrance animation — iMessage-style bounce effect
+    // Message entrance animation — instant for sent (user knows it's coming),
+    // iMessage-style bounce for received
     const messageEntering = isUser
-      ? FadeInRight.duration(250).springify().damping(12).stiffness(160)
+      ? FadeIn.duration(100)
       : FadeInLeft.duration(250).springify().damping(12).stiffness(160);
 
     // B45: Swipe-to-reply gesture

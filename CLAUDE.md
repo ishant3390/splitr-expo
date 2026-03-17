@@ -241,6 +241,7 @@ lib/
 - Screen-level logic helpers: test in `__tests__/helpers/`
 - API client changes: mock fetch and verify request/response in `__tests__/lib/api.test.ts`
 - Run `npm test` before committing to ensure no regressions
+- **Wide-impact changes (10+ files)**: MUST also run `npm run test:e2e` (Playwright smoke tests) before considering the change complete. Animation, styling, layout, and component refactors can cause visual regressions that unit tests miss.
 
 ### Test Conventions
 - Mock external deps (Clerk, expo-router, expo-haptics, etc.) in `__tests__/setup.ts`
@@ -255,7 +256,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (1671 tests, 69 suites)**: `lib/` at 98%, `components/ui/` at 91%, screens improving
+- **Current baseline (1672 tests, 69 suites)**: `lib/` at 98%, `components/ui/` at 91%, screens improving
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state
@@ -275,7 +276,7 @@ lib/
 - **Requires**: `CLERK_SECRET_KEY` in `.env.local` for authenticated tests
 - **Auth setup**: `e2e/auth.setup.ts` extends base test fixture with Clerk token injection
 - **Unauthenticated tests**: Use `@playwright/test` directly (e.g., `e2e/auth.spec.ts`)
-- **Count**: 117 smoke tests across 17 spec files
+- **Count**: 115 smoke tests across 17 spec files
 - Run `npx playwright install chromium` once before first run
 
 ### E2E Integration Tests (Playwright + Backend)

@@ -36,8 +36,8 @@ export function BottomSheetModal({
 
   const content = (
     <Animated.View
-      entering={SlideInDown.springify().damping(18).stiffness(140)}
-      exiting={SlideOutDown.springify().damping(20).stiffness(160)}
+      entering={SlideInDown.springify().damping(18).stiffness(180)}
+      exiting={SlideOutDown.springify().damping(22).stiffness(220)}
       style={{
         backgroundColor: isDark ? "#1e293b" : "#ffffff",
         borderTopLeftRadius: 24,

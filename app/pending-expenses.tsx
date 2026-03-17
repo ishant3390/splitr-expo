@@ -152,7 +152,7 @@ export default function PendingExpensesScreen() {
           items.map((item, idx) => (
             <Animated.View
               key={item.clientId}
-              entering={FadeInDown.delay(idx * 60).duration(300).springify()}
+              entering={FadeInDown.delay(Math.min(idx, 5) * 60).duration(300).springify()}
             >
               <Card className="p-4">
                 <View className="flex-row items-start gap-3">

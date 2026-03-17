@@ -328,7 +328,7 @@ export default function SettleUpScreen() {
     return (
       <Animated.View
         key={`${cardGroupId ?? groupId}-${idx}`}
-        entering={FadeInDown.delay(idx * 40).duration(300).springify()}
+        entering={FadeInDown.delay(Math.min(idx, 5) * 50).duration(300).springify()}
       >
         <Pressable
           onPress={() => { hapticHeavy(); openCreateModal(s, cardGroupId, currency); }}
@@ -1004,7 +1004,7 @@ export default function SettleUpScreen() {
             justifyContent: "center",
           }}
         >
-          <Animated.View entering={FadeInDown.duration(400).springify()}>
+          <Animated.View entering={FadeInDown.duration(300).springify()}>
             <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
               <Check size={40} color="#ffffff" />
             </View>

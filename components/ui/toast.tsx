@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
-import { View, Text, Pressable, Animated, Easing } from "react-native";
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
+import { View, Text, Pressable } from "react-native";
 import { useColorScheme } from "nativewind";
 import { X, CheckCircle2, AlertTriangle, Info } from "lucide-react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+  runOnJS,
+} from "react-native-reanimated";
 
 type ToastType = "success" | "error" | "info";
 
@@ -53,35 +60,38 @@ const BG_MAP_DARK = {
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(-20)).current;
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(-20);
   const { Icon, color } = ICON_MAP[toast.type];
   const bgMap = isDark ? BG_MAP_DARK : BG_MAP_LIGHT;
   const duration = toast.duration ?? 3500;
 
-  React.useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-    ]).start();
+  useEffect(() => {
+    // Enter: ease-out (fast start, responsive)
+    opacity.value = withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) });
+    translateY.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) });
 
     const timer = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 0, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: -20, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-      ]).start(onDismiss);
+      // Exit: also ease-out (system response should feel snappy, not sluggish)
+      opacity.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.cubic) });
+      translateY.value = withTiming(-20, { duration: 180, easing: Easing.out(Easing.cubic) }, () => {
+        runOnJS(onDismiss)();
+      });
     }, duration);
 
     return () => clearTimeout(timer);
   }, []);
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
   return (
     <Animated.View
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
-      style={{
-        opacity,
-        transform: [{ translateY }],
+      style={[animatedStyle, {
         backgroundColor: bgMap[toast.type],
         borderWidth: 1,
         borderColor: color + "30",
@@ -98,7 +108,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 8,
         elevation: 3,
-      }}
+      }]}
     >
       <Icon size={18} color={color} />
       <Text
