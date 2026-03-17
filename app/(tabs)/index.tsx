@@ -33,10 +33,11 @@ import { getActivityIcon } from "@/lib/category-icons";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { SkeletonList } from "@/components/ui/skeleton";
-import { useUserActivity, useUserBalance, useTopDebtor, useGroups, useUserProfile } from "@/lib/hooks";
+import { useUserActivity, useUserBalance, useTopDebtor, useGroups, useUserProfile, useGroupCurrencyMap } from "@/lib/hooks";
 import { useNetwork } from "@/components/NetworkProvider";
 import { cn, formatCents, formatDate, formatRelativeTime, getInitials } from "@/lib/utils";
 import { formatActivityTitle, formatActivityInvolvement, formatCentsForInvolvement, resolveActivityGroupName } from "@/lib/screen-helpers";
+import { MultiCurrencyAmount, formatMultiCurrency } from "@/components/ui/multi-currency-amount";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedPressable } from "@/components/ui/animated-pressable";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -153,6 +154,20 @@ export default function HomeScreen() {
     groups.forEach((g) => map.set(g.id, g.name));
     return map;
   }, [groups]);
+  const groupCurrencyMap = useGroupCurrencyMap();
+
+  const isMultiCurrencyOwed = (balanceData?.totalOwedByCurrency?.length ?? 0) > 1;
+  const isMultiCurrencyOwing = (balanceData?.totalOwingByCurrency?.length ?? 0) > 1;
+  const isMultiCurrency = isMultiCurrencyOwed || isMultiCurrencyOwing;
+  // For net balance display in multi-currency mode, show the currency with the largest amount
+  const primaryOwedCurrency = useMemo(() => {
+    const allAmounts = [
+      ...(balanceData?.totalOwedByCurrency ?? []),
+      ...(balanceData?.totalOwingByCurrency ?? []),
+    ];
+    if (allAmounts.length === 0) return "USD";
+    return allAmounts.reduce((best, cur) => cur.amount > best.amount ? cur : best).currency;
+  }, [balanceData?.totalOwedByCurrency, balanceData?.totalOwingByCurrency]);
 
   // Load persisted nudge state when topDebtor changes
   useEffect(() => {
@@ -269,13 +284,23 @@ export default function HomeScreen() {
                 <Text className="text-sm text-primary-foreground/70 font-sans-medium mb-1">
                   Net Balance
                 </Text>
-                <AnimatedNumber
-                  value={(totalOwedCents - totalOwesCents) / 100}
-                  formatter={(n) => formatCents(Math.round(n * 100))}
-                  selectable
-                  className="font-sans-bold text-primary-foreground mb-4"
-                  style={{ fontVariant: ["tabular-nums"], fontSize: 42, lineHeight: 50 }}
-                />
+                {isMultiCurrency ? (
+                  <Text
+                    selectable
+                    className="font-sans-bold text-primary-foreground mb-4"
+                    style={{ fontVariant: ["tabular-nums"], fontSize: 42, lineHeight: 50 }}
+                  >
+                    {(totalOwedCents - totalOwesCents) > 0 ? "+" : (totalOwedCents - totalOwesCents) < 0 ? "-" : ""}{formatCents(Math.abs(totalOwedCents - totalOwesCents), primaryOwedCurrency)}
+                  </Text>
+                ) : (
+                  <AnimatedNumber
+                    value={(totalOwedCents - totalOwesCents) / 100}
+                    formatter={(n) => formatCents(Math.round(n * 100), primaryOwedCurrency)}
+                    selectable
+                    className="font-sans-bold text-primary-foreground mb-4"
+                    style={{ fontVariant: ["tabular-nums"], fontSize: 42, lineHeight: 50 }}
+                  />
+                )}
                 <View className="flex-row gap-6">
                   <View className="flex-row items-center gap-2">
                     <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
@@ -283,9 +308,18 @@ export default function HomeScreen() {
                     </View>
                     <View>
                       <Text className="text-xs text-primary-foreground/60 font-sans">You are owed</Text>
-                      <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
-                        {formatCents(totalOwedCents)}
-                      </Text>
+                      {isMultiCurrencyOwed ? (
+                        <MultiCurrencyAmount
+                          amounts={balanceData?.totalOwedByCurrency ?? []}
+                          selectable
+                          className="text-sm font-sans-semibold text-primary-foreground"
+                          style={{ fontVariant: ["tabular-nums"] }}
+                        />
+                      ) : (
+                        <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
+                          {formatCents(totalOwedCents, balanceData?.totalOwedByCurrency?.[0]?.currency)}
+                        </Text>
+                      )}
                     </View>
                   </View>
                   <View className="flex-row items-center gap-2">
@@ -294,9 +328,18 @@ export default function HomeScreen() {
                     </View>
                     <View>
                       <Text className="text-xs text-primary-foreground/60 font-sans">You owe</Text>
-                      <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
-                        {formatCents(totalOwesCents)}
-                      </Text>
+                      {isMultiCurrencyOwing ? (
+                        <MultiCurrencyAmount
+                          amounts={balanceData?.totalOwingByCurrency ?? []}
+                          selectable
+                          className="text-sm font-sans-semibold text-primary-foreground"
+                          style={{ fontVariant: ["tabular-nums"] }}
+                        />
+                      ) : (
+                        <Text selectable className="text-sm font-sans-semibold text-primary-foreground" style={{ fontVariant: ["tabular-nums"] }}>
+                          {formatCents(totalOwesCents, balanceData?.totalOwingByCurrency?.[0]?.currency)}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -310,7 +353,7 @@ export default function HomeScreen() {
                   >
                     <HandCoins size={16} color="#ffffff" />
                     <Text className="text-sm font-sans-semibold text-primary-foreground">
-                      Settle up {formatCents(totalOwesCents)}
+                      Settle up {isMultiCurrencyOwing ? formatMultiCurrency(balanceData?.totalOwingByCurrency ?? []) : formatCents(totalOwesCents, balanceData?.totalOwingByCurrency?.[0]?.currency)}
                     </Text>
                   </Pressable>
                 )}
@@ -357,7 +400,7 @@ export default function HomeScreen() {
                     </View>
                     <View className="flex-1">
                       <Text className="text-sm font-sans-medium text-card-foreground">
-                        {topDebtor.suggestion.fromUser?.name ?? "Someone"} owes you {formatCents(topDebtor.suggestion.amount)}
+                        {topDebtor.suggestion.fromUser?.name ?? "Someone"} owes you {formatCents(topDebtor.suggestion.amount, topDebtor.suggestion.currency)}
                       </Text>
                       <Text className="text-xs font-sans text-muted-foreground mt-0.5">
                         {formatRemindedAgo(nudgeRemindedAt)}
@@ -387,8 +430,8 @@ export default function HomeScreen() {
                       <Text className="text-sm font-sans-semibold text-amber-900 dark:text-amber-100">
                         {topDebtor.suggestion.fromUser?.name ?? "Someone"}{" "}
                         {topDebtor.othersCount > 0
-                          ? `and ${topDebtor.othersCount} other${topDebtor.othersCount > 1 ? "s" : ""} owe you ${formatCents(totalOwedCents)}`
-                          : `owes you ${formatCents(topDebtor.suggestion.amount)}`}
+                          ? `and ${topDebtor.othersCount} other${topDebtor.othersCount > 1 ? "s" : ""} owe you ${isMultiCurrencyOwed ? formatMultiCurrency(balanceData?.totalOwedByCurrency ?? []) : formatCents(totalOwedCents, balanceData?.totalOwedByCurrency?.[0]?.currency)}`
+                          : `owes you ${formatCents(topDebtor.suggestion.amount, topDebtor.suggestion.currency)}`}
                       </Text>
                       <Text className="text-xs font-sans text-amber-700 dark:text-amber-300 mt-0.5">
                         Send a friendly reminder to settle up
@@ -534,6 +577,7 @@ export default function HomeScreen() {
                   const isGroupLifecycle = ["group_created", "group_archived", "group_unarchived", "group_deleted", "group_updated"].includes(item.activityType);
                   const memberRole = (item.details?.role as string) ?? "";
                   const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
+                  const itemCurrency = (item.details?.currency as string) ?? groupCurrencyMap.get(item.groupId ?? "") ?? "USD";
                   const involvement = formatActivityInvolvement(item);
                   const destination = item.groupId
                     ? { pathname: `/(tabs)/groups/${item.groupId}` as const }
@@ -567,7 +611,7 @@ export default function HomeScreen() {
                             )}
                             {isExpenseUpdated && amountChanged ? (
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                                {formatCents(oldAmount!)} → {formatCents(newAmount!)}
+                                {formatCents(oldAmount!, itemCurrency)} → {formatCents(newAmount!, itemCurrency)}
                               </Text>
                             ) : null}
                             {isExpenseUpdated && descChanged ? (
@@ -588,7 +632,7 @@ export default function HomeScreen() {
                           <View className="items-end">
                             {displayAmount != null && (
                               <Text className="text-sm font-sans-semibold text-foreground">
-                                {formatCents(displayAmount)}
+                                {formatCents(displayAmount, itemCurrency)}
                               </Text>
                             )}
                             {involvement.text != null && (
@@ -601,7 +645,7 @@ export default function HomeScreen() {
                                     : "text-muted-foreground"
                                 }`}
                               >
-                                {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents)}` : ""}
+                                {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents, itemCurrency)}` : ""}
                               </Text>
                             )}
                             <Text className="text-xs text-muted-foreground font-sans">

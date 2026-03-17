@@ -89,6 +89,8 @@ export function useUserBalance() {
           totalOwedCents: sumAmounts(raw.totalOwed),
           totalOwesCents: sumAmounts(raw.totalOwing),
           netBalanceCents: sumAmounts(raw.totalOwed) - sumAmounts(raw.totalOwing),
+          totalOwedByCurrency: raw.totalOwed ?? [],
+          totalOwingByCurrency: raw.totalOwing ?? [],
           groupBalances: raw.groupBalances,
         };
       } catch {
@@ -103,6 +105,8 @@ export function useUserBalance() {
           totalOwedCents: owed,
           totalOwesCents: owes,
           netBalanceCents: owed - owes,
+          totalOwedByCurrency: [],
+          totalOwingByCurrency: [],
         };
       }
     },
@@ -597,6 +601,16 @@ export function useTopDebtor(balanceData?: UserBalanceDto) {
   }, [suggestions, currentEmail, topGroup]);
 
   return topDebtor;
+}
+
+/** Map of groupId → defaultCurrency for resolving per-item currency on cross-group screens. */
+export function useGroupCurrencyMap() {
+  const { data: groups = [] } = useGroups();
+  return useMemo(() => {
+    const map = new Map<string, string>();
+    groups.forEach((g) => map.set(g.id, g.defaultCurrency ?? "USD"));
+    return map;
+  }, [groups]);
 }
 
 export function useRegenerateInvite(groupId: string) {

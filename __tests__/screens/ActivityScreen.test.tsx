@@ -29,11 +29,13 @@ const mockUseUserActivity = jest.fn(() => ({
 
 const mockUseGroups = jest.fn(() => ({ data: [] }));
 const mockUseUserProfile = jest.fn(() => ({ data: { id: "backend-user-1", name: "Test User" } }));
+const mockUseGroupCurrencyMap = jest.fn(() => new Map<string, string>());
 
 jest.mock("@/lib/hooks", () => ({
   useUserActivity: (...args: any[]) => mockUseUserActivity(...args),
   useGroups: (...args: any[]) => mockUseGroups(...args),
   useUserProfile: (...args: any[]) => mockUseUserProfile(...args),
+  useGroupCurrencyMap: (...args: any[]) => mockUseGroupCurrencyMap(...args),
 }));
 
 beforeEach(() => {

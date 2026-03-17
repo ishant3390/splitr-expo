@@ -240,6 +240,13 @@ describe("hooks.ts", () => {
         totalOwesCents: 300,
         netBalanceCents: 1200,
         groupBalances: [],
+        totalOwedByCurrency: [
+          { currency: "USD", amount: 1000 },
+          { currency: "EUR", amount: 500 },
+        ],
+        totalOwingByCurrency: [
+          { currency: "USD", amount: 300 },
+        ],
       });
     });
 
@@ -258,6 +265,8 @@ describe("hooks.ts", () => {
         totalOwesCents: 0,
         netBalanceCents: 0,
         groupBalances: [],
+        totalOwedByCurrency: [],
+        totalOwingByCurrency: [],
       });
     });
 
@@ -274,6 +283,8 @@ describe("hooks.ts", () => {
         totalOwesCents: 0,
         netBalanceCents: 0,
         groupBalances: [],
+        totalOwedByCurrency: [],
+        totalOwingByCurrency: [],
       });
     });
 
@@ -295,6 +306,8 @@ describe("hooks.ts", () => {
         totalOwedCents: 100,
         totalOwesCents: 50,
         netBalanceCents: 50,
+        totalOwedByCurrency: [],
+        totalOwingByCurrency: [],
       });
     });
 

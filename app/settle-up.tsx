@@ -41,7 +41,7 @@ import { UpiQrModal } from "@/components/ui/upi-qr-modal";
 import { settlementsApi, groupsApi } from "@/lib/api";
 import { useUserProfile, useCrossGroupSuggestions } from "@/lib/hooks";
 import { invalidateAfterSettlementChange } from "@/lib/query";
-import { formatCents, getInitials, cn } from "@/lib/utils";
+import { formatCents, getInitials, cn, getCurrencySymbol } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
 import { CategoryIcon } from "@/components/ui/category-icon";
@@ -427,7 +427,7 @@ export default function SettleUpScreen() {
                   </Text>
                 </View>
                 <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                  owes {formatCents(s.amount)}
+                  owes {formatCents(s.amount, s.currency)}
                 </Text>
               </View>
               <Avatar
@@ -440,7 +440,7 @@ export default function SettleUpScreen() {
               <View className="flex-row items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
                 <Check size={14} color="#0d9488" />
                 <Text className="text-sm font-sans-semibold text-primary">
-                  Record {formatCents(s.amount)} payment
+                  Record {formatCents(s.amount, s.currency)} payment
                 </Text>
               </View>
               {currentUser && s.toUser?.id === currentUser.id && s.fromUser && (
@@ -820,7 +820,7 @@ export default function SettleUpScreen() {
                               </View>
                               <View className="items-end gap-1">
                                 <Text selectable className="text-sm font-sans-bold text-success" style={{ fontVariant: ["tabular-nums"] }}>
-                                  {formatCents(s.amount)}
+                                  {formatCents(s.amount, s.currency)}
                                 </Text>
                                 <Pressable
                                   onPress={() => { hapticWarning(); handleDeleteWithUndo(s); }}
@@ -957,7 +957,7 @@ export default function SettleUpScreen() {
                 style={{ fontSize: 48, lineHeight: 56 }}
                 className="font-sans-bold text-foreground"
               >
-                {createCurrency === "USD" ? "$" : createCurrency === "EUR" ? "€" : createCurrency === "GBP" ? "£" : createCurrency}
+                {getCurrencySymbol(createCurrency)}
                 {amount}
               </Text>
             </View>
@@ -1184,7 +1184,7 @@ export default function SettleUpScreen() {
         }}
         upiUri={upiQrUri}
         creditorName={createFrom?.toUser?.name ?? "payee"}
-        amount={`${createCurrency === "INR" ? "₹" : createCurrency}${amount}`}
+        amount={`${getCurrencySymbol(createCurrency)}${amount}`}
       />
 
       {/* Creditor nudge — add payment handles */}

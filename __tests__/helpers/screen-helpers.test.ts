@@ -1595,6 +1595,18 @@ describe("formatCentsForInvolvement", () => {
   it("handles negative input via abs", () => {
     expect(formatCentsForInvolvement(-500)).toBe("$5.00");
   });
+
+  it("formats with explicit currency GBP", () => {
+    expect(formatCentsForInvolvement(2500, "GBP")).toBe("£25.00");
+  });
+
+  it("formats with explicit currency EUR", () => {
+    expect(formatCentsForInvolvement(1050, "EUR")).toBe("€10.50");
+  });
+
+  it("defaults to USD when no currency provided", () => {
+    expect(formatCentsForInvolvement(100)).toBe("$1.00");
+  });
 });
 
 // ---------------------------------------------------------------------------

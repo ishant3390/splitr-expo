@@ -18,6 +18,7 @@ import { GroupAvatar } from "@/components/ui/group-avatar";
 import { useGroups, useArchiveGroup, useDeleteGroup, useUserBalance } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { cn, extractInviteCode, formatCents, formatRelativeTime } from "@/lib/utils";
+import { MultiCurrencyAmount } from "@/components/ui/multi-currency-amount";
 import { SHADOWS } from "@/lib/shadows";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { GroupDto } from "@/lib/types";
@@ -268,7 +269,7 @@ export default function GroupsScreen() {
                   }}
                 >
                   {balanceData.netBalanceCents > 0 ? "+" : "-"}
-                  {formatCents(Math.abs(balanceData.netBalanceCents))}
+                  {formatCents(Math.abs(balanceData.netBalanceCents), balanceData.totalOwedByCurrency?.[0]?.currency ?? balanceData.totalOwingByCurrency?.[0]?.currency)}
                 </Text>
                 <Text
                   className="text-xs font-sans mt-0.5"
@@ -289,26 +290,44 @@ export default function GroupsScreen() {
                   <Text className="text-xs font-sans" style={{ color: "rgba(255,255,255,0.6)" }}>
                     Owed to you
                   </Text>
-                  <Text
-                    selectable
-                    className="text-lg font-sans-bold mt-0.5"
-                    style={{ color: "#86efac", fontVariant: ["tabular-nums"] }}
-                  >
-                    {formatCents(balanceData.totalOwedCents)}
-                  </Text>
+                  {(balanceData.totalOwedByCurrency?.length ?? 0) > 1 ? (
+                    <MultiCurrencyAmount
+                      amounts={balanceData.totalOwedByCurrency ?? []}
+                      selectable
+                      className="text-lg font-sans-bold mt-0.5"
+                      style={{ color: "#86efac", fontVariant: ["tabular-nums"] }}
+                    />
+                  ) : (
+                    <Text
+                      selectable
+                      className="text-lg font-sans-bold mt-0.5"
+                      style={{ color: "#86efac", fontVariant: ["tabular-nums"] }}
+                    >
+                      {formatCents(balanceData.totalOwedCents, balanceData.totalOwedByCurrency?.[0]?.currency)}
+                    </Text>
+                  )}
                 </View>
                 <View style={{ width: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
                 <View className="flex-1 items-center">
                   <Text className="text-xs font-sans" style={{ color: "rgba(255,255,255,0.6)" }}>
                     You owe
                   </Text>
-                  <Text
-                    selectable
-                    className="text-lg font-sans-bold mt-0.5"
-                    style={{ color: "#fca5a5", fontVariant: ["tabular-nums"] }}
-                  >
-                    {formatCents(balanceData.totalOwesCents)}
-                  </Text>
+                  {(balanceData.totalOwingByCurrency?.length ?? 0) > 1 ? (
+                    <MultiCurrencyAmount
+                      amounts={balanceData.totalOwingByCurrency ?? []}
+                      selectable
+                      className="text-lg font-sans-bold mt-0.5"
+                      style={{ color: "#fca5a5", fontVariant: ["tabular-nums"] }}
+                    />
+                  ) : (
+                    <Text
+                      selectable
+                      className="text-lg font-sans-bold mt-0.5"
+                      style={{ color: "#fca5a5", fontVariant: ["tabular-nums"] }}
+                    >
+                      {formatCents(balanceData.totalOwesCents, balanceData.totalOwingByCurrency?.[0]?.currency)}
+                    </Text>
+                  )}
                 </View>
               </View>
             </View>

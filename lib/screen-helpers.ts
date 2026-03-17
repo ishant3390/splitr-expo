@@ -1,5 +1,6 @@
 // Pure helper functions extracted from screen components for testability.
 
+import { formatCents } from "./utils";
 import type { GroupMemberDto } from "./types";
 
 // Re-export icon utilities from centralized module
@@ -345,10 +346,9 @@ export function resolveActivityGroupName(activity: ActivityLogDto): string | nul
   return name || null;
 }
 
-/** Format cents as a dollar string (no sign prefix). */
-export function formatCentsForInvolvement(cents: number): string {
-  const dollars = Math.abs(cents) / 100;
-  return `$${dollars.toFixed(2)}`;
+/** Format cents as a currency string (no sign prefix). */
+export function formatCentsForInvolvement(cents: number, currency = "USD"): string {
+  return formatCents(Math.abs(cents), currency);
 }
 
 // --- Expense card display (Splitwise-style) ---

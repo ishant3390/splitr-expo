@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
-import { useUserActivity, useGroups, useUserProfile } from "@/lib/hooks";
+import { useUserActivity, useGroups, useUserProfile, useGroupCurrencyMap } from "@/lib/hooks";
 import { formatCents, formatDate, formatRelativeTime } from "@/lib/utils";
 import { formatActivityTitle, formatActivityInvolvement, formatCentsForInvolvement, resolveActivityGroupName } from "@/lib/screen-helpers";
 import type { ActivityLogDto } from "@/lib/types";
@@ -32,6 +32,7 @@ export default function ActivityScreen() {
     groups.forEach((g) => map.set(g.id, g.name));
     return map;
   }, [groups]);
+  const groupCurrencyMap = useGroupCurrencyMap();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -212,6 +213,7 @@ export default function ActivityScreen() {
             const isGroupLifecycle = ["group_created", "group_archived", "group_unarchived", "group_deleted", "group_updated"].includes(item.activityType);
             const memberRole = (item.details?.role as string) ?? "";
             const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
+            const itemCurrency = (item.details?.currency as string) ?? groupCurrencyMap.get(item.groupId ?? "") ?? "USD";
             const involvement = formatActivityInvolvement(item);
 
             const destination = item.groupId
@@ -245,7 +247,7 @@ export default function ActivityScreen() {
                       )}
                       {isExpenseUpdated && amountChanged ? (
                         <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                          {formatCents(oldAmount!)} {"\u2192"} {formatCents(newAmount!)}
+                          {formatCents(oldAmount!, itemCurrency)} {"\u2192"} {formatCents(newAmount!, itemCurrency)}
                         </Text>
                       ) : null}
                       {isExpenseUpdated && descChanged ? (
@@ -266,7 +268,7 @@ export default function ActivityScreen() {
                     <View className="items-end">
                       {displayAmount != null && (
                         <Text className="text-sm font-sans-semibold text-foreground">
-                          {formatCents(displayAmount)}
+                          {formatCents(displayAmount, itemCurrency)}
                         </Text>
                       )}
                       {involvement.text != null && (
@@ -279,7 +281,7 @@ export default function ActivityScreen() {
                               : "text-muted-foreground"
                           }`}
                         >
-                          {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents)}` : ""}
+                          {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents, itemCurrency)}` : ""}
                         </Text>
                       )}
                       <Text className="text-xs text-muted-foreground font-sans">

@@ -42,7 +42,7 @@ const mockUseUserActivity = jest.fn(() => ({
   refetch: mockRefetchActivity,
 }));
 const mockUseUserBalance = jest.fn(() => ({
-  data: { totalOwedCents: 0, totalOwesCents: 0, netBalanceCents: 0 },
+  data: { totalOwedCents: 0, totalOwesCents: 0, netBalanceCents: 0, totalOwedByCurrency: [], totalOwingByCurrency: [] },
   error: null,
   refetch: mockRefetchBalance,
 }));
@@ -56,6 +56,7 @@ jest.mock("@/lib/hooks", () => ({
   useTopDebtor: (...args: any[]) => mockUseTopDebtor(...args),
   useGroups: (...args: any[]) => mockUseGroups(...args),
   useUserProfile: (...args: any[]) => mockUseUserProfile(...args),
+  useGroupCurrencyMap: () => new Map(),
 }));
 
 describe("HomeScreen", () => {
@@ -69,7 +70,7 @@ describe("HomeScreen", () => {
       refetch: mockRefetchActivity,
     });
     mockUseUserBalance.mockReturnValue({
-      data: { totalOwedCents: 0, totalOwesCents: 0, netBalanceCents: 0 },
+      data: { totalOwedCents: 0, totalOwesCents: 0, netBalanceCents: 0, totalOwedByCurrency: [], totalOwingByCurrency: [] },
       error: null,
       refetch: mockRefetchBalance,
     });
@@ -1181,5 +1182,55 @@ describe("HomeScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("You added Tacos")).toBeTruthy();
     });
+  });
+
+  // --- Multi-currency balance card ---
+
+  it("shows multi-currency balance as '$100.00 + £25.00' for You are owed and '$30.00' for You owe", async () => {
+    mockUseUserBalance.mockReturnValue({
+      data: {
+        totalOwedCents: 12500,
+        totalOwesCents: 3000,
+        netBalanceCents: 9500,
+        totalOwedByCurrency: [
+          { currency: "USD", amount: 10000 },
+          { currency: "GBP", amount: 2500 },
+        ],
+        totalOwingByCurrency: [{ currency: "USD", amount: 3000 }],
+      },
+      error: null,
+      refetch: mockRefetchBalance,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("You are owed")).toBeTruthy();
+      expect(screen.getByText("$100.00 + £25.00")).toBeTruthy();
+      expect(screen.getByText("You owe")).toBeTruthy();
+      expect(screen.getByText("$30.00")).toBeTruthy();
+    });
+  });
+
+  it("shows single-currency GBP balance without defaulting to USD", async () => {
+    mockUseUserBalance.mockReturnValue({
+      data: {
+        totalOwedCents: 5000,
+        totalOwesCents: 2000,
+        netBalanceCents: 3000,
+        totalOwedByCurrency: [{ currency: "GBP", amount: 5000 }],
+        totalOwingByCurrency: [{ currency: "GBP", amount: 2000 }],
+      },
+      error: null,
+      refetch: mockRefetchBalance,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("You are owed")).toBeTruthy();
+      expect(screen.getByText("£50.00")).toBeTruthy();
+      expect(screen.getByText("You owe")).toBeTruthy();
+      expect(screen.getByText("£20.00")).toBeTruthy();
+    });
+    // Must not fall back to USD formatting
+    expect(screen.queryByText("$50.00")).toBeNull();
+    expect(screen.queryByText("$20.00")).toBeNull();
   });
 });

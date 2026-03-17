@@ -1067,9 +1067,9 @@ describe("SettleUpScreen — payment deep links", () => {
     ]);
     render(<SettleUpScreen />);
     await waitFor(() => {
-      expect(screen.getByText(/Record.*\$50\.00.*payment/)).toBeTruthy();
+      expect(screen.getByText(/Record.*₹50\.00.*payment/)).toBeTruthy();
     });
-    fireEvent.press(screen.getByText(/Record.*\$50\.00.*payment/));
+    fireEvent.press(screen.getByText(/Record.*₹50\.00.*payment/));
     await waitFor(() => {
       // INR region: cash, upi, paypal, bank_transfer, other
       expect(screen.getByText("Cash")).toBeTruthy();

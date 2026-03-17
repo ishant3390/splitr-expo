@@ -64,6 +64,8 @@ export interface UserBalanceDto {
   totalOwedCents: number;
   totalOwesCents: number;
   netBalanceCents: number;
+  totalOwedByCurrency?: CurrencyAmount[];
+  totalOwingByCurrency?: CurrencyAmount[];
   groupBalances?: Array<{
     groupId: string;
     groupName: string;

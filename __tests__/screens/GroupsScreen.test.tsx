@@ -862,6 +862,8 @@ describe("GroupsScreen", () => {
         totalOwedCents: 4500,
         totalOwesCents: 0,
         netBalanceCents: 4500,
+        totalOwedByCurrency: [{ currency: "USD", amount: 4500 }],
+        totalOwingByCurrency: [],
         groupBalances: [{ groupId: "g1", groupName: "Trip to Paris", balanceCents: 4500 }],
       },
       refetch: mockRefetchBalance,
@@ -907,6 +909,8 @@ describe("GroupsScreen", () => {
         totalOwedCents: 5000,
         totalOwesCents: 2000,
         netBalanceCents: 3000,
+        totalOwedByCurrency: [{ currency: "USD", amount: 5000 }],
+        totalOwingByCurrency: [{ currency: "USD", amount: 2000 }],
         groupBalances: [
           { groupId: "g1", groupName: "Trip to Paris", balanceCents: 3000 },
           { groupId: "g2", groupName: "Roommates", balanceCents: 0 },
@@ -957,6 +961,8 @@ describe("GroupsScreen", () => {
         totalOwedCents: 5000,
         totalOwesCents: 2000,
         netBalanceCents: 3000,
+        totalOwedByCurrency: [{ currency: "USD", amount: 5000 }],
+        totalOwingByCurrency: [{ currency: "USD", amount: 2000 }],
         groupBalances: [], // no entry for g1
       },
       refetch: mockRefetchBalance,
