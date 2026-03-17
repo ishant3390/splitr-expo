@@ -27,7 +27,7 @@ import {
   Wallet,
   X,
 } from "lucide-react-native";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, FadeOut, FadeOutUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
 import { Card } from "@/components/ui/card";
@@ -1007,7 +1007,7 @@ export default function SettleUpScreen() {
 
         {/* Post-payment confirmation */}
         {paymentInitiatedProvider && (
-          <Animated.View entering={FadeInDown.duration(200)} className="py-3">
+          <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOutUp.duration(150)} className="py-3">
             <Card className="p-4 bg-primary/5 border-primary/20">
               <Text className="text-sm font-sans-semibold text-foreground text-center mb-3">
                 Did you complete the payment via {paymentInitiatedProvider === "cashapp" ? "Cash App" : paymentInitiatedProvider.charAt(0).toUpperCase() + paymentInitiatedProvider.slice(1)}?
@@ -1100,7 +1100,7 @@ export default function SettleUpScreen() {
 
         {/* Optional fields — collapsible */}
         {showOptionalFields && (
-          <Animated.View entering={FadeInDown.duration(200)} className="gap-3">
+          <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOutUp.duration(150)} className="gap-3">
             <Input
               label="Reference"
               value={paymentReference}
@@ -1141,6 +1141,7 @@ export default function SettleUpScreen() {
       {showSuccess && (
         <Animated.View
           entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(150)}
           style={{
             position: "absolute",
             top: 0,
@@ -1194,7 +1195,7 @@ export default function SettleUpScreen() {
         !isCrossGroup &&
         myGroupSuggestions.some((s) => s.toUser?.id === currentUser.id) && (
           <View className="absolute bottom-4 left-5 right-5">
-            <Animated.View entering={FadeInDown.duration(300).springify()}>
+            <Animated.View entering={FadeInDown.duration(300).springify()} exiting={FadeOutUp.duration(150)}>
               <Card className="p-4 flex-row items-center gap-3">
                 <View
                   style={{

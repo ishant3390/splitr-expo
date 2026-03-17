@@ -164,6 +164,7 @@ jest.mock("react-native-reanimated", () => {
     FadeInRight: chainableAnim(),
     FadeInLeft: chainableAnim(),
     FadeOut: chainableAnim(),
+    FadeOutUp: chainableAnim(),
     SlideInDown: { springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) },
     SlideOutDown: { springify: () => ({ damping: () => ({ stiffness: () => ({}) }) }) },
     useAnimatedStyle: (fn: any) => (typeof fn === "function" ? fn() : {}),
