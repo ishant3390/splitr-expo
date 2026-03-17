@@ -198,7 +198,7 @@ test.describe("Group Lifecycle", () => {
     await expectGroupNotInList(page, group.name);
 
     // Switch to Archived tab
-    await page.getByText("Archived").click();
+    await page.getByText("Archived", { exact: true }).click();
     await page.waitForTimeout(2000);
     await expectGroupInList(page, group.name);
   });
@@ -213,7 +213,7 @@ test.describe("Group Lifecycle", () => {
 
     // Navigate to Groups → Archived
     await navigateToGroupsTab(page);
-    await page.getByText("Archived").click();
+    await page.getByText("Archived", { exact: true }).click();
     await page.waitForTimeout(2000);
     await expectGroupInList(page, group.name);
 
@@ -304,7 +304,7 @@ test.describe("Group Lifecycle", () => {
     await page.waitForTimeout(2000);
     await navigateToGroupsTab(page);
     await expectGroupNotInList(page, group.name);
-    await page.getByText("Archived").click();
+    await page.getByText("Archived", { exact: true }).click();
     await page.waitForTimeout(2000);
     await expectGroupInList(page, group.name);
   });
@@ -368,7 +368,7 @@ test.describe("Group Lifecycle", () => {
     await page.waitForTimeout(2000);
     await navigateToGroupsTab(page);
     await expectGroupNotInList(page, group.name);
-    await page.getByText("Archived").click();
+    await page.getByText("Archived", { exact: true }).click();
     await page.waitForTimeout(2000);
     await expectGroupInList(page, group.name);
   });
@@ -401,7 +401,7 @@ test.describe("Group Lifecycle", () => {
     await page.waitForTimeout(1000);
 
     // Open more options menu
-    const moreButton = page.getByLabelText("More options");
+    const moreButton = page.getByLabel("More options");
     const hasMore = await moreButton.isVisible({ timeout: 3000 }).catch(() => false);
     if (!hasMore) {
       test.skip();
@@ -439,7 +439,7 @@ test.describe("Group Lifecycle", () => {
     await page.getByText(group.name).first().waitFor({ state: "attached", timeout: 10000 });
     await page.waitForTimeout(1000);
 
-    const moreButton = page.getByLabelText("More options");
+    const moreButton = page.getByLabel("More options");
     const hasMore = await moreButton.isVisible({ timeout: 3000 }).catch(() => false);
     if (!hasMore) {
       test.skip();

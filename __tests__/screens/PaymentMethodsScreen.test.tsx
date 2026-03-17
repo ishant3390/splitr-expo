@@ -1,70 +1,144 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
+
+const mockRouterBack = jest.fn();
+const mockRouterPush = jest.fn();
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ back: mockRouterBack, push: mockRouterPush }),
+}));
+
+const mockToast = { success: jest.fn(), error: jest.fn(), info: jest.fn() };
+jest.mock("@/components/ui/toast", () => ({
+  useToast: () => mockToast,
+}));
+
+const mockUpdateMe = jest.fn(() => Promise.resolve({}));
+jest.mock("@/lib/api", () => ({
+  usersApi: {
+    updateMe: (...args: any[]) => mockUpdateMe(...args),
+  },
+}));
+
+jest.mock("@/lib/query", () => ({
+  invalidateAfterProfileUpdate: jest.fn(),
+}));
+
+let mockUserData: any = {
+  id: "u1",
+  name: "Alice",
+  defaultCurrency: "USD",
+  paymentHandles: { venmoUsername: "alice-w" },
+};
+
+jest.mock("@/lib/hooks", () => ({
+  useUserProfile: () => ({ data: mockUserData }),
+}));
+
 import PaymentMethodsScreen from "@/app/payment-methods";
 
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockUserData = {
+    id: "u1",
+    name: "Alice",
+    defaultCurrency: "USD",
+    paymentHandles: { venmoUsername: "alice-w" },
+  };
+});
+
 describe("PaymentMethodsScreen", () => {
-  it("renders header", () => {
+  it("renders header with gradient hero", () => {
     render(<PaymentMethodsScreen />);
     expect(screen.getByText("Payment Methods")).toBeTruthy();
+    expect(screen.getByText(/Add your handles/)).toBeTruthy();
   });
 
-  it("renders Coming Soon badge", () => {
+  it("shows USD region providers by default", () => {
     render(<PaymentMethodsScreen />);
-    expect(screen.getByText("Coming Soon")).toBeTruthy();
+    expect(screen.getByText("Venmo")).toBeTruthy();
+    expect(screen.getByText("PayPal")).toBeTruthy();
+    expect(screen.getByText("Cash App")).toBeTruthy();
+    expect(screen.getByText("Zelle")).toBeTruthy();
   });
 
-  it("renders hero card text", () => {
+  it("shows INR region providers when currency is INR", () => {
+    mockUserData = { ...mockUserData, defaultCurrency: "INR" };
     render(<PaymentMethodsScreen />);
-    expect(screen.getByText("Payments are on the way")).toBeTruthy();
-    expect(screen.getByText(/Soon you'll be able to settle up instantly/)).toBeTruthy();
+    expect(screen.getByText("UPI")).toBeTruthy();
+    expect(screen.getByText("PayPal")).toBeTruthy();
   });
 
-  it("renders faux card visual", () => {
+  it("pre-fills existing payment handles", () => {
     render(<PaymentMethodsScreen />);
-    expect(screen.getByText("SPLITR")).toBeTruthy();
-    expect(screen.getByText("XXXX  XXXX  XXXX  XXXX")).toBeTruthy();
-    expect(screen.getByText("YOUR NAME")).toBeTruthy();
-    expect(screen.getByText("XX/XX")).toBeTruthy();
+    const venmoInput = screen.getByDisplayValue("alice-w");
+    expect(venmoInput).toBeTruthy();
   });
 
-  it("renders all feature cards", () => {
+  it("shows 'Show all payment methods' toggle", () => {
     render(<PaymentMethodsScreen />);
-    expect(screen.getByText("Link Cards & Banks")).toBeTruthy();
-    expect(screen.getByText("Pay Friends Instantly")).toBeTruthy();
-    expect(screen.getByText("Bank-Grade Security")).toBeTruthy();
+    expect(screen.getByText("Show all payment methods")).toBeTruthy();
   });
 
-  it("renders feature descriptions", () => {
+  it("reveals other region providers on toggle", () => {
     render(<PaymentMethodsScreen />);
-    expect(screen.getByText("Add your debit or credit card for instant settlements")).toBeTruthy();
-    expect(screen.getByText("Send money directly from the app with one tap")).toBeTruthy();
-    expect(screen.getByText("256-bit encryption with PCI DSS compliance")).toBeTruthy();
+    fireEvent.press(screen.getByText("Show all payment methods"));
+    expect(screen.getByText("Other Regions")).toBeTruthy();
+    expect(screen.getByText("UPI")).toBeTruthy();
+    expect(screen.getByText("Revolut")).toBeTruthy();
+    expect(screen.getByText("Monzo")).toBeTruthy();
   });
 
-  it("renders notify button", () => {
+  it("renders save button", () => {
     render(<PaymentMethodsScreen />);
-    expect(screen.getByText("Notify Me When Available")).toBeTruthy();
-    expect(screen.getByText("Be the first to know")).toBeTruthy();
+    expect(screen.getByText("Save Payment Methods")).toBeTruthy();
   });
 
-  it("shows confirmation after pressing notify", () => {
+  it("calls updateMe on save", async () => {
     render(<PaymentMethodsScreen />);
-    fireEvent.press(screen.getByText("Notify Me When Available"));
-    expect(screen.getByText("You're on the list!")).toBeTruthy();
-    expect(screen.getByText(/We'll notify you as soon as payments are available/)).toBeTruthy();
+    fireEvent.press(screen.getByText("Save Payment Methods"));
+    await waitFor(() => {
+      expect(mockUpdateMe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paymentHandles: expect.objectContaining({ venmoUsername: "alice-w" }),
+        }),
+        "mock-token"
+      );
+      expect(mockToast.success).toHaveBeenCalledWith("Payment methods saved!");
+    });
   });
 
-  it("hides notify button after pressing it", () => {
+  it("shows error toast on save failure", async () => {
+    mockUpdateMe.mockRejectedValueOnce(new Error("fail"));
     render(<PaymentMethodsScreen />);
-    fireEvent.press(screen.getByText("Notify Me When Available"));
-    expect(screen.queryByText("Notify Me When Available")).toBeNull();
+    fireEvent.press(screen.getByText("Save Payment Methods"));
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Failed to save payment methods.");
+    });
+  });
+
+  it("validates invalid UPI format", async () => {
+    mockUserData = { ...mockUserData, defaultCurrency: "INR", paymentHandles: {} };
+    render(<PaymentMethodsScreen />);
+    // Show all to get UPI
+    const upiInput = screen.getByPlaceholderText("you@okicici");
+    fireEvent.changeText(upiInput, "not-valid");
+    fireEvent.press(screen.getByText("Save Payment Methods"));
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Please fix the errors above.");
+    });
+  });
+
+  it("handles empty user handles gracefully", () => {
+    mockUserData = { ...mockUserData, paymentHandles: undefined };
+    render(<PaymentMethodsScreen />);
+    expect(screen.getByText("Payment Methods")).toBeTruthy();
   });
 
   it("navigates back on back button press", () => {
     render(<PaymentMethodsScreen />);
-    // The back button is in the header
-    // Pressing it calls hapticLight() + router.back()
-    // No crash means it renders correctly
-    expect(screen.getByText("Payment Methods")).toBeTruthy();
+    // Find the back button by accessibility role
+    const backButtons = screen.getAllByRole("button");
+    fireEvent.press(backButtons[0]);
+    expect(mockRouterBack).toHaveBeenCalled();
   });
 });

@@ -1,16 +1,18 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Platform,
   RefreshControl,
 } from "react-native";
 import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,6 +24,7 @@ import {
   HandCoins,
   History,
   Trash2,
+  Wallet,
   X,
 } from "lucide-react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
@@ -33,6 +36,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
+import { PaymentLinksSection } from "@/components/ui/payment-links-section";
+import { UpiQrModal } from "@/components/ui/upi-qr-modal";
 import { settlementsApi, groupsApi } from "@/lib/api";
 import { useUserProfile, useCrossGroupSuggestions } from "@/lib/hooks";
 import { invalidateAfterSettlementChange } from "@/lib/query";
@@ -40,9 +45,16 @@ import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
 import { CategoryIcon } from "@/components/ui/category-icon";
-import { getPaymentMethodIcon, PAYMENT_METHOD_ICON_MAP } from "@/lib/category-icons";
+import { getPaymentMethodIcon } from "@/lib/category-icons";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { Confetti } from "@/components/ui/confetti";
+import {
+  getAvailableProviders,
+  getRegionProviderCount,
+  getRegionPaymentMethods,
+  buildPaymentLink,
+  type PaymentProvider,
+} from "@/lib/payment-links";
 import type {
   SettlementDto,
   SettlementSuggestionDto,
@@ -50,10 +62,18 @@ import type {
   GroupMemberDto,
 } from "@/lib/types";
 
-const PAYMENT_METHODS = Object.entries(PAYMENT_METHOD_ICON_MAP).map(([key, config]) => ({
-  key,
-  label: config.label,
-}));
+function getPaymentMethodsForCurrency(
+  currency: string,
+  configuredProviders?: PaymentProvider[]
+) {
+  const keys = getRegionPaymentMethods(currency, configuredProviders);
+  return keys.map((key) => ({
+    key,
+    label: getPaymentMethodIcon(key).label,
+  }));
+}
+
+const DISMISS_KEY = "@splitr/payment_handles_nudge_dismissed";
 
 export default function SettleUpScreen() {
   const router = useRouter();
@@ -109,6 +129,35 @@ export default function SettleUpScreen() {
   const [paymentReference, setPaymentReference] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Payment deep link state
+  const [paymentInitiatedProvider, setPaymentInitiatedProvider] = useState<PaymentProvider | null>(null);
+  const [showUpiQr, setShowUpiQr] = useState(false);
+  const [upiQrUri, setUpiQrUri] = useState("");
+
+  // Creditor's configured providers (for method selector + Pay Directly)
+  const creditorAvailableProviders = useMemo(() => {
+    if (!createFrom?.toUserPaymentHandles) return [];
+    return getAvailableProviders(createCurrency, createFrom.toUserPaymentHandles);
+  }, [createFrom, createCurrency]);
+
+  const creditorRegionCount = useMemo(() => {
+    if (!createFrom?.toUserPaymentHandles) return 0;
+    return getRegionProviderCount(createCurrency, createFrom.toUserPaymentHandles);
+  }, [createFrom, createCurrency]);
+
+  // Creditor nudge dismissal
+  const [nudgeDismissed, setNudgeDismissed] = useState(true); // default hidden until checked
+  useEffect(() => {
+    AsyncStorage.getItem(DISMISS_KEY).then((val) => {
+      if (val) {
+        const expiry = parseInt(val, 10);
+        setNudgeDismissed(Date.now() < expiry);
+      } else {
+        setNudgeDismissed(false);
+      }
+    });
+  }, []);
 
   // Success overlay
   const [showSuccess, setShowSuccess] = useState(false);
@@ -223,15 +272,16 @@ export default function SettleUpScreen() {
     setCreateFrom(suggestion);
     setAmount((suggestion.amount / 100).toFixed(2));
     setCreateGroupId(modalGroupId ?? groupId ?? null);
-    setCreateCurrency(currency || group?.defaultCurrency || "USD");
+    setCreateCurrency(currency || suggestion.currency || group?.defaultCurrency || "USD");
     setPaymentMethod("cash");
     setPaymentReference("");
     setNotes("");
     setShowOptionalFields(false);
+    setPaymentInitiatedProvider(null);
     setShowCreate(true);
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (paymentMethodOverride?: string) => {
     if (!createFrom) return;
     const targetGroupId = createGroupId ?? groupId;
     if (!targetGroupId) return;
@@ -241,6 +291,8 @@ export default function SettleUpScreen() {
       toast.error("Please enter a valid amount.");
       return;
     }
+
+    const resolvedMethod = paymentMethodOverride ?? paymentMethod;
 
     setSubmitting(true);
     try {
@@ -254,7 +306,7 @@ export default function SettleUpScreen() {
           payeeGuestUserId: createFrom.toGuest?.id,
           amount: parsedAmount,
           currency: createCurrency,
-          paymentMethod: paymentMethod || undefined,
+          paymentMethod: resolvedMethod || undefined,
           paymentReference: paymentReference.trim() || undefined,
           settlementDate: new Date().toISOString().split("T")[0],
           notes: notes.trim() || undefined,
@@ -273,7 +325,8 @@ export default function SettleUpScreen() {
         }
         invalidateAfterSettlementChange(targetGroupId);
       }, 800);
-    } catch {
+    } catch (err) {
+      console.error("[SettleUp] Failed to record settlement:", err);
       hapticError();
       toast.error("Failed to record settlement.");
     } finally {
@@ -295,6 +348,7 @@ export default function SettleUpScreen() {
         const token = await getToken();
         await settlementsApi.delete(settlement.id, token!);
         await loadData(); // Refresh suggestions after actual delete
+        if (groupId) invalidateAfterSettlementChange(groupId);
       } catch {
         setSettlements((prev) => [...prev, settlement]);
         toast.error("Failed to delete settlement.");
@@ -744,9 +798,6 @@ export default function SettleUpScreen() {
                         const payeeName =
                           s.payeeUser?.name ?? s.payeeGuest?.name ?? "Someone";
                         const methodConfig = getPaymentMethodIcon(s.paymentMethod);
-                        const method = PAYMENT_METHODS.find(
-                          (m) => m.key === s.paymentMethod
-                        );
                         return (
                           <Card key={s.id} className="p-4">
                             <View className="flex-row items-center gap-3">
@@ -758,7 +809,7 @@ export default function SettleUpScreen() {
                                 <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                                   {s.settlementDate}
                                   {s.paymentMethod
-                                    ? ` · ${method?.label ?? s.paymentMethod}`
+                                    ? ` · ${methodConfig.label ?? s.paymentMethod}`
                                     : ""}
                                 </Text>
                                 {s.notes ? (
@@ -916,6 +967,81 @@ export default function SettleUpScreen() {
         {/* Divider */}
         <View className="h-px bg-border" />
 
+        {/* Pay via deep links — only when current user is debtor and creditor has handles */}
+        {createFrom && currentUser && createFrom.fromUser?.id === currentUser.id && (() => {
+          const creditorHandles = createFrom.toUserPaymentHandles;
+          if (creditorAvailableProviders.length === 0) return null;
+
+          // On web, replace UPI deep link with QR modal
+          const handlePaymentInitiated = (provider: PaymentProvider) => {
+            if (provider === "upi" && Platform.OS === "web") {
+              const result = buildPaymentLink(provider, creditorHandles!, {
+                amount: parseFloat(amount) || 0,
+                currency: createCurrency,
+                creditorName: createFrom.toUser?.name ?? "payee",
+              });
+              if (result.url) {
+                setUpiQrUri(result.url);
+                setShowUpiQr(true);
+              }
+              return;
+            }
+            setPaymentInitiatedProvider(provider);
+            setPaymentMethod(provider);
+          };
+
+          return (
+            <View className="pt-4 pb-2">
+              <PaymentLinksSection
+                providers={creditorAvailableProviders}
+                creditorHandles={creditorHandles!}
+                amount={parseFloat(amount) || 0}
+                currency={createCurrency}
+                creditorName={createFrom.toUser?.name ?? "payee"}
+                onPaymentInitiated={handlePaymentInitiated}
+                regionProviderCount={creditorRegionCount}
+              />
+            </View>
+          );
+        })()}
+
+        {/* Post-payment confirmation */}
+        {paymentInitiatedProvider && (
+          <Animated.View entering={FadeInDown.duration(200)} className="py-3">
+            <Card className="p-4 bg-primary/5 border-primary/20">
+              <Text className="text-sm font-sans-semibold text-foreground text-center mb-3">
+                Did you complete the payment via {paymentInitiatedProvider === "cashapp" ? "Cash App" : paymentInitiatedProvider.charAt(0).toUpperCase() + paymentInitiatedProvider.slice(1)}?
+              </Text>
+              <View className="flex-row gap-3">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1"
+                  onPress={() => {
+                    const provider = paymentInitiatedProvider;
+                    setPaymentInitiatedProvider(null);
+                    handleCreate(provider!);
+                  }}
+                >
+                  <Text className="text-sm font-sans-semibold text-primary-foreground">
+                    Yes, record settlement
+                  </Text>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onPress={() => setPaymentInitiatedProvider(null)}
+                >
+                  <Text className="text-sm font-sans-semibold text-foreground">
+                    Not yet
+                  </Text>
+                </Button>
+              </View>
+            </Card>
+          </Animated.View>
+        )}
+
         {/* Payment method */}
         <View className="pt-4 pb-2">
           <Text className="text-xs font-sans-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -923,7 +1049,7 @@ export default function SettleUpScreen() {
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
             <View className="flex-row" style={{ gap: 8, paddingHorizontal: 4 }}>
-              {PAYMENT_METHODS.map((m) => {
+              {getPaymentMethodsForCurrency(createCurrency, creditorAvailableProviders).map((m) => {
                 const isSelected = paymentMethod === m.key;
                 return (
                   <Pressable
@@ -994,7 +1120,7 @@ export default function SettleUpScreen() {
         <Button
           variant="default"
           size="lg"
-          onPress={handleCreate}
+          onPress={() => handleCreate()}
           disabled={submitting || !amount}
           className="mt-2"
         >
@@ -1046,6 +1172,79 @@ export default function SettleUpScreen() {
         onConfirm={handleDelete}
         onCancel={() => setSettlementToDelete(null)}
       />
+
+      {/* UPI QR Modal (web) */}
+      <UpiQrModal
+        visible={showUpiQr}
+        onClose={() => setShowUpiQr(false)}
+        onDone={() => {
+          setShowUpiQr(false);
+          setPaymentInitiatedProvider("upi");
+          setPaymentMethod("upi");
+        }}
+        upiUri={upiQrUri}
+        creditorName={createFrom?.toUser?.name ?? "payee"}
+        amount={`${createCurrency === "INR" ? "₹" : createCurrency}${amount}`}
+      />
+
+      {/* Creditor nudge — add payment handles */}
+      {currentUser &&
+        !nudgeDismissed &&
+        (!currentUser.paymentHandles || Object.keys(currentUser.paymentHandles).length === 0) &&
+        !isCrossGroup &&
+        myGroupSuggestions.some((s) => s.toUser?.id === currentUser.id) && (
+          <View className="absolute bottom-4 left-5 right-5">
+            <Animated.View entering={FadeInDown.duration(300).springify()}>
+              <Card className="p-4 flex-row items-center gap-3">
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: isDark ? "rgba(13,148,136,0.15)" : "rgba(13,148,136,0.08)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Wallet size={18} color="#0d9488" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-sans-semibold text-card-foreground">
+                    Add your payment details
+                  </Text>
+                  <Text className="text-xs text-muted-foreground font-sans">
+                    So friends can pay you directly
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <Pressable
+                    onPress={() => {
+                      hapticSelection();
+                      router.push("/payment-methods");
+                    }}
+                    className="px-3 py-1.5 rounded-full bg-primary"
+                    accessibilityRole="button"
+                  >
+                    <Text className="text-xs font-sans-semibold text-primary-foreground">
+                      Add
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      // Dismiss for 7 days
+                      const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
+                      AsyncStorage.setItem(DISMISS_KEY, String(expiry));
+                      setNudgeDismissed(true);
+                    }}
+                    hitSlop={8}
+                  >
+                    <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
+                  </Pressable>
+                </View>
+              </Card>
+            </Animated.View>
+          </View>
+        )}
     </SafeAreaView>
   );
 }

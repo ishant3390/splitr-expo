@@ -64,11 +64,21 @@ export class ApiClient {
       email: string;
       name: string;
       defaultCurrency?: string;
+      paymentHandles?: Record<string, string>;
     }>("/v1/users/me");
   }
 
-  async updateMe(data: { name?: string; defaultCurrency?: string }) {
-    return this.request<{ id: string; name: string; defaultCurrency?: string }>(
+  async updateMe(data: {
+    name?: string;
+    defaultCurrency?: string;
+    paymentHandles?: Record<string, string>;
+  }) {
+    return this.request<{
+      id: string;
+      name: string;
+      defaultCurrency?: string;
+      paymentHandles?: Record<string, string>;
+    }>(
       "/v1/users/me",
       { method: "PATCH", body: JSON.stringify(data) }
     );
@@ -288,6 +298,7 @@ export class ApiClient {
         toGuest?: { id: string; name: string };
         amount: number;
         currency: string;
+        toUserPaymentHandles?: Record<string, string>;
       }>
     >(`/v1/groups/${groupId}/settlements/suggestions`);
   }

@@ -31,19 +31,27 @@ export function CategoryIcon({
   const { box, icon: iconSize } = SIZES[size];
   const IconComponent = resolved.icon;
 
+  // Brand icons (bg=transparent) render their own background — use full box size
+  const isBrandIcon = resolved.bg === "transparent";
+
   return (
     <View
       className={className}
       style={{
         width: box,
         height: box,
-        borderRadius: box * 0.3,
-        backgroundColor: isDark ? (resolved.darkBg ?? resolved.bg) : resolved.bg,
+        borderRadius: isBrandIcon ? box * 0.2 : box * 0.3,
+        backgroundColor: isBrandIcon
+          ? "transparent"
+          : isDark
+            ? (resolved.darkBg ?? resolved.bg)
+            : resolved.bg,
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
       }}
     >
-      <IconComponent size={iconSize} color={resolved.color} />
+      <IconComponent size={isBrandIcon ? box : iconSize} color={resolved.color} />
     </View>
   );
 }

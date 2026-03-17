@@ -38,7 +38,8 @@ app/                    # Screens (Expo Router file-based)
   create-group.tsx      # Create group form (name, type, emoji, currency → post-creation share sheet; members added from group detail only)
   join/[code].tsx       # Join group via invite code (deep link landing)
   invite/[code].tsx     # Re-export of join screen (matches deep link URL path)
-  settle-up.tsx         # Settlement screen (suggestions + history + confetti on full settle)
+  settle-up.tsx         # Settlement screen (suggestions + history + confetti on full settle + payment deep links)
+  payment-methods.tsx   # Payment handle settings (Venmo, PayPal, Cash App, Zelle, UPI, Revolut, Monzo)
   chat.tsx              # AI chat assistant (SSE streaming, interactive cards, quota)
   receipt-scanner.tsx   # Receipt scanning (POST /v1/receipts/scan, confidence badges, quota)
   edit-profile.tsx      # Edit profile
@@ -54,7 +55,9 @@ components/
   TabBar.tsx            # Custom animated tab bar (Airbnb-style bounce, sliding indicator, FAB with long-press quick-add)
   NetworkProvider.tsx   # Network context, offline banner, auto-sync
   NotificationProvider.tsx # Push notification lifecycle (native-only, web passthrough)
-  icons/                # Custom SVG icons (social auth logos, tab bar icons)
+  icons/                # Custom SVG icons (social auth logos, tab bar icons, payment brand logos)
+  ui/payment-links-section.tsx # "Pay Directly" deep link pills for settle-up
+  ui/upi-qr-modal.tsx   # UPI QR code modal for web platform
 lib/
   api.ts                # API client (usersApi, groupsApi, categoriesApi, expensesApi, settlementsApi, inviteApi, contactsApi, chatApi)
   types.ts              # TypeScript interfaces/DTOs
@@ -65,6 +68,7 @@ lib/
   offline.ts            # AsyncStorage-based offline expense queue
   biometrics.ts         # Biometric lock utilities (expo-local-authentication)
   notifications.ts      # Push notification utilities (foreground handler with per-category filtering, permissions, token, preferences, getNotificationCategory mapping)
+  payment-links.ts      # Payment deep link utilities (URL construction, validation, region mapping, provider info)
   haptics.ts            # Haptic feedback wrappers
   mention-utils.ts      # @/# mention detection, filtering, insertion, wire format, recency merge
   mention-recency.ts    # AsyncStorage-backed recent mention tracking (cap 20)
@@ -115,7 +119,7 @@ lib/
 - `PUT /v1/settlements/{settlementId}` — update settlement (optimistic locking via `version` — **mandatory**, 400 without)
 - `PUT /v1/expenses/{expenseId}` — update expense (optimistic locking via `version` — **mandatory**, 400 without)
 - `PATCH /v1/groups/{groupId}` — update group (version optional but recommended)
-- `PATCH /v1/users/me` — update user profile/preferences (no version needed)
+- `PATCH /v1/users/me` — update user profile/preferences/paymentHandles (no version needed)
 - `PATCH /v1/groups/{groupId}/members/{memberId}` — update member (no version needed)
 - `GET /v1/groups/invite/{inviteCode}` — public group preview (no auth, returns GroupInvitePreviewDto)
 - `POST /v1/groups/join` — join group via invite code `{ inviteCode }` (handles duplicates, guest-to-user promotion)
@@ -217,6 +221,22 @@ lib/
 - **Cooldown**: ERR-407 / 429 → "Already reminded recently, try again later"
 - **UI**: `settle-up.tsx` tracks nudging/nudged state per user
 
+## Payment Deep Links
+- **Settings**: `app/payment-methods.tsx` — users configure handles (Venmo, PayPal, Cash App, Zelle, UPI, Revolut, Monzo)
+- **Utility**: `lib/payment-links.ts` — URL construction, validation, normalization, region mapping
+- **Icons**: `components/icons/payment-icons.tsx` — brand logo SVGs (Simple Icons) for all 7 providers
+- **Region mapping**: `CURRENCY_PROVIDERS` — USD (venmo/paypal/cashapp/zelle), INR (upi/paypal), GBP (paypal/revolut/monzo), EUR (paypal/revolut)
+- **Provider display**: Region providers shown first in settle-up, then "Your other methods" for non-region configured providers
+- **Method selector**: Shows only configured providers when creditor has handles; falls back to all region providers when none configured
+- **Pay Directly**: `components/ui/payment-links-section.tsx` — deep link pills in settle-up modal, gated by: current user is debtor AND creditor has `toUserPaymentHandles`
+- **Post-payment flow**: "Did you complete the payment via {provider}?" → Yes records settlement with provider as paymentMethod
+- **Creditor nudge**: When current user is creditor with no handles, dismissible card links to `/payment-methods` (AsyncStorage TTL, 7 days)
+- **Special cases**: Zelle = clipboard copy (no deep link), Cash App = no amount pre-fill, UPI on web = QR modal
+- **Venmo fallback**: Native URL → web fallback via pre-built `webFallbackUrl`
+- **Backend**: `paymentHandles` JSONB on users table, `toUserPaymentHandles` on settlement suggestions. `paymentMethod` is a plain String (no enum) — accepts any value
+- **Privacy**: Payment handles only exposed via `toUserPaymentHandles` in settlement suggestions, NOT on `UserSummaryDto`
+- **Trust principle**: Never claim payment succeeded — deep links hand off to payment app, user explicitly confirms
+
 ## Optimistic Locking (version field)
 - **Mandatory**: `PUT /v1/expenses/{id}` and `PUT /v1/settlements/{id}` — 400 without `version`
 - **Optional**: `PATCH /v1/groups/{id}` — recommended but won't 400
@@ -256,7 +276,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (1672 tests, 69 suites)**: `lib/` at 98%, `components/ui/` at 91%, screens improving
+- **Current baseline (1754 tests, 71 suites)**: `lib/` at 98%, `components/ui/` at 91%, screens improving
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state
@@ -276,12 +296,12 @@ lib/
 - **Requires**: `CLERK_SECRET_KEY` in `.env.local` for authenticated tests
 - **Auth setup**: `e2e/auth.setup.ts` extends base test fixture with Clerk token injection
 - **Unauthenticated tests**: Use `@playwright/test` directly (e.g., `e2e/auth.spec.ts`)
-- **Count**: 115 smoke tests across 17 spec files
+- **Count**: 123 smoke tests across 18 spec files
 - Run `npx playwright install chromium` once before first run
 
 ### E2E Integration Tests (Playwright + Backend)
 - **Purpose**: Full CRUD integration tests against live backend at `localhost:8085`
-- **Structure**: `e2e/integration/` with 11 spec files (50 tests total)
+- **Structure**: `e2e/integration/` with 12 spec files (59 tests total)
 - **Helpers**: `e2e/integration/helpers/` — `api-client.ts` (REST client), `fixtures.ts` (data factories), `cleanup.ts` (auto-cleanup fixture)
 - **Auth fixture**: `cleanup.ts` extends Playwright test with `apiClient` injected + auto-cleanup via `afterEach`
 - **Data strategy**: All test data prefixed with `[E2E]` + timestamp; tracked resources auto-deleted in reverse order
@@ -299,6 +319,7 @@ lib/
   - `search-filter.spec.ts` (3) — match search, no-match empty state, clear search
   - `navigation-data.spec.ts` (5) — group card nav, expense edit, back nav, tab state, View All
   - `settings-screens.spec.ts` (4) — notifications, privacy, help, payment methods
+  - `payment-handles.spec.ts` (9) — API save/clear/partial update, settlement suggestions with handles, UI save + verify, Pay Directly gate, region methods
 
 ### E2E Test Conventions
 - **Smoke tests**: Import `{ test, expect }` from `./auth.setup`

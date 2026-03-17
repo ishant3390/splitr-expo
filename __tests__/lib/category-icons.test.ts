@@ -185,7 +185,7 @@ describe("getPaymentMethodIcon", () => {
     for (const [key, config] of Object.entries(PAYMENT_METHOD_ICON_MAP)) {
       expect(config.icon).toBeDefined();
       expect(config.color).toMatch(/^#/);
-      expect(config.bg).toMatch(/^#/);
+      expect(config.bg).toMatch(/^#|^transparent$/);
       expect(config.label.length).toBeGreaterThan(0);
     }
   });

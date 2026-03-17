@@ -1,3 +1,4 @@
+import React from "react";
 import type { LucideIcon } from "lucide-react-native";
 import {
   Utensils,
@@ -57,11 +58,12 @@ import {
   Users,
   Banknote,
   Smartphone,
-  Building2,
+  Landmark,
   Wallet,
   Archive,
   ArchiveRestore,
   Coins,
+  DollarSign,
   ReceiptPoundSterling,
   ReceiptEuro,
   ReceiptIndianRupee,
@@ -69,11 +71,20 @@ import {
   ReceiptSwissFranc,
   ReceiptText,
 } from "lucide-react-native";
+import {
+  VenmoIcon,
+  PayPalIcon,
+  CashAppIcon,
+  ZelleIcon,
+  UpiIcon,
+  RevolutIcon,
+  MonzoIcon,
+} from "@/components/icons/payment-icons";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface CategoryIconConfig {
-  icon: LucideIcon;
+  icon: LucideIcon | React.ComponentType<{ size?: number; color?: string }>;
   color: string;
   bg: string;
   darkBg?: string;
@@ -324,12 +335,16 @@ export function getActivityIcon(
 // ─── Payment Method Icons ───────────────────────────────────────────────────
 
 export const PAYMENT_METHOD_ICON_MAP: Record<string, CategoryIconConfig> = {
-  cash:            { icon: Banknote,    color: "#059669", bg: "#d1fae5", label: "Cash" },
-  venmo:           { icon: Smartphone,  color: "#7c3aed", bg: "#ede9fe", label: "Venmo" },
-  zelle:           { icon: Zap,         color: "#2563eb", bg: "#dbeafe", label: "Zelle" },
-  paypal:          { icon: CreditCard,  color: "#2563eb", bg: "#dbeafe", label: "PayPal" },
-  bank_transfer:   { icon: Building2,   color: "#475569", bg: "#f1f5f9", label: "Bank" },
-  other:           { icon: Wallet,      color: "#64748b", bg: "#f1f5f9", label: "Other" },
+  cash:            { icon: Banknote,     color: "#059669", bg: "#d1fae5", label: "Cash" },
+  venmo:           { icon: VenmoIcon,    color: "#008CFF", bg: "transparent", label: "Venmo" },
+  zelle:           { icon: ZelleIcon,    color: "#6D1ED4", bg: "transparent", label: "Zelle" },
+  paypal:          { icon: PayPalIcon,   color: "#003087", bg: "transparent", label: "PayPal" },
+  cashapp:         { icon: CashAppIcon,  color: "#00D632", bg: "transparent", label: "Cash App" },
+  upi:             { icon: UpiIcon,      color: "#4B286D", bg: "transparent", label: "UPI" },
+  revolut:         { icon: RevolutIcon,  color: "#0075EB", bg: "transparent", label: "Revolut" },
+  monzo:           { icon: MonzoIcon,    color: "#FF4B67", bg: "transparent", label: "Monzo" },
+  bank_transfer:   { icon: Landmark,     color: "#475569", bg: "#f1f5f9", label: "Bank" },
+  other:           { icon: Wallet,       color: "#64748b", bg: "#f1f5f9", label: "Other" },
 };
 
 const DEFAULT_PAYMENT: CategoryIconConfig = {

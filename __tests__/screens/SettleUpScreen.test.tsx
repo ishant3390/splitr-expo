@@ -970,3 +970,174 @@ describe("SettleUpScreen — cross-group mode", () => {
     });
   });
 });
+
+describe("SettleUpScreen — payment deep links", () => {
+  beforeEach(() => {
+    mockSearchParams = { groupId: "g1" };
+    // Current user is u2 (Bob). Suggestion: Bob owes Alice.
+    // Alice has paymentHandles. Bob is the debtor → "Pay via" should show.
+    mockSuggestions.mockResolvedValue([
+      {
+        fromUser: { id: "u2", name: "Bob", avatarUrl: null },
+        toUser: { id: "u1", name: "Alice", avatarUrl: null },
+        toUserPaymentHandles: { venmoUsername: "alice-w", paypalUsername: "alicepay" },
+        amount: 5000,
+        currency: "USD",
+      },
+    ]);
+  });
+
+  it("shows 'Pay Directly' when current user is debtor and creditor has handles", async () => {
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$50\.00.*payment/)).toBeTruthy();
+    });
+    // Open modal
+    fireEvent.press(screen.getByText(/Record.*\$50\.00.*payment/));
+    await waitFor(() => {
+      expect(screen.getByText("Pay Directly")).toBeTruthy();
+      expect(screen.getByLabelText("Pay with Venmo")).toBeTruthy();
+      expect(screen.getByLabelText("Pay with PayPal")).toBeTruthy();
+    });
+  });
+
+  it("hides payment links when current user is creditor", async () => {
+    // Alice owes Bob — Bob is creditor, not debtor
+    mockSuggestions.mockResolvedValue([
+      {
+        fromUser: { id: "u1", name: "Alice", avatarUrl: null },
+        toUser: { id: "u2", name: "Bob", avatarUrl: null },
+        toUserPaymentHandles: { venmoUsername: "bob-w" },
+        amount: 5000,
+        currency: "USD",
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$50\.00.*payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*\$50\.00.*payment/));
+    await waitFor(() => {
+      expect(screen.queryByText("Pay Directly")).toBeNull();
+    });
+  });
+
+  it("hides payment links when creditor has no handles", async () => {
+    mockSuggestions.mockResolvedValue([
+      {
+        fromUser: { id: "u2", name: "Bob", avatarUrl: null },
+        toUser: { id: "u1", name: "Alice", avatarUrl: null },
+        amount: 5000,
+        currency: "USD",
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$50\.00.*payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*\$50\.00.*payment/));
+    await waitFor(() => {
+      expect(screen.queryByText("Pay Directly")).toBeNull();
+    });
+  });
+
+  it("shows region-appropriate payment methods in selector for USD", async () => {
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$50\.00.*payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*\$50\.00.*payment/));
+    await waitFor(() => {
+      // USD region: cash, venmo, paypal, cashapp, zelle, bank_transfer, other
+      expect(screen.getByText("Cash")).toBeTruthy();
+      expect(screen.getByText("Bank")).toBeTruthy();
+    });
+  });
+
+  it("shows region-appropriate payment methods in selector for INR", async () => {
+    mockGetGroup.mockResolvedValue({ id: "g1", name: "Trip", defaultCurrency: "INR" });
+    mockSuggestions.mockResolvedValue([
+      {
+        fromUser: { id: "u2", name: "Bob", avatarUrl: null },
+        toUser: { id: "u1", name: "Alice", avatarUrl: null },
+        toUserPaymentHandles: { upiVpa: "alice@okicici" },
+        amount: 5000,
+        currency: "INR",
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$50\.00.*payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*\$50\.00.*payment/));
+    await waitFor(() => {
+      // INR region: cash, upi, paypal, bank_transfer, other
+      expect(screen.getByText("Cash")).toBeTruthy();
+      // UPI appears in both Pay Directly pills and payment method selector
+      expect(screen.getAllByText("UPI").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows confirmation prompt after tapping Pay via button", async () => {
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$50\.00.*payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*\$50\.00.*payment/));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Pay with Venmo")).toBeTruthy();
+    });
+    // Tap the pay via Venmo pill in the Pay Directly section
+    fireEvent.press(screen.getByLabelText("Pay with Venmo"));
+    await waitFor(() => {
+      expect(screen.getByText(/Did you complete the payment via Venmo/)).toBeTruthy();
+      expect(screen.getByText("Yes, record settlement")).toBeTruthy();
+      expect(screen.getByText("Not yet")).toBeTruthy();
+    });
+  });
+
+  it("dismisses confirmation on 'Not yet'", async () => {
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$50\.00.*payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*\$50\.00.*payment/));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Pay with Venmo")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText("Pay with Venmo"));
+    await waitFor(() => {
+      expect(screen.getByText("Not yet")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Not yet"));
+    await waitFor(() => {
+      expect(screen.queryByText(/Did you complete/)).toBeNull();
+    });
+  });
+
+  it("records settlement on 'Yes' confirmation", async () => {
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$50\.00.*payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*\$50\.00.*payment/));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Pay with Venmo")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText("Pay with Venmo"));
+    await waitFor(() => {
+      expect(screen.getByText("Yes, record settlement")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Yes, record settlement"));
+    await waitFor(() => {
+      expect(mockCreateSettlement).toHaveBeenCalledWith(
+        "g1",
+        expect.objectContaining({
+          paymentMethod: "venmo",
+          amount: 5000,
+        }),
+        "mock-token"
+      );
+    });
+  });
+});

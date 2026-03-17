@@ -1,3 +1,15 @@
+// ---- Payment Handles ----
+
+export interface PaymentHandles {
+  venmoUsername?: string;    // "ajay-w" (no @)
+  paypalUsername?: string;   // "ajaywadhara"
+  cashAppTag?: string;       // "$ajay" or "ajay"
+  upiVpa?: string;           // "ajay@okicici"
+  revolutTag?: string;       // "ajay123"
+  monzoMe?: string;          // "ajaywadhara"
+  zelleContact?: string;     // email or phone
+}
+
 // ---- User ----
 
 export interface UserDto {
@@ -11,6 +23,7 @@ export interface UserDto {
   isPremium?: boolean;
   premiumUntil?: string;
   preferences?: UserPreferences;
+  paymentHandles?: PaymentHandles;
   createdAt: string;
   updatedAt: string;
   version?: number;
@@ -27,6 +40,7 @@ export interface UpdateUserRequest {
   phone?: string;
   defaultCurrency?: string;
   preferences?: UserPreferences;
+  paymentHandles?: PaymentHandles;
 }
 
 export interface CurrencyAmount {
@@ -298,6 +312,8 @@ export interface SettlementSuggestionDto {
   toGuest?: GuestUserDto;
   amount: number;
   currency: string;
+  /** Creditor's payment handles — only populated in settlement suggestions context */
+  toUserPaymentHandles?: PaymentHandles;
 }
 
 export interface CreateSettlementRequest {
