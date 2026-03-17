@@ -88,6 +88,14 @@ export default function AddExpenseScreen() {
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const userPickedCategoryRef = useRef(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const selectedGroupRef = useRef<GroupDto | null>(null);
+  const getTokenRef = useRef(getToken);
+  const clerkUserRef = useRef(clerkUser);
+
+  // Keep refs in sync each render
+  selectedGroupRef.current = selectedGroup;
+  getTokenRef.current = getToken;
+  clerkUserRef.current = clerkUser;
 
   // Load groups and categories on mount; auto-create "Personal" group if none exist
   useEffect(() => {
@@ -189,6 +197,40 @@ export default function AddExpenseScreen() {
       setSplitPercentages({});
       setSplitFixedAmounts({});
       userPickedCategoryRef.current = false;
+    }, [])
+  );
+
+  // Refresh members on focus so newly added group members always appear
+  useFocusEffect(
+    useCallback(() => {
+      const group = selectedGroupRef.current;
+      if (!group) return;
+      let cancelled = false;
+      const load = async () => {
+        setMembersLoading(true);
+        try {
+          const token = await getTokenRef.current();
+          const data = await groupsApi.listMembers(group.id, token!);
+          if (cancelled) return;
+          const raw: GroupMemberDto[] = Array.isArray(data) ? data : [];
+          const list = dedupeMembers(raw);
+          setMembers(list);
+          const ids = list.map((m) => m.id);
+          setSplitWith(ids);
+          const currentEmail = clerkUserRef.current?.primaryEmailAddress?.emailAddress;
+          const currentMember = list.find((m) => m.user?.email === currentEmail);
+          setSelectedPayerMemberId(currentMember?.id ?? list[0]?.id ?? null);
+        } catch {
+          if (!cancelled) {
+            setMembers([]);
+            setSplitWith([]);
+          }
+        } finally {
+          if (!cancelled) setMembersLoading(false);
+        }
+      };
+      load();
+      return () => { cancelled = true; };
     }, [])
   );
 

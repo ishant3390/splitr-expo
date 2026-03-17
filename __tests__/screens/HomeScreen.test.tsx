@@ -662,9 +662,9 @@ describe("HomeScreen", () => {
     });
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Alice created")).toBeTruthy();
+      expect(screen.getByText("Alice created group Trip")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Alice created"));
+    fireEvent.press(screen.getByText("Alice created group Trip"));
     expect(mockPush).toHaveBeenCalled();
   });
 
@@ -904,6 +904,7 @@ describe("HomeScreen", () => {
     render(<HomeScreen />);
     await waitFor(() => {
       expect(screen.getByText("Alice settled up")).toBeTruthy();
+      expect(screen.getByText("in Trip")).toBeTruthy();
     });
     // Pressing should not crash
     fireEvent.press(screen.getByText("Alice settled up"));

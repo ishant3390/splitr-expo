@@ -800,7 +800,7 @@ describe("formatActivityTitle", () => {
   });
 
   // settlement_created
-  it("returns 'You settled up' for settlement_created by current user", () => {
+  it("returns 'You settled up' for settlement_created with no payee info", () => {
     const a = makeActivity({
       activityType: "settlement_created",
       actorUserId: "me",
@@ -808,13 +808,51 @@ describe("formatActivityTitle", () => {
     expect(formatActivityTitle(a, "me")).toBe("You settled up");
   });
 
-  it("returns 'Carol settled up' for settlement_created by someone else", () => {
+  it("returns 'Carol settled up' for settlement_created by someone else with no payee info", () => {
     const a = makeActivity({
       activityType: "settlement_created",
       actorUserId: "u4",
       actorUserName: "Carol",
     });
     expect(formatActivityTitle(a, "me")).toBe("Carol settled up");
+  });
+
+  it("returns 'You settled up with Bob' when payeeUserName is present", () => {
+    const a = makeActivity({
+      activityType: "settlement_created",
+      actorUserId: "me",
+      details: { payeeUserId: "u2", payeeUserName: "Bob Smith" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You settled up with Bob");
+  });
+
+  it("returns 'Carol settled up with you' when payee is current user", () => {
+    const a = makeActivity({
+      activityType: "settlement_created",
+      actorUserId: "u4",
+      actorUserName: "Carol",
+      details: { payeeUserId: "me", payeeUserName: "Me" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Carol settled up with you");
+  });
+
+  it("returns 'Alice settled up with Bob' for third-party settlement", () => {
+    const a = makeActivity({
+      activityType: "settlement_created",
+      actorUserId: "u1",
+      actorUserName: "Alice",
+      details: { payeeUserId: "u2", payeeUserName: "Bob" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Alice settled up with Bob");
+  });
+
+  it("falls back to payeeGuestName when payeeUserName absent", () => {
+    const a = makeActivity({
+      activityType: "settlement_created",
+      actorUserId: "me",
+      details: { payeeGuestName: "Charlie Guest" },
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You settled up with Charlie");
   });
 
   // member_joined — group name now shown as subtitle, not in title
@@ -952,24 +990,32 @@ describe("formatActivityTitle", () => {
     expect(formatActivityTitle(a, "me")).toBe("Ajay added Bob");
   });
 
-  // group_created — group name now shown as subtitle, not in title
-  it("returns 'You created' for group_created by current user", () => {
+  // group_created — group name included in title
+  it("returns 'You created group Weekend' for group_created by current user", () => {
     const a = makeActivity({
       activityType: "group_created",
       actorUserId: "me",
       groupName: "Weekend",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You created");
+    expect(formatActivityTitle(a, "me")).toBe("You created group Weekend");
   });
 
-  it("returns 'Eve created' for group_created by someone else", () => {
+  it("returns 'Eve created group Weekend' for group_created by someone else", () => {
     const a = makeActivity({
       activityType: "group_created",
       actorUserId: "u6",
       actorUserName: "Eve",
       groupName: "Weekend",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve created");
+    expect(formatActivityTitle(a, "me")).toBe("Eve created group Weekend");
+  });
+
+  it("returns 'You created a group' for group_created with no group name", () => {
+    const a = makeActivity({
+      activityType: "group_created",
+      actorUserId: "me",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("You created a group");
   });
 
   // group_updated
@@ -1003,33 +1049,42 @@ describe("formatActivityTitle", () => {
   });
 
   // group_archived
-  it("returns 'You archived' for group_archived by current user", () => {
+  it("returns 'You archived group Trip to Paris' for group_archived by current user", () => {
     const a = makeActivity({
       activityType: "group_archived",
       actorUserId: "me",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("You archived");
+    expect(formatActivityTitle(a, "me")).toBe("You archived group Trip to Paris");
   });
 
-  it("returns 'Eve archived' for group_archived by someone else", () => {
+  it("returns 'Eve archived group Trip to Paris' for group_archived by someone else", () => {
     const a = makeActivity({
       activityType: "group_archived",
       actorUserId: "u6",
       actorUserName: "Eve",
       groupName: "Trip to Paris",
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve archived");
+    expect(formatActivityTitle(a, "me")).toBe("Eve archived group Trip to Paris");
   });
 
-  it("returns title without group name for group_archived when groupName is null", () => {
+  it("returns 'Eve archived a group' for group_archived when no group name available", () => {
+    const a = makeActivity({
+      activityType: "group_archived",
+      actorUserId: "u6",
+      actorUserName: "Eve",
+    });
+    expect(formatActivityTitle(a, "me")).toBe("Eve archived a group");
+  });
+
+  it("falls back to details.groupName for group_archived", () => {
     const a = makeActivity({
       activityType: "group_archived",
       actorUserId: "u6",
       actorUserName: "Eve",
       details: { action: "archived", groupName: "Road Trip" },
     });
-    expect(formatActivityTitle(a, "me")).toBe("Eve archived");
+    expect(formatActivityTitle(a, "me")).toBe("Eve archived group Road Trip");
   });
 
   // group_unarchived
@@ -1243,6 +1298,17 @@ describe("formatActivityTitle", () => {
   });
 
   it("appends group name for settlement_created when includeGroupName is true", () => {
+    const a = makeActivity({
+      activityType: "settlement_created",
+      actorUserId: "me",
+      actorUserName: "Ajay",
+      groupName: "Vacation",
+      details: { payeeUserId: "u2", payeeUserName: "Bob" },
+    });
+    expect(formatActivityTitle(a, "me", { includeGroupName: true })).toBe("You settled up with Bob in Vacation");
+  });
+
+  it("appends group name for settlement_created with no payee when includeGroupName is true", () => {
     const a = makeActivity({
       activityType: "settlement_created",
       actorUserId: "me",

@@ -77,8 +77,23 @@ export default function SettleUpScreen() {
 
   // --- Cross-group mode ---
   const crossGroupData = useCrossGroupSuggestions();
-  const crossGroupSuggestions = isCrossGroup ? crossGroupData.data : [];
   const crossGroupLoading = isCrossGroup ? crossGroupData.isLoading : false;
+  // Filter cross-group suggestions to only those involving the current user,
+  // then drop groups where the filtered list is empty.
+  const crossGroupSuggestions = (isCrossGroup ? (crossGroupData.data ?? []) : []).reduce(
+    (acc, cg) => {
+      const mySuggestions = currentUser
+        ? cg.suggestions.filter(
+            (s) => s.fromUser?.id === currentUser.id || s.toUser?.id === currentUser.id
+          )
+        : cg.suggestions;
+      if (mySuggestions.length > 0) {
+        acc.push({ ...cg, suggestions: mySuggestions });
+      }
+      return acc;
+    },
+    [] as typeof crossGroupData.data
+  );
   const crossGroupTotalSuggestions = crossGroupSuggestions.reduce(
     (sum, g) => sum + g.suggestions.length, 0
   );

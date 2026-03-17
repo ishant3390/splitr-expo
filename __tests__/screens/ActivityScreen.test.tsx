@@ -367,9 +367,9 @@ describe("ActivityScreen", () => {
     });
     render(<ActivityScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Alice created")).toBeTruthy();
+      expect(screen.getByText("Alice created group Trip")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Alice created"));
+    fireEvent.press(screen.getByText("Alice created group Trip"));
     expect(mockPush).toHaveBeenCalled();
   });
 
@@ -396,6 +396,7 @@ describe("ActivityScreen", () => {
     render(<ActivityScreen />);
     await waitFor(() => {
       expect(screen.getByText("Alice settled up")).toBeTruthy();
+      expect(screen.getByText("in Trip")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Alice settled up"));
     expect(mockPush).not.toHaveBeenCalled();

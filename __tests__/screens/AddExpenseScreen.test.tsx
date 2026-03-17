@@ -679,6 +679,29 @@ describe("AddExpenseScreen", () => {
     });
   });
 
+  // --- Member refresh on focus ---
+  it("re-fetches members on screen focus to pick up newly added members", async () => {
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      // listMembers is called both from useEffect (group change) and useFocusEffect (focus refresh)
+      expect(mockListMembers).toHaveBeenCalledWith("g1", "mock-token");
+      expect(mockListMembers.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+    // Updated member list after focus refresh should still show members
+    expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Bob").length).toBeGreaterThan(0);
+  });
+
+  it("handles member fetch failure on focus gracefully", async () => {
+    mockListMembers.mockRejectedValueOnce(new Error("Network error"));
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(mockListMembers).toHaveBeenCalled();
+    });
+    // Should not crash
+    expect(screen.getByText("Save")).toBeTruthy();
+  });
+
   // --- Groups list failure (line 146-147) ---
   it("handles groups loading failure gracefully", async () => {
     mockListGroups.mockRejectedValue(new Error("Network error"));

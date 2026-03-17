@@ -236,8 +236,19 @@ export function formatActivityTitle(
       return description
         ? `${actorName} ${verb} ${description}${groupSuffix}`
         : `${actorName} ${verb} an expense${groupSuffix}`;
-    case "settlement_created":
-      return `${actorName} ${verb}${groupSuffix}`;
+    case "settlement_created": {
+      const payeeUserId = activity.details?.payeeUserId as string | undefined;
+      const payeeFullName = (
+        activity.details?.payeeUserName ??
+        activity.details?.payeeGuestName ??
+        activity.details?.payeeName
+      ) as string | undefined;
+      const isPayeeYou = !!(currentUserId && payeeUserId === currentUserId);
+      const payeeDisplay = isPayeeYou ? "you" : payeeFullName ? firstName(payeeFullName) : null;
+      return payeeDisplay
+        ? `${actorName} ${verb} with ${payeeDisplay}${groupSuffix}`
+        : `${actorName} ${verb}${groupSuffix}`;
+    }
     case "member_joined":
     case "member_joined_via_invite":
       return `${actorName} ${verb}`; // group name shown in subtitle on cross-group screens
@@ -263,7 +274,13 @@ export function formatActivityTitle(
     case "member_left":
       return `${actorName} ${verb}`;
     case "group_created":
+      return resolvedGroupName
+        ? `${actorName} ${verb} group ${resolvedGroupName}`
+        : `${actorName} ${verb} a group`;
     case "group_archived":
+      return resolvedGroupName
+        ? `${actorName} ${verb} group ${resolvedGroupName}`
+        : `${actorName} ${verb} a group`;
     case "group_unarchived":
     case "group_deleted":
     case "group_updated":

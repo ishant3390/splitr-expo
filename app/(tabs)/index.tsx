@@ -560,7 +560,7 @@ export default function HomeScreen() {
                             <Text className="text-sm font-sans-semibold text-card-foreground">
                               {title}
                             </Text>
-                            {groupName && (
+                            {groupName && item.activityType !== "group_created" && item.activityType !== "group_archived" && (
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                                 in {groupName}
                               </Text>
@@ -579,9 +579,9 @@ export default function HomeScreen() {
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
                                 as {memberRole}
                               </Text>
-                            ) : isGroupLifecycle ? (
+                            ) : isGroupLifecycle && item.activityType !== "group_created" && item.activityType !== "group_archived" ? (
                               <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                                {item.activityType === "group_created" ? "New group" : item.activityType === "group_archived" ? "Archived" : item.activityType === "group_deleted" ? "Deleted" : item.activityType === "group_updated" ? "Updated" : "Restored"}
+                                {item.activityType === "group_deleted" ? "Deleted" : item.activityType === "group_updated" ? "Updated" : "Restored"}
                               </Text>
                             ) : null}
                           </View>
