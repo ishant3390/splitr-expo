@@ -259,7 +259,7 @@ describe("GroupSettingsScreen", () => {
     await waitFor(() => {
       expect(mockUpdateGroup).toHaveBeenCalledWith(
         "g1",
-        { simplifyDebts: true, version: 1 },
+        { simplifyDebts: true },
         "mock-token"
       );
     });

@@ -173,15 +173,15 @@ export default function GroupSettingsScreen() {
 
   // Toggle simplify debts
   const toggleSimplifyDebts = async () => {
-    if (!group) return;
+    if (!group || togglingSimplify) return;
     setTogglingSimplify(true);
     const newValue = !(group.simplifyDebts ?? false);
-    const oldVersion = group.version;
     setGroup((prev) => (prev ? { ...prev, simplifyDebts: newValue } : prev));
     try {
       const token = await getToken();
-      await groupsApi.update(groupId, { simplifyDebts: newValue, version: oldVersion }, token!);
-      setGroup((prev) => (prev ? { ...prev, version: (prev.version ?? 0) + 1 } : prev));
+      // version omitted — optional for PATCH groups, avoids stale-version 409s
+      const updated = await groupsApi.update(groupId, { simplifyDebts: newValue }, token!);
+      setGroup(updated);
       invalidateAfterGroupChange();
       hapticSuccess();
       toast.success(newValue ? "Debt simplification enabled" : "Debt simplification disabled");
@@ -630,7 +630,9 @@ export default function GroupSettingsScreen() {
               </View>
               <ThemedSwitch
                 checked={group?.simplifyDebts ?? false}
-                onCheckedChange={() => toggleSimplifyDebts()}
+                onCheckedChange={toggleSimplifyDebts}
+                disabled={togglingSimplify}
+                pointerEvents="none"
               />
             </Pressable>
           )}
