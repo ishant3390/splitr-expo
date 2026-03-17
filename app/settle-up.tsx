@@ -438,10 +438,17 @@ export default function SettleUpScreen() {
     );
   }
 
+  // Filter per-group suggestions to only those involving the current user
+  const myGroupSuggestions = suggestions.filter((s) =>
+    currentUser
+      ? s.fromUser?.id === currentUser.id || s.toUser?.id === currentUser.id
+      : true
+  );
+
   // --- Cross-group empty check ---
   const allSettled = isCrossGroup
     ? crossGroupTotalSuggestions === 0
-    : suggestions.length === 0;
+    : myGroupSuggestions.length === 0;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -563,7 +570,7 @@ export default function SettleUpScreen() {
                     ? "All settled!"
                     : isCrossGroup
                     ? `${crossGroupTotalSuggestions} payment${crossGroupTotalSuggestions === 1 ? "" : "s"} needed`
-                    : `${suggestions.length} payment${suggestions.length === 1 ? "" : "s"} needed`
+                    : `${myGroupSuggestions.length} payment${myGroupSuggestions.length === 1 ? "" : "s"} needed`
                   }
                 </Text>
                 <Text
@@ -671,7 +678,7 @@ export default function SettleUpScreen() {
           <>
             {activeTab === "suggestions" ? (
               <>
-                {suggestions.length === 0 ? (
+                {myGroupSuggestions.length === 0 ? (
                   <Card className="p-8 items-center gap-3">
                     <Text style={{ fontSize: 40 }}>🎉</Text>
                     <Text className="text-base font-sans-semibold text-foreground">
@@ -687,9 +694,9 @@ export default function SettleUpScreen() {
                 ) : (
                   <View className="gap-3">
                     <Text className="text-xs font-sans-semibold text-muted-foreground mb-1">
-                      SUGGESTED PAYMENTS ({suggestions.length})
+                      SUGGESTED PAYMENTS ({myGroupSuggestions.length})
                     </Text>
-                    {suggestions.map((s, suggIdx) => renderSuggestionCard(s, suggIdx))}
+                    {myGroupSuggestions.map((s, suggIdx) => renderSuggestionCard(s, suggIdx))}
                   </View>
                 )}
               </>
