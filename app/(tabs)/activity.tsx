@@ -116,7 +116,7 @@ export default function ActivityScreen() {
           <Text className="text-2xl font-sans-bold" style={{ color: "#ffffff" }}>
             Activity
           </Text>
-          <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
+          <Pressable testID="search-toggle" onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
             <View
               className="w-9 h-9 rounded-full items-center justify-center"
               style={{ backgroundColor: showSearch ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }}
@@ -142,7 +142,7 @@ export default function ActivityScreen() {
               placeholderTextColor="rgba(255,255,255,0.5)"
             />
             {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery("")}>
+              <Pressable testID="search-clear" onPress={() => setSearchQuery("")}>
                 <X size={16} color="rgba(255,255,255,0.7)" />
               </Pressable>
             )}
@@ -175,6 +175,7 @@ export default function ActivityScreen() {
         </View>
       ) : (
         <SectionList
+          testID="activity-section-list"
           sections={sections}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}

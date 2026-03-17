@@ -276,4 +276,157 @@ describe("OTPVerifyScreen", () => {
     render(<OTPVerifyScreen />);
     expect(screen.queryByText(/Verify via phone instead/)).toBeNull();
   });
+
+  it("countdown decrements from 30 and resend button appears at 0", async () => {
+    jest.useFakeTimers();
+    render(<OTPVerifyScreen />);
+    expect(screen.getByText(/Resend in 30s/)).toBeTruthy();
+    // Advance all 30 timers
+    for (let i = 0; i < 30; i++) {
+      act(() => { jest.advanceTimersByTime(1000); });
+    }
+    await waitFor(() => {
+      expect(screen.getByText("Resend Code")).toBeTruthy();
+    });
+    jest.useRealTimers();
+  });
+
+  it("resend calls prepareEmailAddressVerification in signup mode", async () => {
+    jest.useFakeTimers();
+    mockParams = { contact: "test@example.com", mode: "signup", method: "email" };
+    render(<OTPVerifyScreen />);
+    for (let i = 0; i < 30; i++) {
+      act(() => { jest.advanceTimersByTime(1000); });
+    }
+    await waitFor(() => {
+      expect(screen.getByText("Resend Code")).toBeTruthy();
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByText("Resend Code"));
+    });
+    expect(mockPrepareEmail).toHaveBeenCalledWith({ strategy: "email_code" });
+    expect(mockToast.success).toHaveBeenCalledWith("A new code has been sent to your email.");
+    jest.useRealTimers();
+  });
+
+  it("resend calls preparePhoneNumberVerification in signup phone mode", async () => {
+    jest.useFakeTimers();
+    mockParams = { contact: "test@example.com", phone: "+15551234567", mode: "signup", method: "phone" };
+    render(<OTPVerifyScreen />);
+    for (let i = 0; i < 30; i++) {
+      act(() => { jest.advanceTimersByTime(1000); });
+    }
+    await waitFor(() => {
+      expect(screen.getByText("Resend Code")).toBeTruthy();
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByText("Resend Code"));
+    });
+    expect(mockPreparePhone).toHaveBeenCalledWith({ strategy: "phone_code" });
+    jest.useRealTimers();
+  });
+
+  it("resend calls prepareFirstFactor in signin mode", async () => {
+    jest.useFakeTimers();
+    mockParams = { contact: "test@example.com", mode: "signin", method: "email" };
+    render(<OTPVerifyScreen />);
+    for (let i = 0; i < 30; i++) {
+      act(() => { jest.advanceTimersByTime(1000); });
+    }
+    await waitFor(() => {
+      expect(screen.getByText("Resend Code")).toBeTruthy();
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByText("Resend Code"));
+    });
+    expect(mockPrepareFirstFactor).toHaveBeenCalledWith({
+      strategy: "email_code",
+      emailAddressId: "ea-1",
+    });
+    jest.useRealTimers();
+  });
+
+  it("resend in signin phone mode calls prepareFirstFactor with phone_code", async () => {
+    jest.useFakeTimers();
+    mockParams = { contact: "test@example.com", phone: "+15551234567", mode: "signin", method: "phone" };
+    render(<OTPVerifyScreen />);
+    // Toggle to phone first — but method is already phone
+    for (let i = 0; i < 30; i++) {
+      act(() => { jest.advanceTimersByTime(1000); });
+    }
+    await waitFor(() => {
+      expect(screen.getByText("Resend Code")).toBeTruthy();
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByText("Resend Code"));
+    });
+    expect(mockPrepareFirstFactor).toHaveBeenCalledWith({
+      strategy: "phone_code",
+      phoneNumberId: "pn-1",
+    });
+    jest.useRealTimers();
+  });
+
+  it("resend resets countdown to 30", async () => {
+    jest.useFakeTimers();
+    render(<OTPVerifyScreen />);
+    for (let i = 0; i < 30; i++) {
+      act(() => { jest.advanceTimersByTime(1000); });
+    }
+    await waitFor(() => {
+      expect(screen.getByText("Resend Code")).toBeTruthy();
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByText("Resend Code"));
+    });
+    expect(screen.getByText(/Resend in 30s/)).toBeTruthy();
+    jest.useRealTimers();
+  });
+
+  it("resend shows error toast when it fails", async () => {
+    jest.useFakeTimers();
+    mockPrepareEmail.mockRejectedValueOnce(new Error("fail"));
+    render(<OTPVerifyScreen />);
+    for (let i = 0; i < 30; i++) {
+      act(() => { jest.advanceTimersByTime(1000); });
+    }
+    await waitFor(() => {
+      expect(screen.getByText("Resend Code")).toBeTruthy();
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByText("Resend Code"));
+    });
+    expect(mockToast.error).toHaveBeenCalledWith("Something went wrong. Try again later.");
+    jest.useRealTimers();
+  });
+
+  it("shows redirect text on verified screen", async () => {
+    mockAttemptEmail.mockResolvedValueOnce({ status: "complete", createdSessionId: "sess-1" });
+    render(<OTPVerifyScreen />);
+    fireEvent.changeText(screen.getByTestId("otp-input"), "424242");
+    fireEvent.press(screen.getByText("Verify"));
+    await waitFor(() => {
+      expect(screen.getByText("Verified!")).toBeTruthy();
+      expect(screen.getByText(/Redirecting to Splitr/)).toBeTruthy();
+    });
+  });
+
+  it("calls setActive after verification with a delay", async () => {
+    jest.useFakeTimers();
+    mockAttemptFirstFactor.mockResolvedValueOnce({ status: "complete", createdSessionId: "sess-2" });
+    mockParams = { contact: "test@example.com", mode: "signin", method: "email" };
+    render(<OTPVerifyScreen />);
+    fireEvent.changeText(screen.getByTestId("otp-input"), "424242");
+    await act(async () => {
+      fireEvent.press(screen.getByText("Verify"));
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Verified!")).toBeTruthy();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(mockSetActiveSignIn).toHaveBeenCalledWith({ session: "sess-2" });
+    jest.useRealTimers();
+  });
 });

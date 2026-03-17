@@ -1107,6 +1107,203 @@ describe("hooks.ts", () => {
     });
   });
 
+  describe("useCrossGroupSuggestions", () => {
+    // Import at the top of describe block
+    let useCrossGroupSuggestions: typeof import("@/lib/hooks").useCrossGroupSuggestions;
+    beforeAll(() => {
+      useCrossGroupSuggestions = require("@/lib/hooks").useCrossGroupSuggestions;
+    });
+
+    it("returns empty data when no groups have non-zero balances", () => {
+      // useUserBalance returns no groupBalances
+      mockUseQuery.mockReturnValue({
+        data: { groupBalances: [] },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      mockUseQueries.mockReturnValue([]);
+
+      const { result } = renderHook(() => useCrossGroupSuggestions());
+      expect(result.current.data).toEqual([]);
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it("returns loading when balance is loading", () => {
+      mockUseQuery.mockReturnValue({
+        data: undefined,
+        isLoading: true,
+        error: null,
+        refetch: jest.fn(),
+      });
+      mockUseQueries.mockReturnValue([]);
+
+      const { result } = renderHook(() => useCrossGroupSuggestions());
+      expect(result.current.isLoading).toBe(true);
+    });
+
+    it("filters out empty suggestion arrays from results", () => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          groupBalances: [
+            { groupId: "g1", groupName: "Trip", balanceCents: 500 },
+            { groupId: "g2", groupName: "Home", balanceCents: 200 },
+          ],
+        },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+
+      // Simulate useQueries returning: one with suggestions, one empty
+      mockUseQueries.mockReturnValue([
+        {
+          data: { groupId: "g1", groupName: "Trip", suggestions: [{ fromUser: {}, toUser: {}, amount: 500 }] },
+          isLoading: false,
+          error: null,
+          refetch: jest.fn(),
+        },
+        {
+          data: { groupId: "g2", groupName: "Home", suggestions: [] },
+          isLoading: false,
+          error: null,
+          refetch: jest.fn(),
+        },
+      ]);
+
+      const { result } = renderHook(() => useCrossGroupSuggestions());
+      // Should only include g1 (non-empty suggestions), not g2
+      expect(result.current.data).toHaveLength(1);
+      expect(result.current.data[0].groupId).toBe("g1");
+    });
+
+    it("filters out groups with zero balance from queries", () => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          groupBalances: [
+            { groupId: "g1", groupName: "Trip", balanceCents: 0 },
+            { groupId: "g2", groupName: "Home", balanceCents: 200 },
+          ],
+        },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+
+      let queriesConfig: any[] = [];
+      mockUseQueries.mockImplementation((opts: any) => {
+        queriesConfig = opts.queries;
+        return queriesConfig.map(() => ({
+          data: undefined,
+          isLoading: false,
+          error: null,
+          refetch: jest.fn(),
+        }));
+      });
+
+      renderHook(() => useCrossGroupSuggestions());
+      // Only g2 (non-zero balance) should be in the queries
+      expect(queriesConfig).toHaveLength(1);
+      expect(queriesConfig[0].queryKey).toEqual(queryKeys.settlementSuggestions("g2"));
+    });
+
+    it("reports errors from individual suggestion queries", () => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          groupBalances: [
+            { groupId: "g1", groupName: "Trip", balanceCents: 500 },
+          ],
+        },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+
+      mockUseQueries.mockReturnValue([
+        {
+          data: undefined,
+          isLoading: false,
+          error: new Error("fetch failed"),
+          refetch: jest.fn(),
+        },
+      ]);
+
+      const { result } = renderHook(() => useCrossGroupSuggestions());
+      expect(result.current.errors).toHaveLength(1);
+      expect(result.current.errors[0]!.groupId).toBe("g1");
+    });
+
+    it("provides a refetch callback", () => {
+      mockUseQuery.mockReturnValue({
+        data: { groupBalances: [{ groupId: "g1", groupName: "Trip", balanceCents: 500 }] },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+
+      const mockRefetchQ = jest.fn();
+      mockUseQueries.mockReturnValue([
+        {
+          data: undefined,
+          isLoading: false,
+          error: null,
+          refetch: mockRefetchQ,
+        },
+      ]);
+
+      const { result } = renderHook(() => useCrossGroupSuggestions());
+      result.current.refetch();
+      expect(mockRefetchQ).toHaveBeenCalled();
+    });
+  });
+
+  describe("useGroupCurrencyMap", () => {
+    let useGroupCurrencyMap: typeof import("@/lib/hooks").useGroupCurrencyMap;
+    beforeAll(() => {
+      useGroupCurrencyMap = require("@/lib/hooks").useGroupCurrencyMap;
+    });
+
+    it("returns a map of groupId to defaultCurrency", () => {
+      mockUseQuery.mockReturnValue({
+        data: [
+          { id: "g1", name: "Trip", defaultCurrency: "EUR" },
+          { id: "g2", name: "Home", defaultCurrency: "GBP" },
+        ],
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+
+      const { result } = renderHook(() => useGroupCurrencyMap());
+      expect(result.current.get("g1")).toBe("EUR");
+      expect(result.current.get("g2")).toBe("GBP");
+    });
+
+    it("defaults to USD when group has no defaultCurrency", () => {
+      mockUseQuery.mockReturnValue({
+        data: [{ id: "g1", name: "Trip" }],
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+
+      const { result } = renderHook(() => useGroupCurrencyMap());
+      expect(result.current.get("g1")).toBe("USD");
+    });
+
+    it("returns empty map when no groups", () => {
+      mockUseQuery.mockReturnValue({
+        data: [],
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+
+      const { result } = renderHook(() => useGroupCurrencyMap());
+      expect(result.current.size).toBe(0);
+    });
+  });
+
   describe("useTopDebtor", () => {
     it("returns null when no balance data", () => {
       mockUseQuery.mockReturnValue({ data: undefined, isLoading: false, error: null, refetch: jest.fn() });

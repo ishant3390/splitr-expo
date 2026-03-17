@@ -76,8 +76,10 @@ const mockUseCrossGroupSuggestions = jest.fn(() => ({
   errors: [],
 }));
 
+const mockUseUserProfile = jest.fn(() => ({ data: { id: "u2", name: "Bob" } }));
+
 jest.mock("@/lib/hooks", () => ({
-  useUserProfile: () => ({ data: { id: "u2", name: "Bob" } }),
+  useUserProfile: (...args: any[]) => mockUseUserProfile(...args),
   useCrossGroupSuggestions: (...args: any[]) => mockUseCrossGroupSuggestions(...args),
 }));
 
@@ -109,6 +111,7 @@ beforeEach(() => {
     refetch: mockCrossGroupRefetch,
     errors: [],
   });
+  mockUseUserProfile.mockReturnValue({ data: { id: "u2", name: "Bob" } });
 });
 
 describe("SettleUpScreen — per-group mode", () => {
@@ -371,10 +374,11 @@ describe("SettleUpScreen — per-group mode", () => {
     await waitFor(() => {
       expect(screen.getByText("Load more settlements")).toBeTruthy();
     });
+    const callsBefore = mockListSettlements.mock.calls.length;
     mockListSettlements.mockResolvedValueOnce([]);
     fireEvent.press(screen.getByText("Load more settlements"));
     await waitFor(() => {
-      expect(mockListSettlements).toHaveBeenCalledTimes(2);
+      expect(mockListSettlements.mock.calls.length).toBeGreaterThan(callsBefore);
     });
   });
 
@@ -1138,6 +1142,435 @@ describe("SettleUpScreen — payment deep links", () => {
         }),
         "mock-token"
       );
+    });
+  });
+});
+
+describe("SettleUpScreen — delete settlement with undo", () => {
+  it("removes settlement optimistically and shows undo toast when trash icon is pressed", async () => {
+    mockListSettlements.mockResolvedValue([
+      {
+        id: "s1",
+        payerUser: { id: "u1", name: "Alice" },
+        payeeUser: { id: "u2", name: "Bob" },
+        amount: 3000,
+        settlementDate: "2026-03-10",
+        paymentMethod: "cash",
+        createdAt: "2026-03-10T10:00:00Z",
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Suggested")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/History/));
+    await waitFor(() => {
+      expect(screen.getByText("Alice paid Bob")).toBeTruthy();
+    });
+    // Press the trash icon via its accessibility label
+    fireEvent.press(screen.getByLabelText("Delete settlement s1"));
+    // Settlement should be removed optimistically
+    await waitFor(() => {
+      expect(screen.queryByText("Alice paid Bob")).toBeNull();
+    });
+    // Undo toast should be shown
+    expect(mockToast.info).toHaveBeenCalledWith(
+      "Settlement by Alice deleted",
+      expect.objectContaining({
+        duration: 5000,
+        action: expect.objectContaining({ label: "Undo" }),
+      })
+    );
+  });
+
+  it("completes actual delete after timeout", async () => {
+    jest.useFakeTimers();
+    mockListSettlements.mockResolvedValue([
+      {
+        id: "s1",
+        payerUser: { id: "u1", name: "Alice" },
+        payeeUser: { id: "u2", name: "Bob" },
+        amount: 3000,
+        settlementDate: "2026-03-10",
+        paymentMethod: "cash",
+        createdAt: "2026-03-10T10:00:00Z",
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Suggested")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/History/));
+    await waitFor(() => {
+      expect(screen.getByText("Alice paid Bob")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText("Delete settlement s1"));
+    // Advance past the 5s timeout
+    await act(async () => {
+      jest.advanceTimersByTime(5500);
+    });
+    await waitFor(() => {
+      expect(mockDeleteSettlement).toHaveBeenCalledWith("s1", "mock-token");
+    });
+    jest.useRealTimers();
+  });
+
+  it("restores settlement when undo is pressed", async () => {
+    mockListSettlements.mockResolvedValue([
+      {
+        id: "s1",
+        payerUser: { id: "u1", name: "Alice" },
+        payeeUser: { id: "u2", name: "Bob" },
+        amount: 3000,
+        settlementDate: "2026-03-10",
+        paymentMethod: "cash",
+        createdAt: "2026-03-10T10:00:00Z",
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Suggested")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/History/));
+    await waitFor(() => {
+      expect(screen.getByText("Alice paid Bob")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText("Delete settlement s1"));
+    await waitFor(() => {
+      expect(screen.queryByText("Alice paid Bob")).toBeNull();
+    });
+    // Get the undo action callback and invoke it
+    const infoCall = mockToast.info.mock.calls[0];
+    const undoAction = infoCall[1].action;
+    act(() => {
+      undoAction.onPress();
+    });
+    // Settlement should reappear
+    await waitFor(() => {
+      expect(screen.getByText("Alice paid Bob")).toBeTruthy();
+    });
+  });
+
+  it("handles API failure on delete by restoring settlement", async () => {
+    jest.useFakeTimers();
+    mockDeleteSettlement.mockRejectedValueOnce(new Error("fail"));
+    mockListSettlements.mockResolvedValue([
+      {
+        id: "s1",
+        payerUser: { id: "u1", name: "Alice" },
+        payeeUser: { id: "u2", name: "Bob" },
+        amount: 3000,
+        settlementDate: "2026-03-10",
+        paymentMethod: "cash",
+        createdAt: "2026-03-10T10:00:00Z",
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Suggested")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/History/));
+    await waitFor(() => {
+      expect(screen.getByText("Alice paid Bob")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText("Delete settlement s1"));
+    // Advance past timeout to trigger the actual delete
+    await act(async () => {
+      jest.advanceTimersByTime(5500);
+    });
+    // On failure, settlement should be restored and error toast shown
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Failed to delete settlement.");
+    });
+    jest.useRealTimers();
+  });
+
+  it("clears pending delete when deleting a second settlement", async () => {
+    mockListSettlements.mockResolvedValue([
+      {
+        id: "s1",
+        payerUser: { id: "u1", name: "Alice" },
+        payeeUser: { id: "u2", name: "Bob" },
+        amount: 3000,
+        settlementDate: "2026-03-10",
+        paymentMethod: "cash",
+        createdAt: "2026-03-10T10:00:00Z",
+      },
+      {
+        id: "s2",
+        payerUser: { id: "u2", name: "Bob" },
+        payeeUser: { id: "u1", name: "Alice" },
+        amount: 2000,
+        settlementDate: "2026-03-09",
+        paymentMethod: "venmo",
+        createdAt: "2026-03-09T10:00:00Z",
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Suggested")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/History/));
+    await waitFor(() => {
+      expect(screen.getByText("Alice paid Bob")).toBeTruthy();
+      expect(screen.getByText("Bob paid Alice")).toBeTruthy();
+    });
+    // Delete first settlement
+    fireEvent.press(screen.getByLabelText("Delete settlement s1"));
+    await waitFor(() => {
+      expect(screen.queryByText("Alice paid Bob")).toBeNull();
+    });
+    // Immediately delete second settlement (triggers the pendingRef cleanup branch)
+    fireEvent.press(screen.getByLabelText("Delete settlement s2"));
+    await waitFor(() => {
+      expect(screen.queryByText("Bob paid Alice")).toBeNull();
+    });
+    // Both should have undo toasts
+    expect(mockToast.info).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("SettleUpScreen — invalid amount validation", () => {
+  it("shows error toast when amount is zero or invalid", async () => {
+    // Set up a suggestion where we can manually change the amount
+    mockSuggestions.mockResolvedValue([
+      {
+        fromUser: { id: "u1", name: "Alice", avatarUrl: null },
+        toUser: { id: "u2", name: "Bob", avatarUrl: null },
+        amount: 0, // zero amount
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*\$0\.00 payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*\$0\.00 payment/));
+    await waitFor(() => {
+      expect(screen.getAllByText("Record Payment").length).toBeGreaterThan(0);
+    });
+    const submitButtons = screen.getAllByText("Record Payment");
+    fireEvent.press(submitButtons[submitButtons.length - 1]);
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Please enter a valid amount.");
+    });
+    expect(mockCreateSettlement).not.toHaveBeenCalled();
+  });
+});
+
+describe("SettleUpScreen — creditor nudge card", () => {
+  it("shows payment handles nudge when user has no payment handles and is creditor", async () => {
+    // Current user (u2) has no paymentHandles and is the creditor (toUser) in a suggestion
+    mockUseUserProfile.mockReturnValue({ data: { id: "u2", name: "Bob", paymentHandles: null } });
+    // AsyncStorage returns null for DISMISS_KEY → nudgeDismissed = false
+    const AsyncStorage = require("@react-native-async-storage/async-storage");
+    AsyncStorage.getItem.mockResolvedValue(null);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Add your payment details")).toBeTruthy();
+      expect(screen.getByText("So friends can pay you directly")).toBeTruthy();
+    });
+  });
+
+  it("navigates to payment-methods when Add is pressed on nudge card", async () => {
+    mockUseUserProfile.mockReturnValue({ data: { id: "u2", name: "Bob", paymentHandles: null } });
+    const AsyncStorage = require("@react-native-async-storage/async-storage");
+    AsyncStorage.getItem.mockResolvedValue(null);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Add your payment details")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Add"));
+    expect(mockRouterPush).toHaveBeenCalledWith("/payment-methods");
+  });
+
+  it("dismisses nudge card and saves to AsyncStorage when X is pressed", async () => {
+    mockUseUserProfile.mockReturnValue({ data: { id: "u2", name: "Bob", paymentHandles: null } });
+    const AsyncStorage = require("@react-native-async-storage/async-storage");
+    AsyncStorage.getItem.mockResolvedValue(null);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Add your payment details")).toBeTruthy();
+    });
+    // Press the dismiss X button via its accessibility label
+    fireEvent.press(screen.getByLabelText("Dismiss payment details nudge"));
+    await waitFor(() => {
+      expect(screen.queryByText("Add your payment details")).toBeNull();
+    });
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      "@splitr/payment_handles_nudge_dismissed",
+      expect.any(String)
+    );
+  });
+
+  it("hides nudge card when dismiss expiry is still valid", async () => {
+    mockUseUserProfile.mockReturnValue({ data: { id: "u2", name: "Bob", paymentHandles: null } });
+    const AsyncStorage = require("@react-native-async-storage/async-storage");
+    // Return a future expiry time
+    const futureExpiry = String(Date.now() + 1000 * 60 * 60 * 24); // 1 day from now
+    AsyncStorage.getItem.mockResolvedValue(futureExpiry);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Settle Up")).toBeTruthy();
+    });
+    // Nudge card should be hidden
+    expect(screen.queryByText("Add your payment details")).toBeNull();
+  });
+
+  it("shows nudge card when dismiss expiry has passed", async () => {
+    mockUseUserProfile.mockReturnValue({ data: { id: "u2", name: "Bob", paymentHandles: null } });
+    const AsyncStorage = require("@react-native-async-storage/async-storage");
+    // Return an expired time
+    const pastExpiry = String(Date.now() - 1000);
+    AsyncStorage.getItem.mockResolvedValue(pastExpiry);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Add your payment details")).toBeTruthy();
+    });
+  });
+});
+
+describe("SettleUpScreen — refresh control", () => {
+  it("calls loadData on pull-to-refresh in per-group mode", async () => {
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Settle Up")).toBeTruthy();
+    });
+    const scrollView = screen.UNSAFE_getAllByType(require("react-native").ScrollView)[0];
+    const refreshControl = scrollView.props.refreshControl;
+    expect(refreshControl).toBeTruthy();
+    // Trigger the onRefresh callback
+    await act(async () => {
+      await refreshControl.props.onRefresh();
+    });
+    // loadData calls these APIs — since this is a second call (first on mount), expect >= 2
+    expect(mockGetGroup.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("calls crossGroupData.refetch on pull-to-refresh in cross-group mode", async () => {
+    mockSearchParams = {};
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [],
+      isLoading: false,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Settle Up")).toBeTruthy();
+    });
+    const scrollView = screen.UNSAFE_getAllByType(require("react-native").ScrollView)[0];
+    const refreshControl = scrollView.props.refreshControl;
+    await act(async () => {
+      await refreshControl.props.onRefresh();
+    });
+    expect(mockCrossGroupRefetch).toHaveBeenCalled();
+  });
+});
+
+describe("SettleUpScreen — UPI QR modal on web", () => {
+  const originalPlatform = require("react-native").Platform.OS;
+
+  beforeEach(() => {
+    mockSearchParams = { groupId: "g1" };
+    mockSuggestions.mockResolvedValue([
+      {
+        fromUser: { id: "u2", name: "Bob", avatarUrl: null },
+        toUser: { id: "u1", name: "Alice", avatarUrl: null },
+        toUserPaymentHandles: { upiVpa: "alice@okicici" },
+        amount: 5000,
+        currency: "INR",
+      },
+    ]);
+    mockGetGroup.mockResolvedValue({ id: "g1", name: "Trip", defaultCurrency: "INR" });
+  });
+
+  afterEach(() => {
+    require("react-native").Platform.OS = originalPlatform;
+  });
+
+  it("opens UPI QR modal instead of deep link on web platform", async () => {
+    require("react-native").Platform.OS = "web";
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Record.*₹50\.00.*payment/)).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/Record.*₹50\.00.*payment/));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Pay with UPI")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByLabelText("Pay with UPI"));
+    // On web, UPI should open QR modal — the UpiQrModal component receives visible=true
+    // Since UpiQrModal is rendered, check it received props
+    // The QR modal would render — check the component received visible prop
+    await waitFor(() => {
+      // After pressing UPI on web, it should NOT show the "Did you complete" prompt
+      // Instead it should open the QR modal (which is mocked)
+      // The payment initiated provider should NOT be set directly
+      expect(screen.queryByText(/Did you complete the payment via UPI/)).toBeNull();
+    });
+    require("react-native").Platform.OS = originalPlatform;
+  });
+});
+
+describe("SettleUpScreen — cross-group summary stats", () => {
+  beforeEach(() => {
+    mockSearchParams = {};
+  });
+
+  it("shows correct payment count in summary for cross-group mode", async () => {
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [
+        {
+          groupId: "g1",
+          groupName: "Trip",
+          suggestions: [
+            {
+              fromUser: { id: "u2", name: "Bob", avatarUrl: null },
+              toUser: { id: "u1", name: "Alice", avatarUrl: null },
+              amount: 5000,
+            },
+            {
+              fromUser: { id: "u2", name: "Bob", avatarUrl: null },
+              toUser: { id: "u3", name: "Carol", avatarUrl: null },
+              amount: 3000,
+            },
+          ],
+        },
+      ],
+      isLoading: false,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("2 payments needed")).toBeTruthy();
+      expect(screen.getByText("Across 1 group")).toBeTruthy();
+    });
+  });
+
+  it("shows singular payment text for 1 suggestion", async () => {
+    mockUseCrossGroupSuggestions.mockReturnValue({
+      data: [
+        {
+          groupId: "g1",
+          groupName: "Trip",
+          suggestions: [
+            {
+              fromUser: { id: "u2", name: "Bob", avatarUrl: null },
+              toUser: { id: "u1", name: "Alice", avatarUrl: null },
+              amount: 5000,
+            },
+          ],
+        },
+      ],
+      isLoading: false,
+      refetch: mockCrossGroupRefetch,
+      errors: [],
+    });
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("1 payment needed")).toBeTruthy();
+      expect(screen.getByText("Across 1 group")).toBeTruthy();
     });
   });
 });

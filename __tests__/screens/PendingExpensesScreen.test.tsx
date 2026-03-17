@@ -486,6 +486,141 @@ describe("PendingExpensesScreen", () => {
     });
   });
 
+  it("shows 'Just now' for very recent queued items", async () => {
+    const justNow = new Date(Date.now() - 10 * 1000).toISOString(); // 10 seconds ago
+    mockGetQueuedExpenses.mockResolvedValue([
+      {
+        clientId: "c1",
+        description: "Coffee",
+        amountCents: 500,
+        groupId: "g1",
+        groupName: "Work",
+        queuedAt: justNow,
+        attempts: 0,
+        lastError: null,
+      },
+    ]);
+
+    render(<PendingExpensesScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Just now")).toBeTruthy();
+    });
+  });
+
+  it("does not show Clear All button for single item", async () => {
+    mockGetQueuedExpenses.mockResolvedValue([
+      {
+        clientId: "c1",
+        description: "Coffee",
+        amountCents: 500,
+        groupId: "g1",
+        groupName: "Work",
+        queuedAt: new Date().toISOString(),
+        attempts: 0,
+        lastError: null,
+      },
+    ]);
+
+    render(<PendingExpensesScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Coffee")).toBeTruthy();
+    });
+    expect(screen.queryByText("Clear All")).toBeNull();
+  });
+
+  it("does not show failed attempt badge when attempts is 0", async () => {
+    mockGetQueuedExpenses.mockResolvedValue([
+      {
+        clientId: "c1",
+        description: "Coffee",
+        amountCents: 500,
+        groupId: "g1",
+        groupName: "Work",
+        queuedAt: new Date().toISOString(),
+        attempts: 0,
+        lastError: null,
+      },
+    ]);
+
+    render(<PendingExpensesScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Coffee")).toBeTruthy();
+    });
+    expect(screen.queryByText(/failed attempt/)).toBeNull();
+  });
+
+  it("does not show lastError when null", async () => {
+    mockGetQueuedExpenses.mockResolvedValue([
+      {
+        clientId: "c1",
+        description: "Coffee",
+        amountCents: 500,
+        groupId: "g1",
+        groupName: "Work",
+        queuedAt: new Date().toISOString(),
+        attempts: 1,
+        lastError: null,
+      },
+    ]);
+
+    render(<PendingExpensesScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("1 failed attempt")).toBeTruthy();
+    });
+    // No error text rendered
+    expect(screen.queryByText("Network timeout")).toBeNull();
+  });
+
+  it("does not show online syncing banner when no items", async () => {
+    render(<PendingExpensesScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("All caught up!")).toBeTruthy();
+    });
+    expect(screen.queryByText(/You're back online/)).toBeNull();
+  });
+
+  it("discards individual expense via trash button and Alert callback", async () => {
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(
+      (title: string, message: string | undefined, buttons: any[]) => {
+        const discardBtn = buttons?.find((b: any) => b.text === "Discard");
+        if (discardBtn?.onPress) discardBtn.onPress();
+      }
+    );
+
+    const mockRefreshPendingCount = jest.fn();
+    const networkMock = require("@/components/NetworkProvider");
+    const origUseNetwork = networkMock.useNetwork;
+    networkMock.useNetwork = () => ({ isOnline: true, pendingCount: 1, refreshPendingCount: mockRefreshPendingCount });
+
+    mockGetQueuedExpenses.mockResolvedValue([
+      {
+        clientId: "c1",
+        description: "Coffee",
+        amountCents: 500,
+        groupId: "g1",
+        groupName: "Work",
+        queuedAt: new Date().toISOString(),
+        attempts: 0,
+        lastError: null,
+      },
+    ]);
+
+    render(<PendingExpensesScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Coffee")).toBeTruthy();
+    });
+
+    // Press the trash icon button (now has accessibilityLabel)
+    fireEvent.press(screen.getByLabelText("Discard Coffee"));
+    await waitFor(() => {
+      expect(mockRemoveFromQueue).toHaveBeenCalledWith("c1");
+      expect(mockRefreshPendingCount).toHaveBeenCalled();
+    });
+
+    alertSpy.mockRestore();
+    networkMock.useNetwork = origUseNetwork;
+  });
+
   it("shows days ago for very old queued items", async () => {
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
     mockGetQueuedExpenses.mockResolvedValue([

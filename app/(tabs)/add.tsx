@@ -538,6 +538,7 @@ export default function AddExpenseScreen() {
               <View className="relative rounded-xl overflow-hidden" style={{ height: 120 }}>
                 <Image source={{ uri: receiptUri }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
                 <Pressable
+                  testID="remove-receipt"
                   onPress={() => setReceiptUri(null)}
                   className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 items-center justify-center"
                 >

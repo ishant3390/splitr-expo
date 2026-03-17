@@ -67,6 +67,7 @@ export default function HelpSupportScreen() {
       {/* Header */}
       <View className="flex-row items-center gap-3 px-5 pt-3 pb-4 border-b border-border">
         <Pressable
+          testID="back-button"
           onPress={() => { hapticLight(); router.back(); }}
           className="w-10 h-10 rounded-full bg-muted items-center justify-center"
         >

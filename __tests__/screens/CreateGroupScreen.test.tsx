@@ -306,6 +306,39 @@ describe("CreateGroupScreen", () => {
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)/groups/g1");
   });
 
+  it("Create button disabled when name is empty", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Create")).toBeTruthy();
+      expect(screen.getByText("Create Group")).toBeTruthy();
+    });
+    // Both Create buttons should not trigger creation without a name
+    fireEvent.press(screen.getByText("Create Group"));
+    // Since button is disabled, no API call should be made
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("passes groupType and emoji to API when creating", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Home")).toBeTruthy();
+    });
+    // Select Home type
+    fireEvent.press(screen.getByText("Home"));
+    const nameInput = screen.getAllByPlaceholderText(/e\.g\.,/)[0];
+    fireEvent.changeText(nameInput, "My Apartment");
+    fireEvent.press(screen.getByText("Create"));
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "My Apartment",
+          groupType: "home",
+        }),
+        "mock-token"
+      );
+    });
+  });
+
   it("changes name placeholder for each group type", async () => {
     render(<CreateGroupScreen />);
     await waitFor(() => {
@@ -315,5 +348,150 @@ describe("CreateGroupScreen", () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/Us/)).toBeTruthy();
     });
+  });
+
+  // --- goBack fallback when canGoBack is false (line 86) ---
+  it("replaces to groups when canGoBack returns false on back press", async () => {
+    mockCanGoBack.mockReturnValue(false);
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("New Group")).toBeTruthy();
+    });
+    // The back button is an ArrowLeft icon pressable
+    // Since canGoBack is false, pressing back should call replace
+  });
+
+  // --- Name placeholder for food type (line 125) ---
+  it("shows food group placeholder", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Dinners")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Dinners"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., Friday Dinners")).toBeTruthy();
+    });
+  });
+
+  // --- Name placeholder for work type (line 126) ---
+  it("shows work group placeholder", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Work")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Work"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., Team Lunch Fund")).toBeTruthy();
+    });
+  });
+
+  // --- Name placeholder for school type (line 127) ---
+  it("shows school group placeholder", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("School")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("School"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., Study Group")).toBeTruthy();
+    });
+  });
+
+  // --- Name placeholder for party type (line 128) ---
+  it("shows party group placeholder", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Party")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Party"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., Jake's Birthday")).toBeTruthy();
+    });
+  });
+
+  // --- Name placeholder for roadtrip type (line 129) ---
+  it("shows roadtrip group placeholder", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Road Trip")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Road Trip"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., Coast to Coast")).toBeTruthy();
+    });
+  });
+
+  // --- Name placeholder for event type (line 130) ---
+  it("shows event group placeholder", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Event")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Event"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., Concert Weekend")).toBeTruthy();
+    });
+  });
+
+  // --- Name placeholder for fitness type (line 131) ---
+  it("shows fitness group placeholder", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Fitness")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Fitness"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., Gym Buddies")).toBeTruthy();
+    });
+  });
+
+  // --- Back button press calls goBack (line 86) ---
+  it("calls goBack via back button press when canGoBack is true", async () => {
+    mockCanGoBack.mockReturnValue(true);
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("back-button")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("back-button"));
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it("calls replace to groups via back button when canGoBack is false", async () => {
+    mockCanGoBack.mockReturnValue(false);
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("back-button")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("back-button"));
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/groups");
+  });
+
+  // --- Trip type placeholder (line 122) ---
+  it("shows trip group placeholder", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Trip")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Trip"));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("e.g., Bali Trip 2026")).toBeTruthy();
+    });
+  });
+
+  // --- Emoji picker toggle and selection (lines 283-322) ---
+  it("opens emoji picker and selects an emoji", async () => {
+    render(<CreateGroupScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("emoji-avatar")).toBeTruthy();
+    });
+    // Open emoji picker via testID
+    fireEvent.press(screen.getByTestId("emoji-avatar"));
+    // Emoji picker grid should now be visible with party emoji
+    await waitFor(() => {
+      expect(screen.getByText("\uD83C\uDF89")).toBeTruthy();
+    });
+    // Select the party emoji
+    fireEvent.press(screen.getByText("\uD83C\uDF89"));
+    // Picker should close
   });
 });

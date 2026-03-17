@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react-native";
+import * as Reanimated from "react-native-reanimated";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 
 describe("AnimatedNumber", () => {
@@ -38,5 +39,32 @@ describe("AnimatedNumber", () => {
   it("passes through text props", () => {
     render(<AnimatedNumber value={99} testID="animated-num" />);
     expect(screen.getByTestId("animated-num")).toBeTruthy();
+  });
+
+  describe("reduced motion", () => {
+    let useReducedMotionSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      useReducedMotionSpy = jest.spyOn(Reanimated, "useReducedMotion");
+    });
+
+    afterEach(() => {
+      useReducedMotionSpy.mockRestore();
+    });
+
+    it("sets display instantly when reduced motion is enabled", () => {
+      useReducedMotionSpy.mockReturnValue(true);
+      const { rerender } = render(<AnimatedNumber value={0} />);
+      expect(screen.getByText("0")).toBeTruthy();
+
+      rerender(<AnimatedNumber value={100} />);
+      expect(screen.getByText("100")).toBeTruthy();
+    });
+
+    it("uses formatter with reduced motion", () => {
+      useReducedMotionSpy.mockReturnValue(true);
+      render(<AnimatedNumber value={42} formatter={(n) => `$${n.toFixed(2)}`} />);
+      expect(screen.getByText("$42.00")).toBeTruthy();
+    });
   });
 });

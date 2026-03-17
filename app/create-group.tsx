@@ -238,6 +238,7 @@ export default function CreateGroupScreen() {
           {/* Nav bar */}
           <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
             <Pressable
+              testID="back-button"
               onPress={goBack}
               className="w-10 h-10 items-center justify-center rounded-full"
               style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
@@ -280,6 +281,7 @@ export default function CreateGroupScreen() {
           {/* Emoji avatar — centered on hero */}
           <View className="items-center pb-5 pt-2">
             <Pressable
+              testID="emoji-avatar"
               onPress={() => setShowEmojiPicker(!showEmojiPicker)}
               style={{
                 width: 80,

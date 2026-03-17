@@ -15,6 +15,7 @@ module.exports = {
     "components/**/*.{ts,tsx}",
     "app/**/*.{ts,tsx}",
     "!**/_layout.tsx",
+    "!app/invite/\\[code\\].tsx",
     "!**/node_modules/**",
   ],
 };

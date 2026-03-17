@@ -185,7 +185,7 @@ export default function GroupsScreen() {
             Groups
           </Text>
           <View className="flex-row items-center gap-2">
-            <Pressable onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
+            <Pressable accessibilityLabel="Toggle search" onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
               <View
                 className="w-9 h-9 rounded-full items-center justify-center"
                 style={{ backgroundColor: showSearch ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }}
@@ -238,7 +238,7 @@ export default function GroupsScreen() {
               placeholderTextColor="rgba(255,255,255,0.5)"
             />
             {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery("")}>
+              <Pressable accessibilityLabel="Clear search" onPress={() => setSearchQuery("")}>
                 <X size={16} color="rgba(255,255,255,0.7)" />
               </Pressable>
             )}

@@ -56,6 +56,7 @@ components/
   NetworkProvider.tsx   # Network context, offline banner, auto-sync
   NotificationProvider.tsx # Push notification lifecycle (native-only, web passthrough)
   icons/                # Custom SVG icons (social auth logos, tab bar icons, payment brand logos)
+  ui/multi-currency-amount.tsx # Renders CurrencyAmount[] as "£25.00 + $100.00" with accessibility
   ui/payment-links-section.tsx # "Pay Directly" deep link pills for settle-up
   ui/upi-qr-modal.tsx   # UPI QR code modal for web platform
 lib/
@@ -88,7 +89,8 @@ lib/
 - Use `cn()` from `lib/utils` for conditional classes
 - Use `getToken()` from Clerk for API auth headers
 - API responses may be `{ key: T[] }` maps — use `flattenMap()` in api.ts
-- Amounts stored in cents (use `amountToCents()` / `formatCents()`)
+- Amounts stored in cents (use `amountToCents()` / `formatCents(cents, currency)`)
+- **Multi-currency display**: Cross-group screens (Home, Activity, Groups summary) use `useUserBalance().totalOwedByCurrency` / `totalOwingByCurrency` arrays. Single-group screens pass `group.defaultCurrency`. Use `MultiCurrencyAmount` component for multi-currency rendering, `formatMultiCurrency()` for string contexts. Use `useGroupCurrencyMap()` hook to resolve per-activity-item currency. Use `getCurrencySymbol(currency)` instead of hardcoded `$`/`£`/`€` ternary chains.
 - Deduplicate member lists (API sometimes returns duplicates)
 - Backend category `icon` field returns icon names (e.g. "restaurant"), not emojis — use `getCategoryEmoji()` from `lib/screen-helpers` to convert to emoji
 - Auto-category inference: `inferCategoryFromDescription(description, categories)` in `lib/screen-helpers` — keyword-maps description to a category id. Used in `add.tsx` + `edit-expense/[id].tsx`. Respects manual overrides via `userPickedCategoryRef`. Does not override on initial load in edit screen (guarded by `initialDescriptionRef`)

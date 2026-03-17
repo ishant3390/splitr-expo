@@ -190,6 +190,8 @@ export default function PendingExpensesScreen() {
                     </Text>
                     <Pressable
                       onPress={() => handleDiscard(item)}
+                      accessibilityLabel={`Discard ${item.description}`}
+                      accessibilityRole="button"
                       className="w-8 h-8 rounded-full bg-destructive/10 items-center justify-center"
                     >
                       <Trash2 size={14} color="#ef4444" />

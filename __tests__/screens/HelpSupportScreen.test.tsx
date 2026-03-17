@@ -17,6 +17,17 @@ jest.mock("@/components/ui/accordion-item", () => {
   };
 });
 
+const mockBack = jest.fn();
+jest.mock("expo-router", () => ({
+  useRouter: () => ({
+    back: mockBack,
+  }),
+}));
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
 describe("HelpSupportScreen", () => {
   it("renders the header", () => {
     render(<HelpSupportScreen />);
@@ -130,5 +141,11 @@ describe("HelpSupportScreen", () => {
   it("renders rate us description", () => {
     render(<HelpSupportScreen />);
     expect(screen.getByText("Rate us on the App Store to help others discover Splitr")).toBeTruthy();
+  });
+
+  it("calls router.back when header back button is pressed", () => {
+    render(<HelpSupportScreen />);
+    fireEvent.press(screen.getByTestId("back-button"));
+    expect(mockBack).toHaveBeenCalled();
   });
 });

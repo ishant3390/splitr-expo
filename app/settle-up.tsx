@@ -825,6 +825,7 @@ export default function SettleUpScreen() {
                                 <Pressable
                                   onPress={() => { hapticWarning(); handleDeleteWithUndo(s); }}
                                   hitSlop={8}
+                                  accessibilityLabel={`Delete settlement ${s.id}`}
                                 >
                                   <Trash2 size={14} color="#ef4444" />
                                 </Pressable>
@@ -1238,6 +1239,7 @@ export default function SettleUpScreen() {
                       setNudgeDismissed(true);
                     }}
                     hitSlop={8}
+                    accessibilityLabel="Dismiss payment details nudge"
                   >
                     <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
                   </Pressable>
