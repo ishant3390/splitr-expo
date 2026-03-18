@@ -1,6 +1,7 @@
 import React from "react";
 import { FlatList } from "react-native";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react-native";
+import { SplitError } from "@/lib/errors";
 import GroupsScreen from "@/app/(tabs)/groups";
 
 const mockPush = jest.fn();
@@ -565,7 +566,7 @@ describe("GroupsScreen", () => {
   });
 
   it("shows outstanding balances error on delete failure", async () => {
-    mockDeleteMutateAsync.mockRejectedValueOnce(new Error("OUTSTANDING_BALANCES"));
+    mockDeleteMutateAsync.mockRejectedValueOnce(new SplitError({ code: "ERR-400", category: "BUSINESS_LOGIC", message: "Outstanding balances" }, 422));
     mockUseGroups.mockReturnValue({
       data: [sampleGroups[0]],
       isLoading: false,

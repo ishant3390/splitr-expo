@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
@@ -8,27 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GroupAvatar } from "@/components/ui/group-avatar";
 import { inviteApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useToast } from "@/components/ui/toast";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
 import type { GroupInvitePreviewDto } from "@/lib/types";
-
-function getErrorMessage(err: any): { code: string | null; message: string } {
-  const msg = err?.message ?? "";
-  if (msg.includes("ERR-301") || msg.includes("409"))
-    return { code: "ALREADY_MEMBER", message: "You're already in this group." };
-  if (msg.includes("ERR-300") || msg.includes("404"))
-    return { code: "NOT_FOUND", message: "This invite link is invalid." };
-  if (msg.includes("ERR-401"))
-    return { code: "EXPIRED", message: "This invite link has expired." };
-  if (msg.includes("ERR-402"))
-    return { code: "ARCHIVED", message: "This group has been archived." };
-  return { code: null, message: "Failed to join group. Try again." };
-}
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 
 export default function JoinGroupScreen() {
   const router = useRouter();
   const { code } = useLocalSearchParams<{ code: string }>();
   const { getToken, isSignedIn } = useAuth();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const toast = useToast();
 
   const [preview, setPreview] = useState<GroupInvitePreviewDto | null>(null);
@@ -67,14 +60,17 @@ export default function JoinGroupScreen() {
       setTimeout(() => {
         router.replace(`/(tabs)/groups/${preview!.groupId}`);
       }, 1000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       hapticError();
-      const parsed = getErrorMessage(err);
-      if (parsed.code === "ALREADY_MEMBER" && preview) {
-        toast.info(parsed.message);
+      const apiErr = parseApiError(err);
+      const errCode = apiErr?.code;
+      if ((errCode === "ERR-301" || errCode === "ERR-409") && preview) {
+        toast.info("You're already in this group.");
         router.replace(`/(tabs)/groups/${preview.groupId}`);
+      } else if (errCode) {
+        toast.error(getUserMessage(apiErr!));
       } else {
-        toast.error(parsed.message);
+        toast.error("Failed to join group. Try again.");
       }
     } finally {
       setJoining(false);
@@ -84,7 +80,7 @@ export default function JoinGroupScreen() {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator color="#0d9488" size="large" />
+        <ActivityIndicator color={c.primary} size="large" />
         <Text className="text-sm text-muted-foreground font-sans mt-4">
           Loading invite...
         </Text>
@@ -99,14 +95,14 @@ export default function JoinGroupScreen() {
           style={{
             width: 64,
             height: 64,
-            borderRadius: 20,
-            backgroundColor: "#ef444420",
+            borderRadius: radius.xl,
+            backgroundColor: `${c.destructive}20`,
             alignItems: "center",
             justifyContent: "center",
             marginBottom: 16,
           }}
         >
-          <AlertCircle size={32} color="#ef4444" />
+          <AlertCircle size={32} color={c.destructive} />
         </View>
         <Text className="text-xl font-sans-bold text-foreground mb-2">
           Invalid Invite
@@ -136,12 +132,12 @@ export default function JoinGroupScreen() {
           style={{
             width: 80,
             height: 80,
-            borderRadius: 24,
-            backgroundColor: isArchived ? "#94a3b820" : "#0d948815",
+            borderRadius: radius["2xl"],
+            backgroundColor: isArchived ? `${palette.slate400}20` : `${c.primary}15`,
             alignItems: "center",
             justifyContent: "center",
             borderWidth: 2,
-            borderColor: isArchived ? "#94a3b840" : "#0d948830",
+            borderColor: isArchived ? `${palette.slate400}40` : `${c.primary}30`,
           }}
         >
           <Text style={{ fontSize: 36 }}>{preview.emoji || "\uD83D\uDC65"}</Text>
@@ -165,7 +161,7 @@ export default function JoinGroupScreen() {
 
         {/* Member count */}
         <View className="flex-row items-center gap-2 px-4 py-2 rounded-full bg-muted">
-          <Users size={16} color="#64748b" />
+          <Users size={16} color={c.mutedForeground} />
           <Text className="text-sm text-muted-foreground font-sans">
             {preview.memberCount} {preview.memberCount === 1 ? "member" : "members"}
           </Text>
@@ -178,15 +174,15 @@ export default function JoinGroupScreen() {
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
-              backgroundColor: "#f59e0b15",
-              borderRadius: 12,
+              backgroundColor: `${c.warning}15`,
+              borderRadius: radius.DEFAULT,
               paddingHorizontal: 16,
               paddingVertical: 10,
               width: "100%",
             }}
           >
-            <Archive size={16} color="#f59e0b" />
-            <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#92400e" }}>
+            <Archive size={16} color={c.warning} />
+            <Text style={{ flex: 1, fontSize: fs.base, fontFamily: ff.medium, color: "#92400e" }}>
               This group is no longer active
             </Text>
           </View>
@@ -195,7 +191,7 @@ export default function JoinGroupScreen() {
         {/* Join button */}
         {joined ? (
           <View className="flex-row items-center gap-2 py-3">
-            <Check size={20} color="#10b981" />
+            <Check size={20} color={c.success} />
             <Text className="text-base font-sans-semibold text-success">
               Joined!
             </Text>
@@ -208,13 +204,13 @@ export default function JoinGroupScreen() {
             className="w-full"
           >
             {joining ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={palette.white} />
             ) : (
               <View className="flex-row items-center gap-2">
                 {!isArchived && (
                   isSignedIn
-                    ? <UserPlus size={18} color="#ffffff" />
-                    : <LogIn size={18} color="#ffffff" />
+                    ? <UserPlus size={18} color={palette.white} />
+                    : <LogIn size={18} color={palette.white} />
                 )}
                 <Text className="text-base font-sans-semibold text-primary-foreground">
                   {isArchived

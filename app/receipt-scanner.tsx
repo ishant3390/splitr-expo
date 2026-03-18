@@ -38,7 +38,9 @@ import { Card } from "@/components/ui/card";
 import { formatCents } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { expensesApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import type { ReceiptScanResultDto, ReceiptScanResponseDto } from "@/lib/types";
 
 /** Animated scan line that sweeps vertically over the receipt image */
@@ -76,9 +78,9 @@ function ScanAnimation() {
           left: 12,
           right: 12,
           height: 2,
-          backgroundColor: "#0d9488",
+          backgroundColor: palette.teal600,
           borderRadius: 1,
-          shadowColor: "#0d9488",
+          shadowColor: palette.teal600,
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.6,
           shadowRadius: 8,
@@ -109,7 +111,7 @@ function ProcessingDots() {
       {([s1, s2, s3] as const).map((s, i) => (
         <Animated.View
           key={`dot-${i}`}
-          style={[s, { width: 8, height: 8, borderRadius: 4, backgroundColor: "#0d9488" }]}
+          style={[s, { width: 8, height: 8, borderRadius: 4, backgroundColor: palette.teal600 }]}
         />
       ))}
     </View>
@@ -128,12 +130,12 @@ function ConfidenceBadge({ score }: { score: number }) {
         gap: 3,
         paddingHorizontal: 6,
         paddingVertical: 2,
-        borderRadius: 6,
+        borderRadius: radius.sm,
         backgroundColor: isLow ? "#fef2f2" : "#fffbeb",
       }}
     >
-      <AlertTriangle size={10} color={isLow ? "#ef4444" : "#f59e0b"} />
-      <Text style={{ fontSize: 10, color: isLow ? "#ef4444" : "#f59e0b", fontFamily: "Inter_500Medium" }}>
+      <AlertTriangle size={10} color={isLow ? palette.red500 : palette.amber500} />
+      <Text style={{ fontSize: 10, color: isLow ? palette.red500 : palette.amber500, fontFamily: ff.medium }}>
         Verify
       </Text>
     </View>
@@ -145,6 +147,7 @@ export default function ReceiptScannerScreen() {
   const { getToken } = useAuth();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const toast = useToast();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -199,8 +202,9 @@ export default function ReceiptScannerScreen() {
       setResult(response.receipt);
       setQuota({ used: response.dailyScansUsed, limit: response.dailyScanLimit });
       hapticSuccess();
-    } catch (err: any) {
-      setScanError(err?.message || "Failed to scan receipt. Please try again.");
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err);
+      setScanError(apiErr ? getUserMessage(apiErr) : "Failed to scan receipt. Please try again.");
       hapticWarning();
     } finally {
       setScanning(false);
@@ -246,7 +250,7 @@ export default function ReceiptScannerScreen() {
     setScanError(null);
   };
 
-  const iconColor = isDark ? "#f1f5f9" : "#0f172a";
+  const iconColor = c.foreground;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
@@ -256,7 +260,7 @@ export default function ReceiptScannerScreen() {
           onPress={goBack}
           className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
         >
-          <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+          <ArrowLeft size={22} color={c.primary} strokeWidth={2.5} />
         </Pressable>
         <Text className="flex-1 text-lg font-sans-semibold text-foreground">
           Scan Receipt
@@ -268,7 +272,7 @@ export default function ReceiptScannerScreen() {
         <View className="flex-1 items-center justify-center px-5 gap-6">
           <Animated.View entering={FadeInDown.delay(100).duration(300).springify()}>
             <View className="w-24 h-24 rounded-3xl bg-primary/10 items-center justify-center">
-              <ScanText size={48} color="#0d9488" />
+              <ScanText size={48} color={c.primary} />
             </View>
           </Animated.View>
 
@@ -287,7 +291,7 @@ export default function ReceiptScannerScreen() {
             {Platform.OS !== "web" && (
               <Button variant="default" size="lg" onPress={() => captureImage(true)} className="w-full">
                 <View className="flex-row items-center gap-2">
-                  <Camera size={20} color="#ffffff" />
+                  <Camera size={20} color={palette.white} />
                   <Text className="text-base font-sans-semibold text-primary-foreground">
                     Take Photo
                   </Text>
@@ -321,8 +325,8 @@ export default function ReceiptScannerScreen() {
                   position: "absolute",
                   top: 8,
                   right: 8,
-                  backgroundColor: "#10b981",
-                  borderRadius: 20,
+                  backgroundColor: c.success,
+                  borderRadius: radius.xl,
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   flexDirection: "row",
@@ -330,8 +334,8 @@ export default function ReceiptScannerScreen() {
                   gap: 4,
                 }}
               >
-                <CheckCircle2 size={14} color="#ffffff" />
-                <Text style={{ color: "#ffffff", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+                <CheckCircle2 size={14} color={palette.white} />
+                <Text style={{ color: palette.white, fontSize: fs.sm, fontFamily: ff.semibold }}>
                   Scanned
                 </Text>
               </View>
@@ -356,7 +360,7 @@ export default function ReceiptScannerScreen() {
             <Animated.View entering={FadeInDown.duration(300).springify()}>
               <Card className="p-4 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 mb-4">
                 <View className="flex-row items-center gap-2 mb-2">
-                  <AlertTriangle size={18} color="#ef4444" />
+                  <AlertTriangle size={18} color={c.destructive} />
                   <Text className="text-sm font-sans-semibold text-red-800 dark:text-red-200">
                     Scan Failed
                   </Text>
@@ -421,7 +425,7 @@ export default function ReceiptScannerScreen() {
               {result.lineItems.length > 0 && (
                 <Card className="p-4 gap-1 mb-3">
                   <View className="flex-row items-center gap-2 mb-2">
-                    <Receipt size={14} color="#94a3b8" />
+                    <Receipt size={14} color={palette.slate400} />
                     <Text className="text-xs font-sans-semibold text-muted-foreground uppercase tracking-wide">
                       Items ({result.lineItems.length})
                     </Text>
@@ -490,7 +494,7 @@ export default function ReceiptScannerScreen() {
               {/* Overall confidence */}
               {result.confidence.overall < 0.8 && (
                 <View className="flex-row items-center gap-2 bg-amber-50 dark:bg-amber-950 rounded-lg px-3 py-2 mb-4">
-                  <AlertTriangle size={14} color="#f59e0b" />
+                  <AlertTriangle size={14} color={palette.amber500} />
                   <Text className="text-xs text-amber-700 dark:text-amber-300 font-sans flex-1">
                     Some fields have low confidence. Please verify the details before creating the expense.
                   </Text>

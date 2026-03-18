@@ -144,7 +144,7 @@ describe("ReceiptScannerScreen", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Scan Failed")).toBeTruthy();
-      expect(screen.getByText("Network error")).toBeTruthy();
+      expect(screen.getByText("Failed to scan receipt. Please try again.")).toBeTruthy();
     });
   });
 
@@ -404,7 +404,7 @@ describe("ReceiptScannerScreen", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Scan Failed")).toBeTruthy();
-      expect(screen.getByText("Not authenticated")).toBeTruthy();
+      expect(screen.getByText("Failed to scan receipt. Please try again.")).toBeTruthy();
     });
   });
 

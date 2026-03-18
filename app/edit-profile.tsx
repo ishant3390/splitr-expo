@@ -18,8 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { usersApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useToast } from "@/components/ui/toast";
 import { getInitials } from "@/lib/utils";
+import { colors, palette } from "@/lib/tokens";
 import type { UserDto, UpdateUserRequest } from "@/lib/types";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "INR", "CAD", "AUD", "JPY"];
@@ -29,6 +31,7 @@ export default function EditProfileScreen() {
   const { getToken } = useAuth();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const { user: clerkUser } = useUser();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
@@ -82,8 +85,9 @@ export default function EditProfileScreen() {
       await usersApi.updateMe(data, token!);
       toast.success("Your profile has been updated.");
       goBack();
-    } catch (err: any) {
-      toast.error("Something went wrong. Try again later.");
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err);
+      toast.error(apiErr ? getUserMessage(apiErr) : "Something went wrong. Try again later.");
     } finally {
       setSaving(false);
     }
@@ -92,7 +96,7 @@ export default function EditProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <ActivityIndicator size="large" color="#0d9488" />
+        <ActivityIndicator size="large" color={c.primary} />
       </SafeAreaView>
     );
   }
@@ -109,13 +113,13 @@ export default function EditProfileScreen() {
             onPress={goBack}
             className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
           >
-            <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+            <ArrowLeft size={22} color={c.primary} strokeWidth={2.5} />
           </Pressable>
           <Text className="text-xl font-sans-bold text-foreground flex-1">
             Edit Profile
           </Text>
           <Pressable onPress={handleSave} disabled={saving} className="p-2">
-            <Save size={22} color={saving ? "#94a3b8" : "#0d9488"} />
+            <Save size={22} color={saving ? palette.slate400 : c.primary} />
           </Pressable>
         </View>
 

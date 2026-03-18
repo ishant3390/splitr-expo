@@ -6,6 +6,9 @@
  */
 
 import { Platform } from "react-native";
+import { SplitError, isSplitError, parseApiError } from "./errors";
+import type { ApiErrorBody } from "./errors";
+import { withIdempotency } from "./idempotency";
 import type {
   UserDto,
   UpdateUserRequest,
@@ -53,17 +56,39 @@ async function request<T>(
 
   if (!res.ok) {
     const errorBody = await res.text().catch(() => "Unknown error");
-    throw new Error(`API ${res.status}: ${errorBody}`);
+    throw buildApiError(errorBody, res.status);
   }
 
   const text = await res.text();
   return text ? JSON.parse(text) : ({} as T);
 }
 
-/** Check if an API error is a version conflict (HTTP 409 / ERR-302) */
+/**
+ * Parse error body text and throw a SplitError (structured) or plain Error (fallback).
+ * Used by both request() and inline fetch calls.
+ */
+function buildApiError(bodyText: string, status: number): Error {
+  try {
+    const parsed = JSON.parse(bodyText);
+    if (parsed && typeof parsed.code === "string") {
+      return new SplitError(parsed as ApiErrorBody, status);
+    }
+  } catch {
+    // Not JSON — fall through
+  }
+  return new Error(`API ${status}: ${bodyText}`);
+}
+
+/** Check if an API error is a version conflict (ERR-302) */
 export function isVersionConflict(err: unknown): boolean {
+  if (isSplitError(err)) {
+    return err.body.code === "ERR-302";
+  }
+  // Legacy fallback — check ERR-302 first, then HTTP 409 only when no ERR- code present
   const msg = err instanceof Error ? err.message : String(err);
-  return msg.includes("409") || msg.includes("ERR-302");
+  if (msg.includes("ERR-302")) return true;
+  // Only match raw "409" if there's no ERR- code (avoids false positive on ERR-409)
+  return msg.includes("409") && !msg.includes("ERR-");
 }
 
 /** Flatten `{ key: T[] }` map responses into a flat `T[]`. */
@@ -203,10 +228,12 @@ export const groupsApi = {
   },
 
   createExpense: (groupId: string, data: CreateExpenseRequest, token: string) =>
-    request<ExpenseDto>(
-      `/v1/groups/${groupId}/expenses`,
-      { method: "POST", body: JSON.stringify(data) },
-      token
+    withIdempotency(`create-expense-${Date.now()}`, (idempotencyKey) =>
+      request<ExpenseDto>(
+        `/v1/groups/${groupId}/expenses`,
+        { method: "POST", body: JSON.stringify(data), headers: { "Idempotency-Key": idempotencyKey } },
+        token
+      )
     ),
 
   // Activity
@@ -295,7 +322,7 @@ export const expensesApi = {
     }).then(async (res) => {
       if (!res.ok) {
         const errorBody = await res.text().catch(() => "Unknown error");
-        throw new Error(`API ${res.status}: ${errorBody}`);
+        throw buildApiError(errorBody, res.status);
       }
       return res.json() as Promise<Record<string, unknown>>;
     }),
@@ -311,7 +338,7 @@ export const expensesApi = {
     }).then(async (res) => {
       if (!res.ok) {
         const errorBody = await res.text().catch(() => "Unknown error");
-        throw new Error(`API ${res.status}: ${errorBody}`);
+        throw buildApiError(errorBody, res.status);
       }
       return res.json() as Promise<ReceiptScanResponseDto>;
     }),
@@ -336,10 +363,12 @@ export const settlementsApi = {
     ),
 
   create: (groupId: string, data: CreateSettlementRequest, token: string) =>
-    request<SettlementDto>(
-      `/v1/groups/${groupId}/settlements`,
-      { method: "POST", body: JSON.stringify(data) },
-      token
+    withIdempotency(`create-settlement-${Date.now()}`, (idempotencyKey) =>
+      request<SettlementDto>(
+        `/v1/groups/${groupId}/settlements`,
+        { method: "POST", body: JSON.stringify(data), headers: { "Idempotency-Key": idempotencyKey } },
+        token
+      )
     ),
 
   get: (settlementId: string, token: string) =>
@@ -355,6 +384,10 @@ export const settlementsApi = {
   delete: (settlementId: string, token: string) =>
     request<void>(`/v1/settlements/${settlementId}`, { method: "DELETE" }, token),
 };
+
+// ---- Re-exports from errors ----
+export { SplitError, isSplitError, parseApiError, getUserMessage } from "./errors";
+export type { ApiErrorBody } from "./errors";
 
 // ---- Chat ----
 

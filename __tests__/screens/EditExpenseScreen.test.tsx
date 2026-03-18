@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react-native";
+import { SplitError } from "@/lib/errors";
 
 const mockRouterBack = jest.fn();
 const mockRouterReplace = jest.fn();
@@ -107,8 +108,11 @@ jest.mock("@/lib/api", () => ({
     list: (...args: any[]) => mockCategoriesList(...args),
   },
   isVersionConflict: (err: unknown) => {
+    const { SplitError: SE } = require("@/lib/errors");
+    if (err instanceof SE) return err.body.code === "ERR-302";
     const msg = err instanceof Error ? err.message : String(err);
-    return msg.includes("409") || msg.includes("ERR-302");
+    if (msg.includes("ERR-302")) return true;
+    return msg.includes("409") && !msg.includes("ERR-");
   },
 }));
 
@@ -672,7 +676,7 @@ describe("EditExpenseScreen", () => {
 
   it("shows conflict toast and re-fetches on 409 version conflict", async () => {
     const freshExpense = { ...mockExpense, version: 2 };
-    mockExpensesUpdate.mockRejectedValueOnce(new Error("API 409: ERR-302 Resource was updated"));
+    mockExpensesUpdate.mockRejectedValueOnce(new SplitError({ code: "ERR-302", category: "RESOURCE", message: "Resource was updated" }, 409));
     mockExpensesGet.mockResolvedValueOnce(mockExpense).mockResolvedValueOnce(freshExpense);
 
     render(<EditExpenseScreen />);
@@ -681,7 +685,7 @@ describe("EditExpenseScreen", () => {
     });
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("This expense was edited by someone else. Refreshing...");
+      expect(mockToast.info).toHaveBeenCalledWith("Someone else just edited this. Refreshing...");
     });
     // Should have re-fetched the expense
     expect(mockExpensesGet).toHaveBeenCalledTimes(2);

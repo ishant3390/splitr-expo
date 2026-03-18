@@ -23,8 +23,10 @@ import { SHADOWS } from "@/lib/shadows";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { GroupDto } from "@/lib/types";
 import { groupsApi } from "@/lib/api";
+import { parseApiError } from "@/lib/errors";
 import { hasUnsettledBalances } from "@/lib/screen-helpers";
 import { useAuth } from "@clerk/clerk-expo";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 
 export default function GroupsScreen() {
   const router = useRouter();
@@ -32,6 +34,7 @@ export default function GroupsScreen() {
   const { getToken } = useAuth();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const [filter, setFilter] = useState<"active" | "archived">("active");
   const { data: groups = [], isLoading: loading, error: groupsError, refetch } = useGroups(filter);
   const { data: balanceData, refetch: refetchBalance } = useUserBalance();
@@ -136,9 +139,9 @@ export default function GroupsScreen() {
       hapticSuccess();
       toast.success(`"${groupToDelete.name}" deleted.`);
       setGroupToDelete(null);
-    } catch (err: any) {
-      const body = err?.message ?? "";
-      if (body.includes("OUTSTANDING_BALANCES") || body.toLowerCase().includes("outstanding balance")) {
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err);
+      if (apiErr?.code === "ERR-400") {
         toast.error("Cannot delete — this group has outstanding balances. Settle up first.");
       } else {
         toast.error("Failed to delete group.");
@@ -166,14 +169,14 @@ export default function GroupsScreen() {
           style={{ position: "absolute", bottom: -30, right: -20, opacity: 0.06 }}
           pointerEvents="none"
         >
-          <Users size={180} color="#ffffff" strokeWidth={1} />
+          <Users size={180} color={palette.white} strokeWidth={1} />
         </View>
 
         {/* Decorative orb */}
         <View
           style={{
             position: "absolute", top: -30, left: -30,
-            width: 100, height: 100, borderRadius: 50,
+            width: 100, height: 100, borderRadius: radius.full,
             backgroundColor: "rgba(255,255,255,0.06)",
           }}
           pointerEvents="none"
@@ -181,7 +184,7 @@ export default function GroupsScreen() {
 
         {/* Title row + actions */}
         <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
-          <Text className="text-2xl font-sans-bold" style={{ color: "#ffffff" }}>
+          <Text className="text-2xl font-sans-bold" style={{ color: palette.white }}>
             Groups
           </Text>
           <View className="flex-row items-center gap-2">
@@ -190,7 +193,7 @@ export default function GroupsScreen() {
                 className="w-9 h-9 rounded-full items-center justify-center"
                 style={{ backgroundColor: showSearch ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }}
               >
-                <Search size={18} color="#ffffff" />
+                <Search size={18} color={palette.white} />
               </View>
             </Pressable>
             <Pressable
@@ -198,13 +201,13 @@ export default function GroupsScreen() {
               style={{
                 flexDirection: "row", alignItems: "center", gap: 6,
                 paddingHorizontal: 12, paddingVertical: 7,
-                borderRadius: 8, borderWidth: 1,
+                borderRadius: radius.md, borderWidth: 1,
                 borderColor: "rgba(255,255,255,0.3)",
                 backgroundColor: "rgba(255,255,255,0.1)",
               }}
             >
-              <UserPlus size={15} color="#ffffff" />
-              <Text className="text-sm font-sans-semibold" style={{ color: "#ffffff" }}>Join</Text>
+              <UserPlus size={15} color={palette.white} />
+              <Text className="text-sm font-sans-semibold" style={{ color: palette.white }}>Join</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push("/create-group")}
@@ -212,12 +215,12 @@ export default function GroupsScreen() {
               style={{
                 flexDirection: "row", alignItems: "center", gap: 6,
                 paddingHorizontal: 12, paddingVertical: 7,
-                borderRadius: 8,
+                borderRadius: radius.md,
                 backgroundColor: "rgba(255,255,255,0.2)",
               }}
             >
-              <Plus size={15} color="#ffffff" />
-              <Text className="text-sm font-sans-semibold" style={{ color: "#ffffff" }}>New</Text>
+              <Plus size={15} color={palette.white} />
+              <Text className="text-sm font-sans-semibold" style={{ color: palette.white }}>New</Text>
             </Pressable>
           </View>
         </View>
@@ -234,7 +237,7 @@ export default function GroupsScreen() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
-              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#ffffff" }}
+              style={{ flex: 1, fontSize: fs.md, fontFamily: ff.regular, color: palette.white }}
               placeholderTextColor="rgba(255,255,255,0.5)"
             />
             {searchQuery.length > 0 && (
@@ -251,7 +254,7 @@ export default function GroupsScreen() {
             <View
               style={{
                 backgroundColor: "rgba(255,255,255,0.12)",
-                borderRadius: 16,
+                borderRadius: radius.lg,
                 padding: 16,
               }}
             >
@@ -264,7 +267,7 @@ export default function GroupsScreen() {
                   selectable
                   className="text-3xl font-sans-bold mt-1"
                   style={{
-                    color: "#ffffff",
+                    color: palette.white,
                     fontVariant: ["tabular-nums"],
                   }}
                 >
@@ -346,7 +349,7 @@ export default function GroupsScreen() {
           >
             <Text
               className="text-sm font-sans-semibold"
-              style={{ color: filter === "active" ? "#ffffff" : "rgba(255,255,255,0.5)" }}
+              style={{ color: filter === "active" ? palette.white : "rgba(255,255,255,0.5)" }}
             >
               Active
             </Text>
@@ -358,7 +361,7 @@ export default function GroupsScreen() {
           >
             <Text
               className="text-sm font-sans-semibold"
-              style={{ color: filter === "archived" ? "#ffffff" : "rgba(255,255,255,0.5)" }}
+              style={{ color: filter === "archived" ? palette.white : "rgba(255,255,255,0.5)" }}
             >
               Archived
             </Text>
@@ -374,7 +377,7 @@ export default function GroupsScreen() {
         <View className="flex-1 items-center justify-center px-5">
           <EmptyState
             icon={AlertTriangle}
-            iconColor="#ef4444"
+            iconColor={c.destructive}
             title="Couldn't load groups"
             subtitle="Check your connection and try again."
             actionLabel="Retry"
@@ -388,13 +391,13 @@ export default function GroupsScreen() {
           contentContainerClassName="px-5 pb-24 pt-4 gap-3"
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="automatic"
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
           ListEmptyComponent={
             filter === "active" ? (
               <View>
                 <EmptyState
                   icon={Users}
-                  iconColor="#0d9488"
+                  iconColor={c.primary}
                   title="No groups yet"
                   subtitle="Split expenses with friends, roommates, or travel buddies"
                   actionLabel="Create Your First Group"
@@ -410,7 +413,7 @@ export default function GroupsScreen() {
             ) : (
               <EmptyState
                 icon={Archive}
-                iconColor="#94a3b8"
+                iconColor={palette.slate400}
                 title="No archived groups"
                 subtitle={Platform.OS === "web" ? "Tap ··· or right-click a group to archive it" : "Long-press or tap ··· on a group to archive it"}
               />
@@ -473,7 +476,7 @@ export default function GroupsScreen() {
                       accessibilityLabel="Group actions"
                       style={{ padding: 4, alignSelf: "center" }}
                     >
-                      <MoreVertical size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+                      <MoreVertical size={18} color={c.mutedForeground} />
                     </Pressable>
                   </View>
                 </Card>
@@ -487,11 +490,11 @@ export default function GroupsScreen() {
       {/* Action Sheet Modal */}
       <BottomSheetModal visible={showActions} onClose={() => setShowActions(false)}>
         <View className="flex-row items-center justify-between mb-3">
-          <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+          <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: c.foreground }}>
             {selectedGroup?.name}
           </Text>
           <Pressable onPress={() => setShowActions(false)}>
-            <X size={22} color="#64748b" />
+            <X size={22} color={c.mutedForeground} />
           </Pressable>
         </View>
 
@@ -519,11 +522,11 @@ export default function GroupsScreen() {
               paddingVertical: 14,
               paddingHorizontal: 4,
               borderBottomWidth: 1,
-              borderBottomColor: isDark ? "#334155" : "#f1f5f9",
+              borderBottomColor: c.muted,
             }}
           >
-            <Archive size={20} color="#f59e0b" />
-            <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+            <Archive size={20} color={c.warning} />
+            <Text style={{ fontSize: fs.lg, fontFamily: ff.medium, color: c.foreground }}>
               Archive Group
             </Text>
           </Pressable>
@@ -537,11 +540,11 @@ export default function GroupsScreen() {
               paddingVertical: 14,
               paddingHorizontal: 4,
               borderBottomWidth: 1,
-              borderBottomColor: isDark ? "#334155" : "#f1f5f9",
+              borderBottomColor: c.muted,
             }}
           >
-            <RotateCcw size={20} color="#0d9488" />
-            <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+            <RotateCcw size={20} color={c.primary} />
+            <Text style={{ fontSize: fs.lg, fontFamily: ff.medium, color: c.foreground }}>
               Restore Group
             </Text>
           </Pressable>
@@ -560,8 +563,8 @@ export default function GroupsScreen() {
             paddingHorizontal: 4,
           }}
         >
-          <Trash2 size={20} color="#ef4444" />
-          <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: "#ef4444" }}>
+          <Trash2 size={20} color={c.destructive} />
+          <Text style={{ fontSize: fs.lg, fontFamily: ff.medium, color: c.destructive }}>
             Delete Group
           </Text>
         </Pressable>
@@ -570,7 +573,7 @@ export default function GroupsScreen() {
       {/* Balance check loading */}
       {checkingBalances && (
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.3)", zIndex: 999 }}>
-          <ActivityIndicator size="large" color="#0d9488" />
+          <ActivityIndicator size="large" color={c.primary} />
         </View>
       )}
 
@@ -607,10 +610,10 @@ export default function GroupsScreen() {
         onClose={() => setShowJoinModal(false)}
         keyboardAvoiding
       >
-        <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a", marginBottom: 4 }}>
+        <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: c.foreground, marginBottom: 4 }}>
           Join a Group
         </Text>
-        <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b", marginBottom: 16 }}>
+        <Text style={{ fontSize: fs.base, fontFamily: ff.regular, color: c.mutedForeground, marginBottom: 16 }}>
           Enter an invite code or paste an invite link
         </Text>
         <TextInput
@@ -621,20 +624,20 @@ export default function GroupsScreen() {
           autoCorrect={false}
           style={{
             borderWidth: 1,
-            borderColor: joinInputError ? "#ef4444" : (isDark ? "#334155" : "#e2e8f0"),
-            borderRadius: 12,
+            borderColor: joinInputError ? c.destructive : c.border,
+            borderRadius: radius.DEFAULT,
             paddingHorizontal: 14,
             paddingVertical: 12,
-            fontSize: 15,
-            fontFamily: "Inter_400Regular",
-            color: isDark ? "#f1f5f9" : "#0f172a",
-            backgroundColor: isDark ? "#1e293b" : "#f8fafc",
+            fontSize: fs.lg,
+            fontFamily: ff.regular,
+            color: c.foreground,
+            backgroundColor: c.secondary,
             marginBottom: 4,
           }}
-          placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
+          placeholderTextColor={c.placeholder}
         />
         {joinInputError && (
-          <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#ef4444", marginBottom: 8 }}>
+          <Text style={{ fontSize: fs.base, fontFamily: ff.regular, color: c.destructive, marginBottom: 8 }}>
             {joinInputError}
           </Text>
         )}
@@ -652,7 +655,7 @@ export default function GroupsScreen() {
           }}
         >
           <View className="flex-row items-center gap-2">
-            <ChevronRight size={18} color="#ffffff" />
+            <ChevronRight size={18} color={palette.white} />
             <Text className="text-base font-sans-semibold text-primary-foreground">Continue</Text>
           </View>
         </Button>

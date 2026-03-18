@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react-native";
+import { SplitError } from "@/lib/errors";
 
 const mockRouterPush = jest.fn();
 const mockRouterBack = jest.fn();
@@ -199,14 +200,14 @@ describe("SettleUpScreen — per-group mode", () => {
   });
 
   it("handles nudge cooldown error", async () => {
-    mockNudge.mockRejectedValueOnce(new Error("429 cooldown"));
+    mockNudge.mockRejectedValueOnce(new SplitError({ code: "ERR-407", category: "BUSINESS_LOGIC", message: "Cooldown" }, 422));
     render(<SettleUpScreen />);
     await waitFor(() => {
       expect(screen.getByText("Remind")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Remind"));
     await waitFor(() => {
-      expect(mockToast.info).toHaveBeenCalledWith("Reminder was sent recently. Try again later.");
+      expect(mockToast.info).toHaveBeenCalledWith("You already sent a reminder recently. Try again later.");
     });
   });
 
@@ -697,14 +698,14 @@ describe("SettleUpScreen — per-group mode", () => {
 
   // --- Nudge "not_owed" error (lines 170-171) ---
   it("handles nudge not_owed error", async () => {
-    mockNudge.mockRejectedValueOnce(new Error("not_owed this user doesn't owe"));
+    mockNudge.mockRejectedValueOnce(new SplitError({ code: "ERR-408", category: "BUSINESS_LOGIC", message: "Not owed" }, 422));
     render(<SettleUpScreen />);
     await waitFor(() => {
       expect(screen.getByText("Remind")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Remind"));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("This person doesn't owe you anything.");
+      expect(mockToast.info).toHaveBeenCalledWith("This person doesn't owe you anything in this group.");
     });
   });
 

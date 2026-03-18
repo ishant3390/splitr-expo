@@ -39,6 +39,7 @@ import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { PaymentLinksSection } from "@/components/ui/payment-links-section";
 import { UpiQrModal } from "@/components/ui/upi-qr-modal";
 import { settlementsApi, groupsApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useUserProfile, useCrossGroupSuggestions } from "@/lib/hooks";
 import { invalidateAfterSettlementChange } from "@/lib/query";
 import { formatCents, getInitials, cn, getCurrencySymbol } from "@/lib/utils";
@@ -55,6 +56,7 @@ import {
   buildPaymentLink,
   type PaymentProvider,
 } from "@/lib/payment-links";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import type {
   SettlementDto,
   SettlementSuggestionDto,
@@ -83,6 +85,7 @@ export default function SettleUpScreen() {
   const toast = useToast();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
 
   const { data: currentUser } = useUserProfile();
   const [nudgingUserId, setNudgingUserId] = useState<string | null>(null);
@@ -251,14 +254,13 @@ export default function SettleUpScreen() {
       hapticSuccess();
       toast.success("Reminder sent!");
       setNudgedUserIds((prev) => new Set(prev).add(targetUserId));
-    } catch (err: any) {
-      const msg = err?.message ?? "";
-      if (msg.includes("422") || msg.includes("429") || msg.toLowerCase().includes("cooldown") || msg.toLowerCase().includes("reminder recently")) {
-        toast.info("Reminder was sent recently. Try again later.");
-        // Mark as nudged so the button shows "Sent"
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err);
+      if (apiErr?.code === "ERR-407") {
+        toast.info(getUserMessage(apiErr));
         setNudgedUserIds((prev) => new Set(prev).add(targetUserId));
-      } else if (msg.toLowerCase().includes("not_owed") || msg.toLowerCase().includes("doesn't owe")) {
-        toast.error("This person doesn't owe you anything.");
+      } else if (apiErr?.code === "ERR-408") {
+        toast.info(getUserMessage(apiErr));
       } else {
         toast.error("Failed to send reminder.");
       }
@@ -325,10 +327,15 @@ export default function SettleUpScreen() {
         }
         invalidateAfterSettlementChange(targetGroupId);
       }, 800);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[SettleUp] Failed to record settlement:", err);
       hapticError();
-      toast.error("Failed to record settlement.");
+      const apiErr = parseApiError(err);
+      if (apiErr) {
+        toast.error(getUserMessage(apiErr));
+      } else {
+        toast.error("Failed to record settlement.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -403,7 +410,7 @@ export default function SettleUpScreen() {
           onPress={() => { hapticHeavy(); openCreateModal(s, cardGroupId, currency); }}
           className="active:opacity-70"
         >
-          <Card className="p-4" style={{ borderLeftWidth: 3, borderLeftColor: "#0d9488" }}>
+          <Card className="p-4" style={{ borderLeftWidth: 3, borderLeftColor: c.primary }}>
             <View className="flex-row items-center gap-3">
               <Avatar
                 src={s.fromUser?.avatarUrl}
@@ -418,7 +425,7 @@ export default function SettleUpScreen() {
                   >
                     {fromName}
                   </Text>
-                  <ArrowRight size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+                  <ArrowRight size={14} color={c.mutedForeground} />
                   <Text
                     className="text-sm font-sans-semibold text-card-foreground"
                     numberOfLines={1}
@@ -438,7 +445,7 @@ export default function SettleUpScreen() {
             </View>
             <View className="mt-3 flex-row items-center justify-center gap-2">
               <View className="flex-row items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
-                <Check size={14} color="#0d9488" />
+                <Check size={14} color={c.primary} />
                 <Text className="text-sm font-sans-semibold text-primary">
                   Record {formatCents(s.amount, s.currency)} payment
                 </Text>
@@ -455,23 +462,23 @@ export default function SettleUpScreen() {
                     alignItems: "center",
                     gap: 4,
                     backgroundColor: nudgedUserIds.has(s.fromUser.id)
-                      ? isDark ? "#1e293b" : "#f1f5f9"
-                      : isDark ? "#1e293b" : "#fef3c7",
+                      ? c.secondary
+                      : isDark ? c.secondary : "#fef3c7",
                     paddingHorizontal: 12,
                     paddingVertical: 8,
-                    borderRadius: 999,
+                    borderRadius: radius.full,
                     opacity: nudgingUserId === s.fromUser.id ? 0.5 : 1,
                   }}
                 >
                   <BellRing
                     size={14}
-                    color={nudgedUserIds.has(s.fromUser.id) ? "#94a3b8" : "#f59e0b"}
+                    color={nudgedUserIds.has(s.fromUser.id) ? palette.slate400 : palette.amber500}
                   />
                   <Text
                     style={{
-                      fontSize: 12,
-                      fontFamily: "Inter_600SemiBold",
-                      color: nudgedUserIds.has(s.fromUser.id) ? "#94a3b8" : "#f59e0b",
+                      fontSize: fs.sm,
+                      fontFamily: ff.semibold,
+                      color: nudgedUserIds.has(s.fromUser.id) ? palette.slate400 : palette.amber500,
                     }}
                   >
                     {nudgedUserIds.has(s.fromUser.id) ? "Sent" : "Remind"}
@@ -496,7 +503,7 @@ export default function SettleUpScreen() {
             onPress={goBack}
             className="flex-row items-center gap-2 px-3 py-2 -ml-2 rounded-xl active:bg-muted"
           >
-            <ArrowLeft size={20} color="#0d9488" />
+            <ArrowLeft size={20} color={c.primary} />
             <Text className="text-sm font-sans-semibold text-primary">Back</Text>
           </Pressable>
         </View>
@@ -538,7 +545,7 @@ export default function SettleUpScreen() {
               }
               setRefreshing(false);
             }}
-            tintColor="#ffffff"
+            tintColor={palette.white}
           />
         }
       >
@@ -559,7 +566,7 @@ export default function SettleUpScreen() {
             }}
             pointerEvents="none"
           >
-            <HandCoins size={200} color="#ffffff" strokeWidth={1} />
+            <HandCoins size={200} color={palette.white} strokeWidth={1} />
           </View>
 
           {/* Decorative orb */}
@@ -570,7 +577,7 @@ export default function SettleUpScreen() {
               left: -40,
               width: 120,
               height: 120,
-              borderRadius: 60,
+              borderRadius: radius.full,
               backgroundColor: "rgba(255,255,255,0.06)",
             }}
             pointerEvents="none"
@@ -583,7 +590,7 @@ export default function SettleUpScreen() {
               className="w-10 h-10 items-center justify-center rounded-full"
               style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
             >
-              <ArrowLeft size={22} color="#ffffff" strokeWidth={2.5} />
+              <ArrowLeft size={22} color={palette.white} strokeWidth={2.5} />
             </Pressable>
           </View>
 
@@ -591,7 +598,7 @@ export default function SettleUpScreen() {
           <View className="px-5 pt-1 pb-2">
             <Text
               className="text-2xl font-sans-bold"
-              style={{ color: "#ffffff" }}
+              style={{ color: palette.white }}
             >
               Settle Up
             </Text>
@@ -610,7 +617,7 @@ export default function SettleUpScreen() {
             <View
               style={{
                 backgroundColor: "rgba(255,255,255,0.12)",
-                borderRadius: 12,
+                borderRadius: radius.DEFAULT,
                 paddingHorizontal: 16,
                 paddingVertical: 12,
                 flexDirection: "row",
@@ -622,18 +629,18 @@ export default function SettleUpScreen() {
                 style={{
                   width: 36,
                   height: 36,
-                  borderRadius: 18,
+                  borderRadius: radius.lg,
                   backgroundColor: "rgba(255,255,255,0.15)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <HandCoins size={18} color="#ffffff" />
+                <HandCoins size={18} color={palette.white} />
               </View>
               <View className="flex-1">
                 <Text
                   className="text-lg font-sans-bold"
-                  style={{ color: "#ffffff" }}
+                  style={{ color: palette.white }}
                 >
                   {allSettled
                     ? "All settled!"
@@ -670,11 +677,11 @@ export default function SettleUpScreen() {
               >
                 <HandCoins
                   size={16}
-                  color={activeTab === "suggestions" ? "#ffffff" : "rgba(255,255,255,0.5)"}
+                  color={activeTab === "suggestions" ? palette.white : "rgba(255,255,255,0.5)"}
                 />
                 <Text
                   className="text-sm font-sans-semibold"
-                  style={{ color: activeTab === "suggestions" ? "#ffffff" : "rgba(255,255,255,0.5)" }}
+                  style={{ color: activeTab === "suggestions" ? palette.white : "rgba(255,255,255,0.5)" }}
                 >
                   Suggested
                 </Text>
@@ -686,11 +693,11 @@ export default function SettleUpScreen() {
               >
                 <History
                   size={16}
-                  color={activeTab === "history" ? "#ffffff" : "rgba(255,255,255,0.5)"}
+                  color={activeTab === "history" ? palette.white : "rgba(255,255,255,0.5)"}
                 />
                 <Text
                   className="text-sm font-sans-semibold"
-                  style={{ color: activeTab === "history" ? "#ffffff" : "rgba(255,255,255,0.5)" }}
+                  style={{ color: activeTab === "history" ? palette.white : "rgba(255,255,255,0.5)" }}
                 >
                   History ({settlements.length})
                 </Text>
@@ -731,7 +738,7 @@ export default function SettleUpScreen() {
                       <Text className="text-xs font-sans-semibold text-muted-foreground">
                         {cg.groupName.toUpperCase()} ({cg.suggestions.length})
                       </Text>
-                      <ChevronRight size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+                      <ChevronRight size={14} color={c.mutedForeground} />
                     </Pressable>
                     {/* Suggestions for this group */}
                     {cg.suggestions.map((s, idx) =>
@@ -827,7 +834,7 @@ export default function SettleUpScreen() {
                                   hitSlop={8}
                                   accessibilityLabel={`Delete settlement ${s.id}`}
                                 >
-                                  <Trash2 size={14} color="#ef4444" />
+                                  <Trash2 size={14} color={c.destructive} />
                                 </Pressable>
                               </View>
                             </View>
@@ -843,7 +850,7 @@ export default function SettleUpScreen() {
                         className="py-3 items-center"
                       >
                         {loadingMoreSettlements ? (
-                          <ActivityIndicator size="small" color="#0d9488" />
+                          <ActivityIndicator size="small" color={c.primary} />
                         ) : (
                           <Text className="text-sm font-sans-semibold text-primary">
                             Load more settlements
@@ -883,13 +890,13 @@ export default function SettleUpScreen() {
                   style={{
                     width: 52,
                     height: 52,
-                    borderRadius: 26,
+                    borderRadius: radius.full,
                     backgroundColor: isDark ? "rgba(13,148,136,0.15)" : "rgba(13,148,136,0.08)",
                     padding: 3,
                     marginBottom: 6,
                   }}
                 >
-                  <View style={{ width: 46, height: 46, borderRadius: 23, overflow: "hidden" }}>
+                  <View style={{ width: 46, height: 46, borderRadius: radius.full, overflow: "hidden" }}>
                     <Avatar
                       src={createFrom.fromUser?.avatarUrl}
                       fallback={getInitials(
@@ -912,13 +919,13 @@ export default function SettleUpScreen() {
                 style={{
                   width: 30,
                   height: 30,
-                  borderRadius: 15,
-                  backgroundColor: "#0d9488",
+                  borderRadius: radius.lg,
+                  backgroundColor: c.primary,
                   marginBottom: 20,
                 }}
                 className="items-center justify-center"
               >
-                <ArrowRight size={15} color="#ffffff" />
+                <ArrowRight size={15} color={palette.white} />
               </View>
 
               {/* To person */}
@@ -927,13 +934,13 @@ export default function SettleUpScreen() {
                   style={{
                     width: 52,
                     height: 52,
-                    borderRadius: 26,
+                    borderRadius: radius.full,
                     backgroundColor: isDark ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.08)",
                     padding: 3,
                     marginBottom: 6,
                   }}
                 >
-                  <View style={{ width: 46, height: 46, borderRadius: 23, overflow: "hidden" }}>
+                  <View style={{ width: 46, height: 46, borderRadius: radius.full, overflow: "hidden" }}>
                     <Avatar
                       src={createFrom.toUser?.avatarUrl}
                       fallback={getInitials(
@@ -1059,10 +1066,10 @@ export default function SettleUpScreen() {
                     style={{
                       paddingHorizontal: 14,
                       paddingVertical: 10,
-                      borderRadius: 12,
+                      borderRadius: radius.DEFAULT,
                       borderWidth: 1.5,
-                      borderColor: isSelected ? "#0d9488" : isDark ? "#334155" : "#e2e8f0",
-                      backgroundColor: isSelected ? (isDark ? "#0d9488" + "18" : "#0d9488" + "08") : "transparent",
+                      borderColor: isSelected ? c.primary : c.border,
+                      backgroundColor: isSelected ? (isDark ? c.primary + "18" : c.primary + "08") : "transparent",
                       flexDirection: "row",
                       alignItems: "center",
                       gap: 6,
@@ -1093,9 +1100,9 @@ export default function SettleUpScreen() {
             {showOptionalFields ? "Hide details" : "Add reference or note"}
           </Text>
           {showOptionalFields ? (
-            <ChevronUp size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+            <ChevronUp size={14} color={c.mutedForeground} />
           ) : (
-            <ChevronDown size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+            <ChevronDown size={14} color={c.mutedForeground} />
           )}
         </Pressable>
 
@@ -1126,7 +1133,7 @@ export default function SettleUpScreen() {
           className="mt-2"
         >
           {submitting ? (
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color={palette.white} />
           ) : (
             <Text className="text-base font-sans-bold text-primary-foreground">
               Record Payment
@@ -1155,10 +1162,10 @@ export default function SettleUpScreen() {
           }}
         >
           <Animated.View entering={FadeInDown.duration(300).springify()}>
-            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
-              <Check size={40} color="#ffffff" />
+            <View style={{ width: 80, height: 80, borderRadius: radius.full, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 16, alignSelf: "center" }}>
+              <Check size={40} color={palette.white} />
             </View>
-            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#ffffff", textAlign: "center" }}>Settled Up!</Text>
+            <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: palette.white, textAlign: "center" }}>Settled Up!</Text>
           </Animated.View>
         </Animated.View>
       )}
@@ -1202,13 +1209,13 @@ export default function SettleUpScreen() {
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 18,
+                    borderRadius: radius.lg,
                     backgroundColor: isDark ? "rgba(13,148,136,0.15)" : "rgba(13,148,136,0.08)",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Wallet size={18} color="#0d9488" />
+                  <Wallet size={18} color={c.primary} />
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-sans-semibold text-card-foreground">
@@ -1241,7 +1248,7 @@ export default function SettleUpScreen() {
                     hitSlop={8}
                     accessibilityLabel="Dismiss payment details nudge"
                   >
-                    <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
+                    <X size={16} color={c.mutedForeground} />
                   </Pressable>
                 </View>
               </Card>

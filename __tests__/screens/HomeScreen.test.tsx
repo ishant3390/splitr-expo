@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react-native";
+import { SplitError } from "@/lib/errors";
 import HomeScreen from "@/app/(tabs)/index";
 
 const mockPush = jest.fn();
@@ -283,7 +284,7 @@ describe("HomeScreen", () => {
       groupId: "g1",
       groupName: "Trip",
     });
-    mockNudge.mockRejectedValue(new Error("429 Too Many Requests"));
+    mockNudge.mockRejectedValue(new SplitError({ code: "ERR-407", category: "BUSINESS_LOGIC", message: "Cooldown" }, 422));
 
     render(<HomeScreen />);
     await waitFor(() => {
@@ -291,7 +292,7 @@ describe("HomeScreen", () => {
     });
     fireEvent.press(screen.getByText("Send Reminder"));
     await waitFor(() => {
-      expect(mockToast.info).toHaveBeenCalledWith("Reminder was sent recently. Try again later.");
+      expect(mockToast.info).toHaveBeenCalledWith("You already sent a reminder recently. Try again later.");
     });
   });
 
@@ -811,7 +812,7 @@ describe("HomeScreen", () => {
       groupId: "g1",
       groupName: "Trip",
     });
-    mockNudge.mockRejectedValue(new Error("Rate limit cooldown exceeded"));
+    mockNudge.mockRejectedValue(new SplitError({ code: "ERR-407", category: "BUSINESS_LOGIC", message: "Cooldown exceeded" }, 422));
 
     render(<HomeScreen />);
     await waitFor(() => {
@@ -819,7 +820,7 @@ describe("HomeScreen", () => {
     });
     fireEvent.press(screen.getByText("Send Reminder"));
     await waitFor(() => {
-      expect(mockToast.info).toHaveBeenCalledWith("Reminder was sent recently. Try again later.");
+      expect(mockToast.info).toHaveBeenCalledWith("You already sent a reminder recently. Try again later.");
     });
   });
 

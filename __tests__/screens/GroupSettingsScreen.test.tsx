@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/react-native";
+import { SplitError } from "@/lib/errors";
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -375,7 +376,7 @@ describe("GroupSettingsScreen", () => {
   });
 
   it("handles 409 already member error", async () => {
-    mockInviteByEmail.mockRejectedValueOnce(new Error("409 ERR-409 INVITE_ALREADY_MEMBER"));
+    mockInviteByEmail.mockRejectedValueOnce(new SplitError({ code: "ERR-409", category: "BUSINESS_LOGIC", message: "Already a member" }, 422));
     render(<GroupSettingsScreen />);
     await waitFor(() => {
       expect(screen.getByText("Add")).toBeTruthy();
@@ -390,12 +391,12 @@ describe("GroupSettingsScreen", () => {
     fireEvent.changeText(emailInput, "frank@test.com");
     fireEvent.press(screen.getByText("Add to Group"));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("This person is already in the group.");
+      expect(mockToast.error).toHaveBeenCalledWith("This person is already a member of the group.");
     });
   });
 
   it("handles group archived error when adding member", async () => {
-    mockAddGuestMember.mockRejectedValueOnce(new Error("ERR-402 GROUP_ARCHIVED"));
+    mockAddGuestMember.mockRejectedValueOnce(new SplitError({ code: "ERR-402", category: "BUSINESS_LOGIC", message: "Group archived" }, 422));
     render(<GroupSettingsScreen />);
     await waitFor(() => {
       expect(screen.getByText("Add")).toBeTruthy();
@@ -408,7 +409,7 @@ describe("GroupSettingsScreen", () => {
     fireEvent.changeText(nameInput, "NewPerson");
     fireEvent.press(screen.getByText("Add to Group"));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("This group is archived.");
+      expect(mockToast.error).toHaveBeenCalledWith("This group has been archived and can't accept new members.");
     });
   });
 
@@ -525,7 +526,7 @@ describe("GroupSettingsScreen", () => {
   });
 
   it("shows error when deleting group with outstanding balances", async () => {
-    mockDeleteMutateAsync.mockRejectedValueOnce(new Error("OUTSTANDING_BALANCES"));
+    mockDeleteMutateAsync.mockRejectedValueOnce(new SplitError({ code: "ERR-400", category: "BUSINESS_LOGIC", message: "Outstanding balances" }, 422));
     render(<GroupSettingsScreen />);
     await waitFor(() => {
       expect(screen.getByText("Delete Group")).toBeTruthy();
@@ -704,7 +705,7 @@ describe("GroupSettingsScreen", () => {
     mockListContacts.mockResolvedValue([
       { userId: "u3", guestUserId: null, name: "Charlie", email: "charlie@test.com", isGuest: false, avatarUrl: null },
     ]);
-    mockInviteByEmail.mockRejectedValueOnce(new Error("409 ERR-409 INVITE_ALREADY_MEMBER"));
+    mockInviteByEmail.mockRejectedValueOnce(new SplitError({ code: "ERR-409", category: "BUSINESS_LOGIC", message: "Already a member" }, 422));
     render(<GroupSettingsScreen />);
     await waitFor(() => {
       expect(screen.getByText("Add")).toBeTruthy();
@@ -716,7 +717,7 @@ describe("GroupSettingsScreen", () => {
     const addButtons = screen.getAllByText("Add");
     fireEvent.press(addButtons[addButtons.length - 1]);
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("This person is already in the group.");
+      expect(mockToast.error).toHaveBeenCalledWith("This person is already a member of the group.");
     });
   });
 
@@ -814,7 +815,7 @@ describe("GroupSettingsScreen", () => {
   });
 
   it("handles 404 group not found when adding member", async () => {
-    mockAddGuestMember.mockRejectedValueOnce(new Error("404 ERR-300 GROUP_NOT_FOUND"));
+    mockAddGuestMember.mockRejectedValueOnce(new SplitError({ code: "ERR-300", category: "RESOURCE", message: "Group not found" }, 404));
     render(<GroupSettingsScreen />);
     await waitFor(() => {
       expect(screen.getByText("Add")).toBeTruthy();
@@ -827,12 +828,12 @@ describe("GroupSettingsScreen", () => {
     fireEvent.changeText(nameInput, "NewPerson");
     fireEvent.press(screen.getByText("Add to Group"));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("Group not found.");
+      expect(mockToast.error).toHaveBeenCalledWith("This doesn't exist or may have been deleted.");
     });
   });
 
   it("handles 403 not a member when adding member", async () => {
-    mockAddGuestMember.mockRejectedValueOnce(new Error("403 ERR-201 NOT_A_MEMBER"));
+    mockAddGuestMember.mockRejectedValueOnce(new SplitError({ code: "ERR-204", category: "AUTHORIZATION", message: "Not a member" }, 403));
     render(<GroupSettingsScreen />);
     await waitFor(() => {
       expect(screen.getByText("Add")).toBeTruthy();

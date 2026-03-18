@@ -25,6 +25,7 @@ import { GroupAvatar } from "@/components/ui/group-avatar";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { groupsApi, expensesApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useCategories } from "@/lib/hooks";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCents, formatDate, formatRelativeTime, cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ import { getActivityIcon } from "@/lib/category-icons";
 import { AvatarStrip } from "@/components/ui/avatar-strip";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
+import { colors, fontSize as fs, radius, palette } from "@/lib/tokens";
 import type { GroupDto, GroupMemberDto, ExpenseDto, ActivityLogDto } from "@/lib/types";
 
 export default function GroupDetailScreen() {
@@ -49,6 +51,7 @@ export default function GroupDetailScreen() {
   const toast = useToast();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
 
   const [group, setGroup] = useState<GroupDto | null>(null);
   const [members, setMembers] = useState<GroupMemberDto[]>([]);
@@ -162,9 +165,10 @@ export default function GroupDetailScreen() {
       try {
         const token = await getToken();
         await expensesApi.delete(expense.id, token!);
-      } catch {
+      } catch (err: unknown) {
         setExpenses((prev) => [...prev, expense]);
-        toast.error("Failed to delete expense.");
+        const apiErr = parseApiError(err);
+        toast.error(apiErr ? getUserMessage(apiErr) : "Failed to delete expense.");
       }
     }, 5000);
 
@@ -218,13 +222,13 @@ export default function GroupDetailScreen() {
             onPress={goBack}
             className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
           >
-            <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+            <ArrowLeft size={22} color={c.primary} strokeWidth={2.5} />
           </Pressable>
         </View>
         <View className="flex-1 items-center justify-center px-5">
           <EmptyState
             icon={Receipt}
-            iconColor="#94a3b8"
+            iconColor={palette.slate400}
             title="Group not found"
             subtitle="This group may have been deleted or is no longer available."
             actionLabel="Go Home"
@@ -252,7 +256,7 @@ export default function GroupDetailScreen() {
         contentContainerClassName="pb-8"
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.white} />}
       >
         {/* Hero Section with background emoji watermark */}
         <LinearGradient
@@ -283,7 +287,7 @@ export default function GroupDetailScreen() {
               className="w-10 h-10 items-center justify-center rounded-full"
               style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
             >
-              <ArrowLeft size={22} color="#ffffff" strokeWidth={2.5} />
+              <ArrowLeft size={22} color={palette.white} strokeWidth={2.5} />
             </Pressable>
             <View className="flex-row items-center gap-1">
               <Button
@@ -301,11 +305,11 @@ export default function GroupDetailScreen() {
           <View className="px-5 pt-2 pb-1">
             <View className="flex-row items-center gap-2.5 mb-1">
               {group.emoji ? (
-                <Text style={{ fontSize: 28 }}>{group.emoji}</Text>
+                <Text style={{ fontSize: fs["4xl"] }}>{group.emoji}</Text>
               ) : null}
               <Text
                 className="text-2xl font-sans-bold"
-                style={{ color: "#ffffff" }}
+                style={{ color: palette.white }}
                 numberOfLines={1}
               >
                 {group.name}
@@ -333,7 +337,7 @@ export default function GroupDetailScreen() {
                   style={{
                     width: 32,
                     height: 32,
-                    borderRadius: 16,
+                    borderRadius: radius.lg,
                     borderWidth: 2,
                     borderColor: "rgba(255,255,255,0.4)",
                     borderStyle: "dashed",
@@ -364,7 +368,7 @@ export default function GroupDetailScreen() {
             <View
               style={{
                 backgroundColor: "rgba(255,255,255,0.12)",
-                borderRadius: 16,
+                borderRadius: radius.lg,
                 padding: 16,
               }}
             >
@@ -380,7 +384,7 @@ export default function GroupDetailScreen() {
                     selectable
                     className="text-2xl font-sans-bold mt-0.5"
                     style={{
-                      color: "#ffffff",
+                      color: palette.white,
                       fontVariant: ["tabular-nums"],
                     }}
                   >
@@ -414,7 +418,7 @@ export default function GroupDetailScreen() {
                     selectable
                     className="text-lg font-sans-semibold mt-0.5"
                     style={{
-                      color: "#ffffff",
+                      color: palette.white,
                       fontVariant: ["tabular-nums"],
                     }}
                   >
@@ -447,7 +451,7 @@ export default function GroupDetailScreen() {
               className="flex-1"
             >
               <Card className="p-3 flex-row items-center justify-center gap-2 bg-primary/10 border-primary/20">
-                <Plus size={18} color="#0d9488" />
+                <Plus size={18} color={c.primary} />
                 <Text className="text-sm font-sans-semibold text-primary">Add Expense</Text>
               </Card>
             </Pressable>
@@ -456,7 +460,7 @@ export default function GroupDetailScreen() {
               className="flex-1"
             >
               <Card className="p-3 flex-row items-center justify-center gap-2 bg-success/10 border-success/20">
-                <HandCoins size={18} color="#10b981" />
+                <HandCoins size={18} color={c.success} />
                 <Text className="text-sm font-sans-semibold text-success">Settle Up</Text>
               </Card>
             </Pressable>
@@ -467,7 +471,7 @@ export default function GroupDetailScreen() {
         {expenses.length === 0 && activityItems.length === 0 ? (
           <EmptyState
             icon={Receipt}
-            iconColor="#0d9488"
+            iconColor={c.primary}
             title={isArchived ? "No activity" : "No activity yet"}
             subtitle={isArchived ? "This archived group has no history" : "Add your first expense to start tracking"}
             actionLabel={isArchived ? undefined : "Add Expense"}
@@ -577,7 +581,7 @@ export default function GroupDetailScreen() {
                       className="py-3 items-center"
                     >
                       {loadingMoreExpenses ? (
-                        <ActivityIndicator size="small" color="#0d9488" />
+                        <ActivityIndicator size="small" color={c.primary} />
                       ) : (
                         <Text className="text-sm font-sans-semibold text-primary">
                           Load more

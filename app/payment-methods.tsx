@@ -21,6 +21,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { useToast } from "@/components/ui/toast";
 import { useUserProfile } from "@/lib/hooks";
 import { usersApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { invalidateAfterProfileUpdate } from "@/lib/query";
 import { hapticLight, hapticSuccess, hapticError, hapticSelection } from "@/lib/haptics";
 import { getPaymentMethodIcon } from "@/lib/category-icons";
@@ -31,6 +32,7 @@ import {
   normalizeHandle,
   type PaymentProvider,
 } from "@/lib/payment-links";
+import { colors, radius, palette } from "@/lib/tokens";
 import type { PaymentHandles } from "@/lib/types";
 
 const ALL_PROVIDERS: PaymentProvider[] = [
@@ -43,6 +45,7 @@ export default function PaymentMethodsScreen() {
   const toast = useToast();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const { data: currentUser } = useUserProfile();
 
   const userCurrency = currentUser?.defaultCurrency?.toUpperCase() ?? "USD";
@@ -121,9 +124,10 @@ export default function PaymentMethodsScreen() {
       invalidateAfterProfileUpdate();
       hapticSuccess();
       toast.success("Payment methods saved!");
-    } catch {
+    } catch (err: unknown) {
       hapticError();
-      toast.error("Failed to save payment methods.");
+      const apiErr = parseApiError(err);
+      toast.error(apiErr ? getUserMessage(apiErr) : "Failed to save payment methods.");
     } finally {
       setSaving(false);
     }
@@ -187,7 +191,7 @@ export default function PaymentMethodsScreen() {
             }}
             pointerEvents="none"
           >
-            <Wallet size={200} color="#ffffff" strokeWidth={1} />
+            <Wallet size={200} color={palette.white} strokeWidth={1} />
           </View>
 
           {/* Decorative orb */}
@@ -198,7 +202,7 @@ export default function PaymentMethodsScreen() {
               left: -40,
               width: 120,
               height: 120,
-              borderRadius: 60,
+              borderRadius: radius.full,
               backgroundColor: "rgba(255,255,255,0.06)",
             }}
             pointerEvents="none"
@@ -215,7 +219,7 @@ export default function PaymentMethodsScreen() {
               style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
               accessibilityRole="button"
             >
-              <ArrowLeft size={22} color="#ffffff" strokeWidth={2.5} />
+              <ArrowLeft size={22} color={palette.white} strokeWidth={2.5} />
             </Pressable>
           </View>
 
@@ -223,7 +227,7 @@ export default function PaymentMethodsScreen() {
           <View className="px-5 pt-1 pb-5">
             <Text
               className="text-2xl font-sans-bold"
-              style={{ color: "#ffffff" }}
+              style={{ color: palette.white }}
             >
               Payment Methods
             </Text>
@@ -259,12 +263,12 @@ export default function PaymentMethodsScreen() {
               {showAll ? (
                 <ChevronUp
                   size={14}
-                  color={isDark ? "#94a3b8" : "#64748b"}
+                  color={c.mutedForeground}
                 />
               ) : (
                 <ChevronDown
                   size={14}
-                  color={isDark ? "#94a3b8" : "#64748b"}
+                  color={c.mutedForeground}
                 />
               )}
             </Pressable>
@@ -291,7 +295,7 @@ export default function PaymentMethodsScreen() {
             className="mt-2"
           >
             {saving ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={palette.white} />
             ) : (
               <Text className="text-base font-sans-bold text-primary-foreground">
                 Save Payment Methods

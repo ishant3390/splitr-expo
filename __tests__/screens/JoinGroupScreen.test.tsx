@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react-native";
+import { SplitError } from "@/lib/errors";
 
 const mockCode = "test-invite-code";
 const mockRouterPush = jest.fn();
@@ -123,7 +124,7 @@ describe("JoinGroupScreen", () => {
   });
 
   it("handles ALREADY_MEMBER error on join", async () => {
-    mockJoin.mockRejectedValueOnce(new Error("ERR-301: Already a member"));
+    mockJoin.mockRejectedValueOnce(new SplitError({ code: "ERR-409", category: "BUSINESS_LOGIC", message: "Already a member" }, 422));
     render(<JoinGroupScreen />);
     await waitFor(() => {
       expect(screen.getByText("Join Group")).toBeTruthy();
@@ -137,7 +138,7 @@ describe("JoinGroupScreen", () => {
   });
 
   it("handles NOT_FOUND error on join", async () => {
-    mockJoin.mockRejectedValueOnce(new Error("ERR-300: Not found"));
+    mockJoin.mockRejectedValueOnce(new SplitError({ code: "ERR-300", category: "RESOURCE", message: "Not found" }, 404));
     render(<JoinGroupScreen />);
     await waitFor(() => {
       expect(screen.getByText("Join Group")).toBeTruthy();
@@ -145,12 +146,12 @@ describe("JoinGroupScreen", () => {
 
     fireEvent.press(screen.getByText("Join Group"));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("This invite link is invalid.");
+      expect(mockToast.error).toHaveBeenCalledWith("This doesn't exist or may have been deleted.");
     });
   });
 
   it("handles EXPIRED error on join", async () => {
-    mockJoin.mockRejectedValueOnce(new Error("ERR-401: Expired"));
+    mockJoin.mockRejectedValueOnce(new SplitError({ code: "ERR-401", category: "BUSINESS_LOGIC", message: "Expired" }, 422));
     render(<JoinGroupScreen />);
     await waitFor(() => {
       expect(screen.getByText("Join Group")).toBeTruthy();
@@ -158,12 +159,12 @@ describe("JoinGroupScreen", () => {
 
     fireEvent.press(screen.getByText("Join Group"));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("This invite link has expired.");
+      expect(mockToast.error).toHaveBeenCalledWith("This invite link has expired. Ask the group admin for a new one.");
     });
   });
 
   it("handles ARCHIVED error on join", async () => {
-    mockJoin.mockRejectedValueOnce(new Error("ERR-402: Archived"));
+    mockJoin.mockRejectedValueOnce(new SplitError({ code: "ERR-402", category: "BUSINESS_LOGIC", message: "Archived" }, 422));
     render(<JoinGroupScreen />);
     await waitFor(() => {
       expect(screen.getByText("Join Group")).toBeTruthy();
@@ -171,7 +172,7 @@ describe("JoinGroupScreen", () => {
 
     fireEvent.press(screen.getByText("Join Group"));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("This group has been archived.");
+      expect(mockToast.error).toHaveBeenCalledWith("This group has been archived and can't accept new members.");
     });
   });
 

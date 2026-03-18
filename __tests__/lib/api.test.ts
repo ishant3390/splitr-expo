@@ -10,6 +10,7 @@ import {
   chatStream,
   chatApi,
   isVersionConflict,
+  SplitError,
 } from "@/lib/api";
 
 // Mock global fetch
@@ -1478,15 +1479,29 @@ describe("chatApi", () => {
 });
 
 describe("isVersionConflict", () => {
-  it("returns true for Error with 409 status", () => {
-    expect(isVersionConflict(new Error("API 409: conflict"))).toBe(true);
+  it("returns true for SplitError with ERR-302 code", () => {
+    const err = new SplitError({ code: "ERR-302", category: "RESOURCE", message: "Version conflict" }, 409);
+    expect(isVersionConflict(err)).toBe(true);
   });
 
-  it("returns true for Error with ERR-302 code", () => {
+  it("returns false for SplitError with ERR-409 code (not a version conflict)", () => {
+    const err = new SplitError({ code: "ERR-409", category: "BUSINESS_LOGIC", message: "Already a member" }, 409);
+    expect(isVersionConflict(err)).toBe(false);
+  });
+
+  it("returns true for legacy Error with ERR-302 in message", () => {
     expect(isVersionConflict(new Error('{"code":"ERR-302","message":"Resource was updated"}'))).toBe(true);
   });
 
-  it("returns true for string containing 409", () => {
+  it("returns true for legacy Error with plain 409 (no ERR- code)", () => {
+    expect(isVersionConflict(new Error("API 409: conflict"))).toBe(true);
+  });
+
+  it("returns false for legacy Error containing ERR-409 (avoids false positive)", () => {
+    expect(isVersionConflict(new Error("API 409: ERR-409 Already a member"))).toBe(false);
+  });
+
+  it("returns true for string containing plain 409", () => {
     expect(isVersionConflict("API 409: conflict")).toBe(true);
   });
 
@@ -1497,5 +1512,44 @@ describe("isVersionConflict", () => {
   it("returns false for null/undefined", () => {
     expect(isVersionConflict(null)).toBe(false);
     expect(isVersionConflict(undefined)).toBe(false);
+  });
+});
+
+describe("buildApiError (via request)", () => {
+  it("throws SplitError for JSON error body with code field", async () => {
+    const errorBody = { code: "ERR-409", category: "BUSINESS_LOGIC", message: "Already a member" };
+    mockFetch.mockResolvedValue(mockErrorResponse(JSON.stringify(errorBody), 409));
+
+    await expect(usersApi.me("token")).rejects.toThrow(SplitError);
+    try {
+      await usersApi.me("token");
+    } catch (err) {
+      expect(err).toBeInstanceOf(SplitError);
+      expect((err as SplitError).body.code).toBe("ERR-409");
+      expect((err as SplitError).httpStatus).toBe(409);
+    }
+  });
+
+  it("throws plain Error for non-JSON error body", async () => {
+    mockFetch.mockResolvedValue(mockErrorResponse("Internal Server Error", 500));
+
+    await expect(usersApi.me("token")).rejects.toThrow(Error);
+    try {
+      await usersApi.me("token");
+    } catch (err) {
+      expect(err).not.toBeInstanceOf(SplitError);
+      expect((err as Error).message).toBe("API 500: Internal Server Error");
+    }
+  });
+
+  it("throws plain Error for JSON without code field", async () => {
+    mockFetch.mockResolvedValue(mockErrorResponse(JSON.stringify({ error: "Bad Request" }), 400));
+
+    await expect(usersApi.me("token")).rejects.toThrow(Error);
+    try {
+      await usersApi.me("token");
+    } catch (err) {
+      expect(err).not.toBeInstanceOf(SplitError);
+    }
   });
 });

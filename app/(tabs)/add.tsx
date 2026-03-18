@@ -36,10 +36,12 @@ import { SkeletonList } from "@/components/ui/skeleton";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { groupsApi, categoriesApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { invalidateAfterGroupChange, invalidateAfterExpenseChange } from "@/lib/query";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents, getCurrencySymbol } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
+import { colors, fontSize as fs, fontFamily as ff, palette } from "@/lib/tokens";
 import { initSplitValues as computeSplitValues, dedupeMembers, inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { useNetwork } from "@/components/NetworkProvider";
@@ -63,6 +65,7 @@ export default function AddExpenseScreen() {
   const toast = useToast();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
 
   const [groups, setGroups] = useState<GroupDto[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
@@ -433,9 +436,10 @@ export default function AddExpenseScreen() {
         toast.info(`"${finalDescription}" saved. It will sync when you're back online.`);
       }
       router.replace(exitDestination as any);
-    } catch (err: any) {
+    } catch (err: unknown) {
       hapticError();
-      toast.error("Something went wrong. Try again later.");
+      const apiErr = parseApiError(err);
+      toast.error(apiErr ? getUserMessage(apiErr) : "Something went wrong. Try again later.");
     } finally {
       setSubmitting(false);
     }
@@ -504,7 +508,7 @@ export default function AddExpenseScreen() {
                 }}
                 keyboardType="decimal-pad"
                 placeholder={`${currencySymbol}0`}
-                placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
+                placeholderTextColor={c.placeholder}
                 className="text-foreground"
                 inputAccessoryViewID="amount-done"
                 style={{
@@ -542,7 +546,7 @@ export default function AddExpenseScreen() {
                   onPress={() => setReceiptUri(null)}
                   className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 items-center justify-center"
                 >
-                  <X size={14} color="#ffffff" />
+                  <X size={14} color={palette.white} />
                 </Pressable>
               </View>
             </View>
@@ -552,14 +556,14 @@ export default function AddExpenseScreen() {
                   onPress={() => pickReceiptImage(true)}
                   className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"
                 >
-                  <Camera size={14} color="#64748b" />
+                  <Camera size={14} color={c.mutedForeground} />
                   <Text className="text-xs font-sans-medium text-muted-foreground">Photo</Text>
                 </Pressable>
               <Pressable
                 onPress={() => pickReceiptImage(false)}
                 className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"
               >
-                <ImageIcon size={14} color="#64748b" />
+                <ImageIcon size={14} color={c.mutedForeground} />
                 <Text className="text-xs font-sans-medium text-muted-foreground">Gallery</Text>
               </Pressable>
             </View>
@@ -579,7 +583,7 @@ export default function AddExpenseScreen() {
               }}
               className="flex-row items-center gap-3 bg-muted rounded-xl px-4 py-3.5"
             >
-              <Calendar size={18} color="#64748b" />
+              <Calendar size={18} color={c.mutedForeground} />
               <Text className="text-base font-sans text-foreground flex-1">
                 {expenseDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
               </Text>
@@ -618,7 +622,7 @@ export default function AddExpenseScreen() {
           {!isQuickMode && <Animated.View entering={FadeInDown.delay(200).duration(300).springify()}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Category</Text>
             {categories.length === 0 ? (
-              <ActivityIndicator color="#0d9488" />
+              <ActivityIndicator color={c.primary} />
             ) : (
               <View className="flex-row flex-wrap gap-2">
                 {categories.map((cat) => {
@@ -656,7 +660,7 @@ export default function AddExpenseScreen() {
                 <Text className="font-sans-medium text-card-foreground">
                   {selectedGroup?.name ?? "Select a group"}
                 </Text>
-                <ChevronDown size={20} color="#64748b" />
+                <ChevronDown size={20} color={c.mutedForeground} />
               </Card>
             </Pressable>
             {showGroupPicker && (
@@ -692,7 +696,7 @@ export default function AddExpenseScreen() {
                   }}
                   className="flex-row items-center gap-2 px-3 py-2.5 rounded-lg"
                 >
-                  <Plus size={16} color="#14b8a6" />
+                  <Plus size={16} color={c.accent} />
                   <Text className="font-sans-medium text-accent">Create New Group</Text>
                 </Pressable>
               </Card>
@@ -704,7 +708,7 @@ export default function AddExpenseScreen() {
             <Animated.View entering={FadeInDown.delay(200).duration(300).springify()}>
               <Button variant="default" onPress={handleSubmit} disabled={submitting || !amount || !description.trim()}>
                 {submitting ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
+                  <ActivityIndicator size="small" color={palette.white} />
                 ) : (
                   <Text className="text-base font-sans-semibold text-primary-foreground">
                     Quick Save
@@ -722,7 +726,7 @@ export default function AddExpenseScreen() {
             <View>
               <Text className="text-sm font-sans-medium text-foreground mb-2">Paid by</Text>
               {membersLoading ? (
-                <ActivityIndicator color="#0d9488" />
+                <ActivityIndicator color={c.primary} />
               ) : (
                 <View className="gap-2">
                   {members.map((member) => {
@@ -746,7 +750,7 @@ export default function AddExpenseScreen() {
                               isSelected ? "border-primary bg-primary" : "border-muted-foreground"
                             )}
                           >
-                            {isSelected && <Check size={12} color="#ffffff" />}
+                            {isSelected && <Check size={12} color={palette.white} />}
                           </View>
                           <Avatar
                             src={member.user?.avatarUrl}
@@ -831,7 +835,7 @@ export default function AddExpenseScreen() {
               </View>
 
               {membersLoading ? (
-                <ActivityIndicator color="#0d9488" />
+                <ActivityIndicator color={c.primary} />
               ) : (
                 <View className="gap-2">
                   {members.map((member) => {
@@ -876,8 +880,8 @@ export default function AddExpenseScreen() {
                                   keyboardType="decimal-pad"
                                   inputAccessoryViewID="amount-done"
                                   placeholder="0"
-                                  placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
-                                  style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", fontFamily: "Inter_400Regular" }}
+                                  placeholderTextColor={c.placeholder}
+                                  style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: fs.base, textAlign: "right", fontFamily: ff.regular }}
                                   className="text-foreground"
                                 />
                                 <Text className="text-sm text-muted-foreground font-sans pr-2">%</Text>
@@ -896,8 +900,8 @@ export default function AddExpenseScreen() {
                                   keyboardType="decimal-pad"
                                   inputAccessoryViewID="amount-done"
                                   placeholder="0.00"
-                                  placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
-                                  style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", fontFamily: "Inter_400Regular" }}
+                                  placeholderTextColor={c.placeholder}
+                                  style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: fs.base, textAlign: "right", fontFamily: ff.regular }}
                                   className="text-foreground"
                                 />
                               </View>
@@ -921,15 +925,15 @@ export default function AddExpenseScreen() {
             style={{
               flexDirection: "row",
               justifyContent: "flex-end",
-              backgroundColor: "#f1f5f9",
+              backgroundColor: c.muted,
               borderTopWidth: 1,
-              borderTopColor: "#e2e8f0",
+              borderTopColor: c.border,
               paddingHorizontal: 16,
               paddingVertical: 10,
             }}
           >
             <Pressable onPress={() => Keyboard.dismiss()}>
-              <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#0d9488" }}>Done</Text>
+              <Text style={{ fontSize: fs.lg, fontFamily: ff.semibold, color: c.primary }}>Done</Text>
             </Pressable>
           </View>
         </InputAccessoryView>
@@ -952,7 +956,7 @@ export default function AddExpenseScreen() {
         >
           <Animated.View entering={FadeInDown.duration(300).springify()}>
             <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center mb-4">
-              <Check size={40} color="#ffffff" />
+              <Check size={40} color={palette.white} />
             </View>
             <Text className="text-lg font-sans-bold text-white text-center">Expense Added!</Text>
           </Animated.View>

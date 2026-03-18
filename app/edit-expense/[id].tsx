@@ -28,10 +28,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { expensesApi, groupsApi, categoriesApi, isVersionConflict } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents, centsToAmount } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticLight } from "@/lib/haptics";
+import { colors, fontSize as fs, fontFamily as ff, palette } from "@/lib/tokens";
 import type {
   CategoryDto,
   GroupMemberDto,
@@ -54,6 +56,7 @@ export default function EditExpenseScreen() {
   };
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const params = useLocalSearchParams<{ id: string; groupId: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const groupId = Array.isArray(params.groupId) ? params.groupId[0] : params.groupId;
@@ -362,11 +365,11 @@ export default function EditExpenseScreen() {
       hapticSuccess();
       toast.success("Expense updated.");
       goBack();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Update expense error:", err);
       hapticError();
       if (isVersionConflict(err)) {
-        toast.error("This expense was edited by someone else. Refreshing...");
+        toast.info("Someone else just edited this. Refreshing...");
         try {
           const refreshToken = await getToken();
           const fresh = await expensesApi.get(id, refreshToken!);
@@ -377,7 +380,12 @@ export default function EditExpenseScreen() {
         setSubmitting(false);
         return;
       }
-      toast.error("Failed to update expense. Try again.");
+      const apiErr = parseApiError(err);
+      if (apiErr) {
+        toast.error(getUserMessage(apiErr));
+      } else {
+        toast.error("Failed to update expense. Try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -408,7 +416,7 @@ export default function EditExpenseScreen() {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center" edges={["top"]}>
-        <ActivityIndicator color="#0d9488" />
+        <ActivityIndicator color={c.primary} />
       </SafeAreaView>
     );
   }
@@ -425,7 +433,7 @@ export default function EditExpenseScreen() {
             onPress={() => goBack()}
             className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
           >
-            <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+            <ArrowLeft size={22} color={c.primary} strokeWidth={2.5} />
           </Pressable>
           <Text className="text-lg font-sans-semibold text-foreground">Edit Expense</Text>
           <Pressable onPress={handleSave} disabled={submitting}>
@@ -455,7 +463,7 @@ export default function EditExpenseScreen() {
               }}
               keyboardType="decimal-pad"
               placeholder="$0"
-              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
+              placeholderTextColor={c.placeholder}
               className="text-foreground"
               style={{
                 fontSize: 56,
@@ -489,7 +497,7 @@ export default function EditExpenseScreen() {
               }}
               className="flex-row items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card"
             >
-              <Calendar size={16} color="#0d9488" />
+              <Calendar size={16} color={c.primary} />
               <Text className="flex-1 text-sm font-sans-medium text-foreground">
                 {expenseDate.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
               </Text>
@@ -526,7 +534,7 @@ export default function EditExpenseScreen() {
           <View>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Category</Text>
             {categories.length === 0 ? (
-              <ActivityIndicator color="#0d9488" />
+              <ActivityIndicator color={c.primary} />
             ) : (
               <View className="flex-row flex-wrap gap-2">
                 {categories.map((cat) => {
@@ -578,7 +586,7 @@ export default function EditExpenseScreen() {
                           isSelected ? "border-primary bg-primary" : "border-muted-foreground"
                         )}
                       >
-                        {isSelected && <Check size={12} color="#ffffff" />}
+                        {isSelected && <Check size={12} color={palette.white} />}
                       </View>
                       <Avatar
                         src={member.user?.avatarUrl}
@@ -699,8 +707,8 @@ export default function EditExpenseScreen() {
                               }
                               keyboardType="decimal-pad"
                               placeholder="0"
-                              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
-                              style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: isDark ? "#f1f5f9" : "#0f172a", fontFamily: "Inter_400Regular" }}
+                              placeholderTextColor={c.placeholder}
+                              style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: fs.base, textAlign: "right", color: c.foreground, fontFamily: ff.regular }}
                             />
                             <Text className="text-sm text-muted-foreground font-sans pr-2">%</Text>
                           </View>
@@ -717,8 +725,8 @@ export default function EditExpenseScreen() {
                               }
                               keyboardType="decimal-pad"
                               placeholder="0.00"
-                              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
-                              style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: 13, textAlign: "right", color: isDark ? "#f1f5f9" : "#0f172a", fontFamily: "Inter_400Regular" }}
+                              placeholderTextColor={c.placeholder}
+                              style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: fs.base, textAlign: "right", color: c.foreground, fontFamily: ff.regular }}
                             />
                           </View>
                         </Pressable>
@@ -735,7 +743,7 @@ export default function EditExpenseScreen() {
             onPress={() => { hapticWarning(); setShowDeleteConfirm(true); }}
             className="flex-row items-center justify-center gap-2 p-4 rounded-xl border border-destructive/30 bg-destructive/5"
           >
-            <Trash2 size={18} color="#ef4444" />
+            <Trash2 size={18} color={c.destructive} />
             <Text className="text-sm font-sans-semibold text-destructive">Delete Expense</Text>
           </Pressable>
         </ScrollView>

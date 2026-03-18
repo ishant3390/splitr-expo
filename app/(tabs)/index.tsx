@@ -7,6 +7,7 @@ import { hapticLight, hapticSelection, hapticSuccess, hapticError } from "@/lib/
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@clerk/clerk-expo";
 import { groupsApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useUser } from "@clerk/clerk-expo";
@@ -46,6 +47,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useColorScheme } from "nativewind";
 import { GRADIENTS } from "@/lib/gradients";
 import { SHADOWS } from "@/lib/shadows";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import type { ActivityLogDto } from "@/lib/types";
 
 // Nudge persistence
@@ -118,6 +120,7 @@ export default function HomeScreen() {
   const { user } = useUser();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const { data: backendUser } = useUserProfile();
   const { getToken } = useAuth();
   const { pendingCount } = useNetwork();
@@ -213,13 +216,14 @@ export default function HomeScreen() {
       toast.success("Reminder sent!");
       await saveRemindedAt(topDebtor.groupId, debtorUserId);
       setNudgeRemindedAt(Date.now());
-    } catch (err: any) {
-      const msg = err?.message ?? "";
-      if (msg.includes("422") || msg.includes("429") || msg.toLowerCase().includes("cooldown") || msg.toLowerCase().includes("reminder recently")) {
-        toast.info("Reminder was sent recently. Try again later.");
-        // Still save reminded state — backend confirms a reminder was sent recently
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err);
+      if (apiErr?.code === "ERR-407") {
+        toast.info(getUserMessage(apiErr));
         await saveRemindedAt(topDebtor.groupId, debtorUserId);
         setNudgeRemindedAt(Date.now());
+      } else if (apiErr?.code === "ERR-408") {
+        toast.info(getUserMessage(apiErr));
       } else {
         toast.error("Failed to send reminder.");
       }
@@ -251,7 +255,7 @@ export default function HomeScreen() {
         contentContainerClassName="pb-8"
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
       >
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-3 pb-4">
@@ -265,7 +269,7 @@ export default function HomeScreen() {
             onPress={() => router.push("/notifications" as any)}
             className="w-10 h-10 rounded-full bg-muted items-center justify-center"
           >
-            <Bell size={20} color={isDark ? "#94a3b8" : "#64748b"} />
+            <Bell size={20} color={c.mutedForeground} />
           </Pressable>
         </View>
 
@@ -304,7 +308,7 @@ export default function HomeScreen() {
                 <View className="flex-row gap-6">
                   <View className="flex-row items-center gap-2">
                     <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
-                      <ArrowDownLeft size={16} color="#ffffff" />
+                      <ArrowDownLeft size={16} color={palette.white} />
                     </View>
                     <View>
                       <Text className="text-xs text-primary-foreground/60 font-sans">You are owed</Text>
@@ -324,7 +328,7 @@ export default function HomeScreen() {
                   </View>
                   <View className="flex-row items-center gap-2">
                     <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
-                      <ArrowUpRight size={16} color="#ffffff" />
+                      <ArrowUpRight size={16} color={palette.white} />
                     </View>
                     <View>
                       <Text className="text-xs text-primary-foreground/60 font-sans">You owe</Text>
@@ -351,7 +355,7 @@ export default function HomeScreen() {
                     className="mt-4 flex-row items-center justify-center gap-2 bg-white/15 rounded-xl py-2.5"
                     style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
                   >
-                    <HandCoins size={16} color="#ffffff" />
+                    <HandCoins size={16} color={palette.white} />
                     <Text className="text-sm font-sans-semibold text-primary-foreground">
                       Settle up {isMultiCurrencyOwing ? formatMultiCurrency(balanceData?.totalOwingByCurrency ?? []) : formatCents(totalOwesCents, balanceData?.totalOwingByCurrency?.[0]?.currency)}
                     </Text>
@@ -396,7 +400,7 @@ export default function HomeScreen() {
                 <Card className="p-3 border-border">
                   <View className="flex-row items-center gap-3">
                     <View className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 items-center justify-center">
-                      <CheckCircle size={16} color="#10b981" />
+                      <CheckCircle size={16} color={c.success} />
                     </View>
                     <View className="flex-1">
                       <Text className="text-sm font-sans-medium text-card-foreground">
@@ -424,7 +428,7 @@ export default function HomeScreen() {
                 <Card className="p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
                   <View className="flex-row items-start gap-3">
                     <View className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center mt-0.5">
-                      <Bell size={18} color="#f59e0b" />
+                      <Bell size={18} color={c.warning} />
                     </View>
                     <View className="flex-1">
                       <Text className="text-sm font-sans-semibold text-amber-900 dark:text-amber-100">
@@ -445,7 +449,7 @@ export default function HomeScreen() {
                             nudging ? "bg-amber-200 dark:bg-amber-800" : "bg-amber-400 dark:bg-amber-700"
                           )}
                         >
-                          <Bell size={14} color="#ffffff" />
+                          <Bell size={14} color={palette.white} />
                           <Text className="text-xs font-sans-semibold text-white">
                             {nudging ? "Sending..." : "Send Reminder"}
                           </Text>
@@ -483,22 +487,22 @@ export default function HomeScreen() {
                   style={{
                     minWidth: 64,
                     backgroundColor: isActive
-                      ? (isDark ? "#f1f5f9" : "#0f172a")
-                      : (isDark ? "#334155" : "#f1f5f9"),
+                      ? c.foreground
+                      : c.muted,
                   }}
                 >
                   <Icon
                     size={20}
-                    color={isActive ? (isDark ? "#0f172a" : "#ffffff") : (isDark ? "#94a3b8" : "#64748b")}
+                    color={isActive ? c.background : c.mutedForeground}
                   />
                   <Text
                     style={{
                       fontSize: 10,
-                      fontFamily: "Inter_500Medium",
+                      fontFamily: ff.medium,
                       marginTop: 4,
                       color: isActive
-                        ? (isDark ? "#0f172a" : "#ffffff")
-                        : (isDark ? "#94a3b8" : "#64748b"),
+                        ? c.background
+                        : c.mutedForeground,
                     }}
                   >
                     {cat.label}
@@ -518,7 +522,7 @@ export default function HomeScreen() {
             ) : hasError ? (
               <EmptyState
                 icon={AlertTriangle}
-                iconColor="#ef4444"
+                iconColor={c.destructive}
                 title="Something went wrong"
                 subtitle="We couldn't load your data. Pull down to try again."
                 actionLabel="Retry"
@@ -546,7 +550,7 @@ export default function HomeScreen() {
                 selectedCategory === "all" ? (
                   <EmptyState
                     icon={Users}
-                    iconColor="#0d9488"
+                    iconColor={c.primary}
                     title="No activity yet"
                     subtitle="Start by creating a group and adding expenses with friends"
                     actionLabel="Create a Group"
@@ -555,7 +559,7 @@ export default function HomeScreen() {
                 ) : (
                   <EmptyState
                     icon={CATEGORIES.find(c => c.key === selectedCategory)?.icon ?? Zap}
-                    iconColor="#64748b"
+                    iconColor={c.mutedForeground}
                     title={`No ${selectedCategory} activity`}
                     subtitle="Try a different category or add an expense"
                   />

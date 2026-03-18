@@ -32,6 +32,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { GroupAvatar } from "@/components/ui/group-avatar";
@@ -41,6 +42,7 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { ThemedSwitch } from "@/components/ui/themed-switch";
 import { groupsApi, contactsApi, inviteApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useArchiveGroup, useDeleteGroup, useCategories } from "@/lib/hooks";
 import { invalidateAfterGroupChange, invalidateAfterMemberChange } from "@/lib/query";
 import { formatCents, getInitials, cn } from "@/lib/utils";
@@ -69,6 +71,7 @@ export default function GroupSettingsScreen() {
   const toast = useToast();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/groups"));
 
@@ -258,15 +261,9 @@ export default function GroupSettingsScreen() {
       invalidateAfterMemberChange(groupId);
     } catch (err: unknown) {
       hapticError();
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("409") || msg.includes("ERR-409") || msg.includes("INVITE_ALREADY_MEMBER")) {
-        toast.error("This person is already in the group.");
-      } else if (msg.includes("ERR-402") || msg.includes("GROUP_ARCHIVED")) {
-        toast.error("This group is archived.");
-      } else if (msg.includes("404") || msg.includes("ERR-300")) {
-        toast.error("Group not found.");
-      } else if (msg.includes("403") || msg.includes("ERR-201")) {
-        toast.error("You're not a member of this group.");
+      const apiErr = parseApiError(err);
+      if (apiErr) {
+        toast.error(getUserMessage(apiErr));
       } else {
         toast.error("Failed to add member. They may already be in the group.");
       }
@@ -296,9 +293,9 @@ export default function GroupSettingsScreen() {
       invalidateAfterMemberChange(groupId);
     } catch (err: unknown) {
       hapticError();
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("409") || msg.includes("ERR-409") || msg.includes("INVITE_ALREADY_MEMBER")) {
-        toast.error("This person is already in the group.");
+      const apiErr = parseApiError(err);
+      if (apiErr) {
+        toast.error(getUserMessage(apiErr));
       } else {
         toast.error("Failed to add member. Try again later.");
       }
@@ -378,7 +375,7 @@ export default function GroupSettingsScreen() {
             onPress={goBack}
             className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
           >
-            <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+            <ArrowLeft size={22} color={c.primary} strokeWidth={2.5} />
           </Pressable>
           <Text className="text-lg font-sans-semibold text-foreground ml-3">
             Settings
@@ -398,7 +395,7 @@ export default function GroupSettingsScreen() {
   const maxSpent = personList[0]?.total || 1;
   const catList = expenses.length > 0 ? aggregateByCategory(expenses, 5) : [];
   const catTotal = catList.reduce((s, [, v]) => s + v, 0) || 1;
-  const catColors = ["#0d9488", "#0ea5e9", "#8b5cf6", "#f59e0b", "#ef4444"];
+  const catColors = [c.primary, "#0ea5e9", "#8b5cf6", c.warning, c.destructive];
   const monthlyData = expenses.length > 0 ? aggregateByMonth(expenses) : [];
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -430,7 +427,7 @@ export default function GroupSettingsScreen() {
           <View
             style={{
               position: "absolute", bottom: -30, left: -30,
-              width: 100, height: 100, borderRadius: 50,
+              width: 100, height: 100, borderRadius: radius.full,
               backgroundColor: "rgba(255,255,255,0.06)",
             }}
             pointerEvents="none"
@@ -443,7 +440,7 @@ export default function GroupSettingsScreen() {
               className="w-10 h-10 items-center justify-center rounded-full"
               style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
             >
-              <ArrowLeft size={22} color="#ffffff" strokeWidth={2.5} />
+              <ArrowLeft size={22} color={palette.white} strokeWidth={2.5} />
             </Pressable>
             <Text className="text-base font-sans-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>
               Settings
@@ -455,7 +452,7 @@ export default function GroupSettingsScreen() {
           <View className="items-center px-5 pt-2 pb-5">
             <View
               style={{
-                width: 72, height: 72, borderRadius: 36,
+                width: 72, height: 72, borderRadius: radius.full,
                 borderWidth: 3, borderColor: "rgba(255,255,255,0.3)",
                 overflow: "hidden",
               }}
@@ -464,7 +461,7 @@ export default function GroupSettingsScreen() {
             </View>
             <Text
               className="text-xl font-sans-bold mt-3"
-              style={{ color: "#ffffff" }}
+              style={{ color: palette.white }}
             >
               {group.name}
             </Text>
@@ -481,7 +478,7 @@ export default function GroupSettingsScreen() {
               <View
                 style={{
                   backgroundColor: "rgba(255,255,255,0.12)",
-                  borderRadius: 12,
+                  borderRadius: radius.DEFAULT,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
                 }}
@@ -493,7 +490,7 @@ export default function GroupSettingsScreen() {
               <View
                 style={{
                   backgroundColor: "rgba(255,255,255,0.12)",
-                  borderRadius: 12,
+                  borderRadius: radius.DEFAULT,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
                 }}
@@ -519,14 +516,14 @@ export default function GroupSettingsScreen() {
                 onPress={() => setShowShareModal(true)}
                 className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted"
               >
-                <Share2 size={14} color="#64748b" />
+                <Share2 size={14} color={c.mutedForeground} />
                 <Text className="text-xs font-sans-semibold text-muted-foreground">Invite Link</Text>
               </Pressable>
               <Pressable
                 onPress={() => setShowAddMember(true)}
                 className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10"
               >
-                <UserPlus size={14} color="#0d9488" />
+                <UserPlus size={14} color={c.primary} />
                 <Text className="text-xs font-sans-semibold text-primary">Add</Text>
               </Pressable>
             </View>
@@ -572,7 +569,7 @@ export default function GroupSettingsScreen() {
                     onPress={() => { hapticWarning(); setMemberToRemove(member); }}
                     className="w-7 h-7 rounded-full bg-destructive/10 items-center justify-center"
                   >
-                    <X size={14} color="#ef4444" />
+                    <X size={14} color={c.destructive} />
                   </Pressable>
                 )}
               </View>
@@ -591,9 +588,9 @@ export default function GroupSettingsScreen() {
           >
             <View className="flex-row items-center gap-3 flex-1">
               {groupNotificationsEnabled ? (
-                <Bell size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+                <Bell size={18} color={c.mutedForeground} />
               ) : (
-                <BellOff size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+                <BellOff size={18} color={c.mutedForeground} />
               )}
               <View className="flex-1">
                 <Text className="text-sm font-sans-medium text-foreground">
@@ -618,7 +615,7 @@ export default function GroupSettingsScreen() {
               className="flex-row items-center justify-between px-4 py-3"
             >
               <View className="flex-row items-center gap-3 flex-1">
-                <GitMerge size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+                <GitMerge size={18} color={c.mutedForeground} />
                 <View className="flex-1">
                   <Text className="text-sm font-sans-medium text-foreground">
                     Simplify debts
@@ -683,7 +680,7 @@ export default function GroupSettingsScreen() {
                   <View className="flex-row flex-wrap gap-3">
                     {catList.map(([cat, amount], i) => (
                       <View key={cat} className="flex-row items-center gap-1.5">
-                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: catColors[i % catColors.length] }} />
+                        <View style={{ width: 8, height: 8, borderRadius: radius.sm, backgroundColor: catColors[i % catColors.length] }} />
                         <Text className="text-xs font-sans text-muted-foreground">
                           {cat} ({formatCents(amount, group?.defaultCurrency)})
                         </Text>
@@ -737,7 +734,7 @@ export default function GroupSettingsScreen() {
               }}
               className="flex-row items-center gap-3 px-4 py-3 border-b border-border"
             >
-              <RotateCcw size={20} color="#0d9488" />
+              <RotateCcw size={20} color={c.primary} />
               <Text className="text-sm font-sans-medium text-foreground">Restore Group</Text>
             </Pressable>
           ) : (
@@ -748,7 +745,7 @@ export default function GroupSettingsScreen() {
               }}
               className="flex-row items-center gap-3 px-4 py-3 border-b border-border"
             >
-              <Archive size={20} color="#f59e0b" />
+              <Archive size={20} color={c.warning} />
               <Text className="text-sm font-sans-medium text-amber-600 dark:text-amber-400">Archive Group</Text>
             </Pressable>
           )}
@@ -756,7 +753,7 @@ export default function GroupSettingsScreen() {
             onPress={() => setShowDeleteConfirm(true)}
             className="flex-row items-center gap-3 px-4 py-3"
           >
-            <Trash2 size={20} color="#ef4444" />
+            <Trash2 size={20} color={c.destructive} />
             <Text className="text-sm font-sans-medium text-destructive">Delete Group</Text>
           </Pressable>
         </Card>
@@ -814,9 +811,9 @@ export default function GroupSettingsScreen() {
             await deleteMutation.mutateAsync(groupId);
             toast.success(`"${group?.name}" deleted.`);
             router.replace("/(tabs)/groups");
-          } catch (err: any) {
-            const body = err?.message ?? "";
-            if (body.includes("OUTSTANDING_BALANCES") || body.toLowerCase().includes("outstanding balance")) {
+          } catch (err: unknown) {
+            const apiErr = parseApiError(err);
+            if (apiErr?.code === "ERR-400") {
               toast.error("Cannot delete — settle up all balances first.");
             } else {
               toast.error("Failed to delete group.");
@@ -831,19 +828,19 @@ export default function GroupSettingsScreen() {
       {/* Add Member Modal */}
       <BottomSheetModal visible={showAddMember} onClose={() => { setShowAddMember(false); setAddMemberEmail(""); }} keyboardAvoiding>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+          <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: c.foreground }}>
             Add Member
           </Text>
           <Pressable onPress={() => { setShowAddMember(false); setAddMemberEmail(""); }}>
-            <X size={22} color={isDark ? "#94a3b8" : "#64748b"} />
+            <X size={22} color={c.mutedForeground} />
           </Pressable>
         </View>
 
         {contactsLoading ? (
-          <ActivityIndicator color="#0d9488" />
+          <ActivityIndicator color={c.primary} />
         ) : contacts.length > 0 ? (
           <View style={{ gap: 8 }}>
-            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: isDark ? "#94a3b8" : "#64748b" }}>
+            <Text style={{ fontSize: fs.sm, fontFamily: ff.semibold, color: c.mutedForeground }}>
               FROM YOUR OTHER GROUPS
             </Text>
             <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
@@ -858,10 +855,10 @@ export default function GroupSettingsScreen() {
                       alignItems: "center",
                       gap: 10,
                       padding: 10,
-                      borderRadius: 10,
+                      borderRadius: radius.md,
                       borderWidth: 1,
-                      borderColor: isDark ? "#334155" : "#e2e8f0",
-                      backgroundColor: isDark ? "#0f172a" : "#f8fafc",
+                      borderColor: c.border,
+                      backgroundColor: c.background,
                     }}
                   >
                     <Avatar
@@ -870,29 +867,29 @@ export default function GroupSettingsScreen() {
                       size="sm"
                     />
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+                      <Text style={{ fontSize: fs.base, fontFamily: ff.semibold, color: c.foreground }}>
                         {contact.name}
                         {contact.isGuest ? (
-                          <Text style={{ fontFamily: "Inter_400Regular", color: "#94a3b8" }}> {"\u00B7"} Guest</Text>
+                          <Text style={{ fontFamily: ff.regular, color: palette.slate400 }}> {"\u00B7"} Guest</Text>
                         ) : null}
                       </Text>
                       {contact.email ? (
-                        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b" }}>
+                        <Text style={{ fontSize: fs.xs, fontFamily: ff.regular, color: c.mutedForeground }}>
                           {contact.email}
                         </Text>
                       ) : null}
                     </View>
-                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#0d9488", borderRadius: 6 }}>
-                      <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>Add</Text>
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: c.primary, borderRadius: radius.sm }}>
+                      <Text style={{ fontSize: fs.sm, fontFamily: ff.semibold, color: c.primaryForeground }}>Add</Text>
                     </View>
                   </Pressable>
                 ))}
               </View>
             </ScrollView>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
-              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b" }}>OR ADD SOMEONE NEW</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "#334155" : "#e2e8f0" }} />
+              <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+              <Text style={{ fontSize: fs.xs, fontFamily: ff.regular, color: c.mutedForeground }}>OR ADD SOMEONE NEW</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
             </View>
           </View>
         ) : null}
@@ -917,7 +914,7 @@ export default function GroupSettingsScreen() {
           returnKeyType="done"
         />
 
-        <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b", lineHeight: 18 }}>
+        <Text style={{ fontSize: fs.sm, fontFamily: ff.regular, color: c.mutedForeground, lineHeight: 18 }}>
           Add an email to send them a direct invite. Without one, share the group link so they can join.
         </Text>
 
@@ -927,9 +924,9 @@ export default function GroupSettingsScreen() {
           disabled={addingMember || !addMemberName.trim()}
         >
           {addingMember ? (
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color={palette.white} />
           ) : (
-            <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>
+            <Text style={{ fontSize: fs.lg, fontFamily: ff.semibold, color: c.primaryForeground }}>
               Add to Group
             </Text>
           )}
@@ -946,8 +943,8 @@ export default function GroupSettingsScreen() {
               paddingVertical: 10,
             }}
           >
-            <Share2 size={16} color="#0d9488" />
-            <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0d9488" }}>
+            <Share2 size={16} color={c.primary} />
+            <Text style={{ fontSize: fs.md, fontFamily: ff.semibold, color: c.primary }}>
               Or share invite link instead
             </Text>
           </Pressable>
@@ -957,11 +954,11 @@ export default function GroupSettingsScreen() {
       {/* Share / QR Modal */}
       <BottomSheetModal visible={showShareModal} onClose={() => { setShowShareModal(false); setShowQR(false); }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-          <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+          <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: c.foreground }}>
             Invite to {group.name}
           </Text>
           <Pressable onPress={() => { setShowShareModal(false); setShowQR(false); }}>
-            <X size={22} color="#64748b" />
+            <X size={22} color={c.mutedForeground} />
           </Pressable>
         </View>
 
@@ -972,25 +969,25 @@ export default function GroupSettingsScreen() {
               flexDirection: "row",
               alignItems: "center",
               gap: 10,
-              backgroundColor: isDark ? "#0f172a" : "#f8fafc",
-              borderRadius: 12,
+              backgroundColor: c.background,
+              borderRadius: radius.DEFAULT,
               borderWidth: 1,
-              borderColor: isDark ? "#334155" : "#e2e8f0",
+              borderColor: c.border,
               paddingHorizontal: 16,
               paddingVertical: 12,
               width: "100%",
             }}
           >
             <Text
-              style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748b" }}
+              style={{ flex: 1, fontSize: fs.base, fontFamily: ff.medium, color: c.mutedForeground }}
               numberOfLines={1}
             >
               {getInviteUrl(group.inviteCode)}
             </Text>
             {copied ? (
-              <Check size={18} color="#10b981" />
+              <Check size={18} color={c.success} />
             ) : (
-              <Copy size={18} color="#0d9488" />
+              <Copy size={18} color={c.primary} />
             )}
           </Pressable>
         )}
@@ -1000,10 +997,10 @@ export default function GroupSettingsScreen() {
             <View
               style={{
                 padding: 16,
-                backgroundColor: isDark ? "#0f172a" : "#ffffff",
-                borderRadius: 16,
+                backgroundColor: c.card,
+                borderRadius: radius.lg,
                 borderWidth: 1,
-                borderColor: isDark ? "#334155" : "#e2e8f0",
+                borderColor: c.border,
                 alignItems: "center",
                 alignSelf: "center",
               }}
@@ -1011,8 +1008,8 @@ export default function GroupSettingsScreen() {
               <QRCode
                 value={getInviteUrl(group.inviteCode)}
                 size={180}
-                color={isDark ? "#f1f5f9" : "#0f172a"}
-                backgroundColor={isDark ? "#0f172a" : "#ffffff"}
+                color={c.foreground}
+                backgroundColor={c.card}
               />
             </View>
           ) : (
@@ -1025,14 +1022,14 @@ export default function GroupSettingsScreen() {
                 gap: 8,
                 paddingVertical: 10,
                 paddingHorizontal: 16,
-                borderRadius: 10,
+                borderRadius: radius.md,
                 borderWidth: 1,
-                borderColor: isDark ? "#334155" : "#e2e8f0",
+                borderColor: c.border,
                 width: "100%",
               }}
             >
-              <QrCode size={18} color={isDark ? "#94a3b8" : "#64748b"} />
-              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: isDark ? "#94a3b8" : "#64748b" }}>
+              <QrCode size={18} color={c.mutedForeground} />
+              <Text style={{ fontSize: fs.md, fontFamily: ff.medium, color: c.mutedForeground }}>
                 Show QR Code
               </Text>
             </Pressable>
@@ -1042,7 +1039,7 @@ export default function GroupSettingsScreen() {
         <View style={{ width: "100%", gap: 10 }}>
           <Button variant="default" onPress={handleShare}>
             <View className="flex-row items-center gap-2">
-              <Share2 size={18} color="#ffffff" />
+              <Share2 size={18} color={palette.white} />
               <Text className="text-base font-sans-semibold text-primary-foreground">
                 Share Invite Link
               </Text>
@@ -1060,8 +1057,8 @@ export default function GroupSettingsScreen() {
               paddingVertical: 10,
             }}
           >
-            <RefreshCw size={14} color="#94a3b8" />
-            <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#94a3b8" }}>
+            <RefreshCw size={14} color={palette.slate400} />
+            <Text style={{ fontSize: fs.base, fontFamily: ff.medium, color: palette.slate400 }}>
               {regenerating ? "Regenerating..." : "Regenerate invite link"}
             </Text>
           </Pressable>

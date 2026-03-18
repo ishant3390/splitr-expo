@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import { usersApi, groupsApi } from "@/lib/api";
+import { parseApiError, getUserMessage } from "@/lib/errors";
 import {
   ArrowLeft,
   Users,
@@ -42,6 +43,7 @@ import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
 import { invalidateAfterGroupChange } from "@/lib/query";
 import type { GroupDto } from "@/lib/types";
@@ -50,14 +52,14 @@ import * as Clipboard from "expo-clipboard";
 const GROUP_TYPES = [
   { key: "trip", label: "Trip", emoji: "\u2708\uFE0F", icon: Plane, color: "#0ea5e9", bg: "#e0f2fe" },
   { key: "home", label: "Home", emoji: "\uD83C\uDFE0", icon: Home, color: "#8b5cf6", bg: "#ede9fe" },
-  { key: "couple", label: "Couple", emoji: "\u2764\uFE0F", icon: Heart, color: "#ef4444", bg: "#fee2e2" },
-  { key: "food", label: "Dinners", emoji: "\uD83C\uDF55", icon: Utensils, color: "#f59e0b", bg: "#fef3c7" },
-  { key: "work", label: "Work", emoji: "\uD83D\uDCBC", icon: Briefcase, color: "#64748b", bg: "#f1f5f9" },
+  { key: "couple", label: "Couple", emoji: "\u2764\uFE0F", icon: Heart, color: palette.red500, bg: "#fee2e2" },
+  { key: "food", label: "Dinners", emoji: "\uD83C\uDF55", icon: Utensils, color: palette.amber500, bg: "#fef3c7" },
+  { key: "work", label: "Work", emoji: "\uD83D\uDCBC", icon: Briefcase, color: palette.slate500, bg: palette.slate100 },
   { key: "school", label: "School", emoji: "\uD83C\uDF93", icon: GraduationCap, color: "#06b6d4", bg: "#cffafe" },
   { key: "party", label: "Party", emoji: "\uD83C\uDF89", icon: PartyPopper, color: "#d946ef", bg: "#fae8ff" },
-  { key: "roadtrip", label: "Road Trip", emoji: "\uD83D\uDE97", icon: Car, color: "#10b981", bg: "#d1fae5" },
-  { key: "event", label: "Event", emoji: "\uD83C\uDFB5", icon: Music, color: "#ec4899", bg: "#fce7f3" },
-  { key: "fitness", label: "Fitness", emoji: "\uD83D\uDCAA", icon: Dumbbell, color: "#f97316", bg: "#ffedd5" },
+  { key: "roadtrip", label: "Road Trip", emoji: "\uD83D\uDE97", icon: Car, color: palette.emerald500, bg: "#d1fae5" },
+  { key: "event", label: "Event", emoji: "\uD83C\uDFB5", icon: Music, color: palette.pink500, bg: "#fce7f3" },
+  { key: "fitness", label: "Fitness", emoji: "\uD83D\uDCAA", icon: Dumbbell, color: palette.orange500, bg: "#ffedd5" },
 ] as const;
 
 const GROUP_EMOJIS = [
@@ -87,6 +89,7 @@ export default function CreateGroupScreen() {
   const { getToken } = useAuth();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const toast = useToast();
 
   const [groupName, setGroupName] = useState("");
@@ -165,9 +168,10 @@ export default function CreateGroupScreen() {
       toast.success(`"${groupName}" created!`);
       setCreatedGroup(group);
       setShowShareSheet(true);
-    } catch {
+    } catch (err: unknown) {
       hapticError();
-      toast.error("Something went wrong. Try again later.");
+      const apiErr = parseApiError(err);
+      toast.error(apiErr ? getUserMessage(apiErr) : "Something went wrong. Try again later.");
     } finally {
       setSubmitting(false);
     }
@@ -229,7 +233,7 @@ export default function CreateGroupScreen() {
           <View
             style={{
               position: "absolute", bottom: -30, left: -30,
-              width: 100, height: 100, borderRadius: 50,
+              width: 100, height: 100, borderRadius: radius.full,
               backgroundColor: "rgba(255,255,255,0.06)",
             }}
             pointerEvents="none"
@@ -243,7 +247,7 @@ export default function CreateGroupScreen() {
               className="w-10 h-10 items-center justify-center rounded-full"
               style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
             >
-              <ArrowLeft size={22} color="#ffffff" strokeWidth={2.5} />
+              <ArrowLeft size={22} color={palette.white} strokeWidth={2.5} />
             </Pressable>
             <Pressable
               onPress={handleCreate}
@@ -251,16 +255,16 @@ export default function CreateGroupScreen() {
               style={{
                 paddingHorizontal: 16,
                 paddingVertical: 8,
-                borderRadius: 8,
+                borderRadius: radius.md,
                 backgroundColor: groupName.trim() ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)",
               }}
             >
               {submitting ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color={palette.white} />
               ) : (
                 <Text
                   className="text-sm font-sans-semibold"
-                  style={{ color: groupName.trim() ? "#ffffff" : "rgba(255,255,255,0.4)" }}
+                  style={{ color: groupName.trim() ? palette.white : "rgba(255,255,255,0.4)" }}
                 >
                   Create
                 </Text>
@@ -270,7 +274,7 @@ export default function CreateGroupScreen() {
 
           {/* Title */}
           <View className="px-5 pt-1 pb-2">
-            <Text className="text-2xl font-sans-bold" style={{ color: "#ffffff" }}>
+            <Text className="text-2xl font-sans-bold" style={{ color: palette.white }}>
               New Group
             </Text>
             <Text className="text-sm font-sans mt-1" style={{ color: "rgba(255,255,255,0.7)" }}>
@@ -286,7 +290,7 @@ export default function CreateGroupScreen() {
               style={{
                 width: 80,
                 height: 80,
-                borderRadius: 24,
+                borderRadius: radius["2xl"],
                 backgroundColor: "rgba(255,255,255,0.2)",
                 alignItems: "center",
                 justifyContent: "center",
@@ -326,16 +330,16 @@ export default function CreateGroupScreen() {
                       style={{
                         width: 44,
                         height: 44,
-                        borderRadius: 12,
+                        borderRadius: radius.DEFAULT,
                         alignItems: "center",
                         justifyContent: "center",
                         backgroundColor:
-                          selectedEmoji === emoji ? "#0d948815" : "transparent",
+                          selectedEmoji === emoji ? `${c.primary}15` : "transparent",
                         borderWidth: selectedEmoji === emoji ? 1.5 : 0,
-                        borderColor: "#0d9488",
+                        borderColor: c.primary,
                       }}
                     >
-                      <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                      <Text style={{ fontSize: fs["2xl"] }}>{emoji}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -369,18 +373,18 @@ export default function CreateGroupScreen() {
                       gap: 6,
                       paddingHorizontal: 14,
                       paddingVertical: 10,
-                      borderRadius: 14,
+                      borderRadius: radius.DEFAULT,
                       borderWidth: 1.5,
-                      backgroundColor: isActive ? type.bg : "#ffffff",
-                      borderColor: isActive ? type.color : "#e2e8f0",
+                      backgroundColor: isActive ? type.bg : c.card,
+                      borderColor: isActive ? type.color : c.border,
                     }}
                   >
-                    <Icon size={16} color={isActive ? type.color : "#94a3b8"} />
+                    <Icon size={16} color={isActive ? type.color : palette.slate400} />
                     <Text
                       style={{
-                        fontSize: 13,
-                        fontFamily: "Inter_600SemiBold",
-                        color: isActive ? type.color : "#64748b",
+                        fontSize: fs.base,
+                        fontFamily: ff.semibold,
+                        color: isActive ? type.color : c.mutedForeground,
                       }}
                     >
                       {type.label}
@@ -414,7 +418,7 @@ export default function CreateGroupScreen() {
                         : "bg-card border-border"
                     )}
                   >
-                    <Text style={{ fontSize: 16 }}>{curr.flag}</Text>
+                    <Text style={{ fontSize: fs.lg }}>{curr.flag}</Text>
                     <Text
                       className={cn(
                         "text-sm font-sans-semibold",
@@ -449,10 +453,10 @@ export default function CreateGroupScreen() {
             disabled={submitting || !groupName.trim()}
           >
             {submitting ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={palette.white} />
             ) : (
               <View className="flex-row items-center gap-2">
-                <Users size={18} color="#ffffff" />
+                <Users size={18} color={palette.white} />
                 <Text className="text-base font-sans-semibold text-primary-foreground">
                   Create Group
                 </Text>
@@ -470,18 +474,18 @@ export default function CreateGroupScreen() {
             style={{
               width: 64,
               height: 64,
-              borderRadius: 20,
+              borderRadius: radius.xl,
               backgroundColor: "#10b98120",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Check size={32} color="#10b981" />
+            <Check size={32} color={c.success} />
           </View>
-          <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+          <Text style={{ fontSize: fs["2xl"], fontFamily: ff.bold, color: c.foreground }}>
             Group Created!
           </Text>
-          <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748b", textAlign: "center" }}>
+          <Text style={{ fontSize: fs.md, fontFamily: ff.regular, color: c.mutedForeground, textAlign: "center" }}>
             Share the link so others can join
           </Text>
         </View>
@@ -494,25 +498,25 @@ export default function CreateGroupScreen() {
               flexDirection: "row",
               alignItems: "center",
               gap: 10,
-              backgroundColor: isDark ? "#0f172a" : "#f8fafc",
-              borderRadius: 12,
+              backgroundColor: c.background,
+              borderRadius: radius.DEFAULT,
               borderWidth: 1,
-              borderColor: isDark ? "#334155" : "#e2e8f0",
+              borderColor: c.border,
               paddingHorizontal: 16,
               paddingVertical: 12,
               width: "100%",
             }}
           >
             <Text
-              style={{ flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748b" }}
+              style={{ flex: 1, fontSize: fs.base, fontFamily: ff.medium, color: c.mutedForeground }}
               numberOfLines={1}
             >
               {getInviteUrl(createdGroup.inviteCode)}
             </Text>
             {copied ? (
-              <Check size={18} color="#10b981" />
+              <Check size={18} color={c.success} />
             ) : (
-              <Copy size={18} color="#0d9488" />
+              <Copy size={18} color={c.primary} />
             )}
           </Pressable>
         )}
@@ -523,10 +527,10 @@ export default function CreateGroupScreen() {
             <View
               style={{
                 padding: 16,
-                backgroundColor: isDark ? "#0f172a" : "#ffffff",
-                borderRadius: 16,
+                backgroundColor: c.card,
+                borderRadius: radius.lg,
                 borderWidth: 1,
-                borderColor: isDark ? "#334155" : "#e2e8f0",
+                borderColor: c.border,
                 alignItems: "center",
                 alignSelf: "center",
               }}
@@ -534,8 +538,8 @@ export default function CreateGroupScreen() {
               <QRCode
                 value={getInviteUrl(createdGroup.inviteCode)}
                 size={180}
-                color={isDark ? "#f1f5f9" : "#0f172a"}
-                backgroundColor={isDark ? "#0f172a" : "#ffffff"}
+                color={c.foreground}
+                backgroundColor={c.card}
               />
             </View>
           ) : (
@@ -548,14 +552,14 @@ export default function CreateGroupScreen() {
                 gap: 8,
                 paddingVertical: 10,
                 paddingHorizontal: 16,
-                borderRadius: 10,
+                borderRadius: radius.md,
                 borderWidth: 1,
-                borderColor: isDark ? "#334155" : "#e2e8f0",
+                borderColor: c.border,
                 width: "100%",
               }}
             >
-              <QrCode size={18} color="#64748b" />
-              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#64748b" }}>
+              <QrCode size={18} color={c.mutedForeground} />
+              <Text style={{ fontSize: fs.md, fontFamily: ff.medium, color: c.mutedForeground }}>
                 Show QR Code
               </Text>
             </Pressable>
@@ -566,7 +570,7 @@ export default function CreateGroupScreen() {
         <View style={{ width: "100%", gap: 10 }}>
           <Button variant="default" onPress={handleShare}>
             <View className="flex-row items-center gap-2">
-              <Share2 size={18} color="#ffffff" />
+              <Share2 size={18} color={palette.white} />
               <Text className="text-base font-sans-semibold text-primary-foreground">
                 Share Invite Link
               </Text>
