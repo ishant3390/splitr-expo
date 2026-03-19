@@ -13,11 +13,16 @@ import { useNetwork } from "@/components/NetworkProvider";
 import { useToast } from "@/components/ui/toast";
 import { getQueuedExpenses, removeFromQueue, clearQueue, type QueuedExpense } from "@/lib/offline";
 import { formatCents } from "@/lib/utils";
+import { useColorScheme } from "nativewind";
+import { colors } from "@/lib/tokens";
 
 export default function PendingExpensesScreen() {
   const router = useRouter();
   const { isOnline, pendingCount, refreshPendingCount } = useNetwork();
   const toast = useToast();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const [items, setItems] = useState<QueuedExpense[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -95,7 +100,7 @@ export default function PendingExpensesScreen() {
             onPress={() => { hapticLight(); router.back(); }}
             className="w-10 h-10 rounded-full bg-muted items-center justify-center"
           >
-            <ArrowLeft size={20} color="#64748b" />
+            <ArrowLeft size={20} color={c.mutedForeground} />
           </Pressable>
           <View>
             <Text className="text-xl font-sans-bold text-foreground">Pending Expenses</Text>
@@ -119,7 +124,7 @@ export default function PendingExpensesScreen() {
         {!isOnline && (
           <Card className="p-3 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800">
             <View className="flex-row items-center gap-2">
-              <WifiOff size={16} color="#ef4444" />
+              <WifiOff size={16} color={c.destructive} />
               <Text className="text-xs font-sans-medium text-red-700 dark:text-red-300">
                 You're offline. Expenses will sync automatically when connected.
               </Text>
@@ -130,7 +135,7 @@ export default function PendingExpensesScreen() {
         {isOnline && items.length > 0 && (
           <Card className="p-3 bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800">
             <View className="flex-row items-center gap-2">
-              <RefreshCw size={16} color="#10b981" />
+              <RefreshCw size={16} color={c.success} />
               <Text className="text-xs font-sans-medium text-emerald-700 dark:text-emerald-300">
                 You're back online! Expenses are syncing automatically.
               </Text>
@@ -142,7 +147,7 @@ export default function PendingExpensesScreen() {
         {!loading && items.length === 0 ? (
           <EmptyState
             icon={Clock}
-            iconColor="#0d9488"
+            iconColor={c.primary}
             title="All caught up!"
             subtitle="No pending expenses to sync"
             actionLabel="Go Back"
@@ -194,7 +199,7 @@ export default function PendingExpensesScreen() {
                       accessibilityRole="button"
                       className="w-8 h-8 rounded-full bg-destructive/10 items-center justify-center"
                     >
-                      <Trash2 size={14} color="#ef4444" />
+                      <Trash2 size={14} color={c.destructive} />
                     </Pressable>
                   </View>
                 </View>

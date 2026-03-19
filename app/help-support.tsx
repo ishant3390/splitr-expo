@@ -7,6 +7,8 @@ import { ArrowLeft, Mail, Globe, MessageCircle, Star } from "lucide-react-native
 import { Card } from "@/components/ui/card";
 import { AccordionItem } from "@/components/ui/accordion-item";
 import { hapticLight } from "@/lib/haptics";
+import { useColorScheme } from "nativewind";
+import { colors } from "@/lib/tokens";
 import Constants from "expo-constants";
 
 const FAQ_ITEMS = [
@@ -59,6 +61,9 @@ const CONTACT_OPTIONS = [
 
 export default function HelpSupportScreen() {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
@@ -71,7 +76,7 @@ export default function HelpSupportScreen() {
           onPress={() => { hapticLight(); router.back(); }}
           className="w-10 h-10 rounded-full bg-muted items-center justify-center"
         >
-          <ArrowLeft size={20} color="#64748b" />
+          <ArrowLeft size={20} color={c.mutedForeground} />
         </Pressable>
         <Text className="text-xl font-sans-bold text-foreground">Help & Support</Text>
       </View>
@@ -117,7 +122,7 @@ export default function HelpSupportScreen() {
                   }`}
                 >
                   <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-                    <Icon size={18} color="#0d9488" />
+                    <Icon size={18} color={c.primary} />
                   </View>
                   <View className="flex-1">
                     <Text className="text-sm font-sans-medium text-card-foreground">{option.label}</Text>
@@ -133,7 +138,7 @@ export default function HelpSupportScreen() {
         <Animated.View entering={FadeInDown.delay(300).duration(300).springify()}>
           <Card className="p-5 items-center gap-3">
             <View className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center">
-              <Star size={22} color="#f59e0b" />
+              <Star size={22} color={c.warning} />
             </View>
             <Text className="text-sm font-sans-semibold text-card-foreground">Enjoying Splitr?</Text>
             <Text className="text-xs text-muted-foreground font-sans text-center">

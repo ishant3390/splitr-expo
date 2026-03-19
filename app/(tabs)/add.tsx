@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { groupsApi, categoriesApi } from "@/lib/api";
+import { groupsApi, categoriesApi, expensesApi } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { invalidateAfterGroupChange, invalidateAfterExpenseChange } from "@/lib/query";
 import { useToast } from "@/components/ui/toast";
@@ -44,6 +44,7 @@ import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/
 import { colors, fontSize as fs, fontFamily as ff, palette } from "@/lib/tokens";
 import { initSplitValues as computeSplitValues, dedupeMembers, inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { pickImage, validateImage, buildImageFormDataAsync } from "@/lib/image-utils";
 import { useNetwork } from "@/components/NetworkProvider";
 import { addToQueue, generateClientId } from "@/lib/offline";
 import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
@@ -267,25 +268,19 @@ export default function AddExpenseScreen() {
     });
   };
 
+  const receiptMimeRef = useRef<string | undefined>();
+
   const pickReceiptImage = async (useCamera: boolean) => {
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ["images"],
-      quality: 0.7,
-      allowsEditing: true,
-    };
-    try {
-      const result = useCamera
-        ? await ImagePicker.launchCameraAsync(options)
-        : await ImagePicker.launchImageLibraryAsync(options);
-      if (!result.canceled && result.assets[0]) {
-        setReceiptUri(result.assets[0].uri);
-        hapticSuccess();
-      }
-    } catch {
-      if (useCamera) {
-        toast.info("Camera unavailable. Use Gallery to pick an image.");
-      }
+    const asset = await pickImage(useCamera ? "camera" : "gallery", { quality: 0.7 });
+    if (!asset) {
+      if (useCamera) toast.info("Camera unavailable. Use Gallery to pick an image.");
+      return;
     }
+    const error = validateImage(asset);
+    if (error) { toast.error(error); return; }
+    receiptMimeRef.current = asset.mimeType ?? undefined;
+    setReceiptUri(asset.uri);
+    hapticSuccess();
   };
 
   const handleSubmit = async () => {
@@ -404,9 +399,24 @@ export default function AddExpenseScreen() {
       };
 
       if (isOnline) {
-        await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
+        const createdExpense = await groupsApi.createExpense(selectedGroup.id, expenseRequest, token!);
         invalidateAfterExpenseChange(selectedGroup.id);
         hapticSuccess();
+
+        // Upload receipt in background (non-blocking — expense already saved)
+        if (receiptUri && createdExpense?.id) {
+          const expId = createdExpense.id;
+          const grpId = selectedGroup.id;
+          const uri = receiptUri;
+          const mime = receiptMimeRef.current;
+          buildImageFormDataAsync(uri, mime).then((formData) =>
+            expensesApi.uploadReceipt(expId, formData, token!).then(
+              () => invalidateAfterExpenseChange(grpId),
+              () => toast.info("Expense saved but receipt upload failed. Attach it later from edit.")
+            )
+          ).catch(() => {});
+        }
+
         // Save smart defaults for next time
         AsyncStorage.setItem(SMART_DEFAULTS_KEY, JSON.stringify({
           groupId: selectedGroup.id,

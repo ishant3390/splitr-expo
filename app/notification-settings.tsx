@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { ThemedSwitch } from "@/components/ui/themed-switch";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection } from "@/lib/haptics";
+import { colors, palette } from "@/lib/tokens";
 import { usersApi } from "@/lib/api";
 import {
   getNotificationPermissionStatus,
@@ -34,6 +35,7 @@ export default function NotificationSettingsScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const toast = useToast();
   const { getToken } = useAuth();
 
@@ -124,7 +126,7 @@ export default function NotificationSettingsScreen() {
           onPress={goBack}
           className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
         >
-          <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+          <ArrowLeft size={22} color={c.primary} strokeWidth={2.5} />
         </Pressable>
         <Text className="text-lg font-sans-semibold text-foreground">
           Notification Settings
@@ -142,7 +144,7 @@ export default function NotificationSettingsScreen() {
           <Pressable onPress={handleEnableNotifications}>
             <Card className="p-4 bg-destructive/10 border-destructive/20">
               <View className="flex-row items-center gap-3">
-                <BellOff size={20} color="#ef4444" />
+                <BellOff size={20} color={c.destructive} />
                 <View className="flex-1">
                   <Text className="text-sm font-sans-semibold text-foreground">
                     Notifications are disabled
@@ -151,7 +153,7 @@ export default function NotificationSettingsScreen() {
                     Tap to enable in system settings
                   </Text>
                 </View>
-                <ChevronRight size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+                <ChevronRight size={18} color={c.mutedForeground} />
               </View>
             </Card>
           </Pressable>
@@ -160,7 +162,7 @@ export default function NotificationSettingsScreen() {
         {/* Privacy notice */}
         <Card className="p-4 bg-primary/5 border-primary/20">
           <View className="flex-row items-start gap-3">
-            <Shield size={18} color="#0d9488" style={{ marginTop: 2 }} />
+            <Shield size={18} color={c.primary} style={{ marginTop: 2 }} />
             <View className="flex-1">
               <Text className="text-sm font-sans-semibold text-foreground">
                 Your privacy matters
@@ -178,7 +180,7 @@ export default function NotificationSettingsScreen() {
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-3 flex-1">
               <View className="w-9 h-9 rounded-lg bg-primary/10 items-center justify-center">
-                <Bell size={18} color="#0d9488" />
+                <Bell size={18} color={c.primary} />
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-sans-medium text-foreground">
@@ -213,7 +215,7 @@ export default function NotificationSettingsScreen() {
                   height: 20,
                   borderRadius: 10,
                   borderWidth: 2,
-                  borderColor: prefs.detailLevel === "privacy" ? "#0d9488" : "#94a3b8",
+                  borderColor: prefs.detailLevel === "privacy" ? c.primary : palette.slate400,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -224,7 +226,7 @@ export default function NotificationSettingsScreen() {
                       width: 10,
                       height: 10,
                       borderRadius: 5,
-                      backgroundColor: "#0d9488",
+                      backgroundColor: c.primary,
                     }}
                   />
                 )}
@@ -249,7 +251,7 @@ export default function NotificationSettingsScreen() {
                   height: 20,
                   borderRadius: 10,
                   borderWidth: 2,
-                  borderColor: prefs.detailLevel === "detailed" ? "#0d9488" : "#94a3b8",
+                  borderColor: prefs.detailLevel === "detailed" ? c.primary : palette.slate400,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -260,7 +262,7 @@ export default function NotificationSettingsScreen() {
                       width: 10,
                       height: 10,
                       borderRadius: 5,
-                      backgroundColor: "#0d9488",
+                      backgroundColor: c.primary,
                     }}
                   />
                 )}
@@ -296,7 +298,7 @@ export default function NotificationSettingsScreen() {
               >
                 <View className="flex-row items-center gap-3 flex-1">
                   <View className="w-9 h-9 rounded-lg bg-muted items-center justify-center">
-                    <Icon size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+                    <Icon size={18} color={c.mutedForeground} />
                   </View>
                   <View className="flex-1">
                     <Text className="text-sm font-sans-medium text-foreground">

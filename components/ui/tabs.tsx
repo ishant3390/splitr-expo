@@ -2,6 +2,7 @@ import React from "react";
 import { View, Pressable, Text, StyleSheet } from "react-native";
 import { useColorScheme } from "nativewind";
 import { clsx } from "clsx";
+import { colors, fontSize as fs, fontFamily as ff, radius } from "@/lib/tokens";
 
 interface Tab {
   id: string;
@@ -18,6 +19,7 @@ interface TabsProps {
 export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
 
   return (
     <View
@@ -34,7 +36,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
             style={[
               styles.tab,
               isActive && {
-                backgroundColor: isDark ? "#1e293b" : "#ffffff",
+                backgroundColor: c.card,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.05,
@@ -46,7 +48,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
             <Text
               style={[
                 styles.tabText,
-                { color: isActive ? (isDark ? "#f8fafc" : "#0f172a") : (isDark ? "#94a3b8" : "#64748b") },
+                { color: isActive ? c.foreground : c.mutedForeground },
               ]}
             >
               {tab.label}
@@ -64,10 +66,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: radius.md,
   },
   tabText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
+    fontSize: fs.md,
+    fontFamily: ff.medium,
   },
 });

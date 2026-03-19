@@ -10,6 +10,7 @@ import { SkeletonList } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { useNotifications } from "@/lib/hooks";
 import { hapticLight, hapticSelection } from "@/lib/haptics";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NotificationDto } from "@/lib/types";
 
@@ -83,6 +84,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const insets = useSafeAreaInsets();
   const { data: notifications = [], isLoading: loading, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
@@ -123,28 +125,28 @@ export default function NotificationsScreen() {
           className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
           hitSlop={8}
         >
-          <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+          <ArrowLeft size={22} color={c.primary} strokeWidth={2.5} />
         </Pressable>
         <View className="flex-row items-center gap-2">
           <Text className="text-lg font-sans-semibold text-foreground">Notifications</Text>
           {unreadCount > 0 && (
             <View style={{
-              backgroundColor: "#0d9488",
-              borderRadius: 10,
+              backgroundColor: c.primary,
+              borderRadius: radius.md,
               minWidth: 20,
               height: 20,
               paddingHorizontal: 6,
               alignItems: "center",
               justifyContent: "center",
             }}>
-              <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#fff" }}>
+              <Text style={{ fontSize: fs.xs, fontFamily: ff.semibold, color: palette.white }}>
                 {unreadCount > 99 ? "99+" : unreadCount}
               </Text>
             </View>
           )}
         </View>
         <Pressable onPress={markAllRead} className="px-2" hitSlop={8}>
-          <CheckCheck size={22} color="#0d9488" />
+          <CheckCheck size={22} color={c.primary} />
         </Pressable>
       </View>
 
@@ -156,7 +158,7 @@ export default function NotificationsScreen() {
         <View className="flex-1 items-center justify-center">
           <EmptyState
             icon={Bell}
-            iconColor={isDark ? "#94a3b8" : "#64748b"}
+            iconColor={c.mutedForeground}
             title="No notifications yet"
             subtitle="You'll see updates when people add expenses or join your groups"
           />
@@ -168,15 +170,15 @@ export default function NotificationsScreen() {
           contentContainerStyle={{ paddingBottom: 32, paddingHorizontal: 16 }}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
           onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
           onEndReachedThreshold={0.3}
           renderSectionHeader={({ section: { title } }) => (
             <Text
               style={{
-                fontSize: 13,
-                fontFamily: "Inter_600SemiBold",
-                color: isDark ? "#94a3b8" : "#64748b",
+                fontSize: fs.base,
+                fontFamily: ff.semibold,
+                color: c.mutedForeground,
                 marginTop: 20,
                 marginBottom: 10,
                 paddingHorizontal: 4,
@@ -206,12 +208,12 @@ export default function NotificationsScreen() {
                     <View style={{
                       width: 44,
                       height: 44,
-                      borderRadius: 14,
+                      borderRadius: radius.DEFAULT,
                       backgroundColor: isDark ? config.bgDark : config.bg,
                       alignItems: "center",
                       justifyContent: "center",
                     }}>
-                      <Text style={{ fontSize: 20 }}>{config.emoji}</Text>
+                      <Text style={{ fontSize: fs["2xl"] }}>{config.emoji}</Text>
                     </View>
 
                     {/* Content */}
@@ -219,7 +221,7 @@ export default function NotificationsScreen() {
                       <Text
                         className={`text-foreground ${isRead ? "font-sans" : "font-sans-semibold"}`}
                         style={{
-                          fontSize: 14,
+                          fontSize: fs.md,
                           lineHeight: 20,
                         }}
                         numberOfLines={2}
@@ -229,9 +231,9 @@ export default function NotificationsScreen() {
                       {item.body ? (
                         <Text
                           style={{
-                            fontSize: 13,
-                            fontFamily: "Inter_400Regular",
-                            color: isDark ? "#94a3b8" : "#64748b",
+                            fontSize: fs.base,
+                            fontFamily: ff.regular,
+                            color: c.mutedForeground,
                             lineHeight: 18,
                             marginTop: 2,
                           }}
@@ -241,9 +243,9 @@ export default function NotificationsScreen() {
                         </Text>
                       ) : null}
                       <Text style={{
-                        fontSize: 12,
-                        fontFamily: "Inter_400Regular",
-                        color: isDark ? "#94a3b8" : "#64748b",
+                        fontSize: fs.sm,
+                        fontFamily: ff.regular,
+                        color: c.mutedForeground,
                         marginTop: 4,
                       }}>
                         {timeAgo(item.createdAt)}
@@ -256,7 +258,7 @@ export default function NotificationsScreen() {
                         width: 10,
                         height: 10,
                         borderRadius: 5,
-                        backgroundColor: "#0d9488",
+                        backgroundColor: c.primary,
                         marginTop: 6,
                       }} />
                     )}
@@ -288,13 +290,13 @@ export default function NotificationsScreen() {
                   style={{
                     width: 48,
                     height: 48,
-                    borderRadius: 24,
-                    backgroundColor: "#0d9488",
+                    borderRadius: radius["2xl"],
+                    backgroundColor: c.primary,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Icon size={22} color="#ffffff" strokeWidth={2.5} />
+                  <Icon size={22} color={palette.white} strokeWidth={2.5} />
                 </Pressable>
               </View>
             );
@@ -305,8 +307,8 @@ export default function NotificationsScreen() {
               onPress={() => { hapticSelection(); router.push(item.route as any); }}
               style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 2 }}
             >
-              <Icon size={22} color={isDark ? "#94a3b8" : "#64748b"} />
-              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: isDark ? "#94a3b8" : "#64748b" }}>
+              <Icon size={22} color={c.mutedForeground} />
+              <Text style={{ fontSize: 10, fontFamily: ff.medium, color: c.mutedForeground }}>
                 {item.label}
               </Text>
             </Pressable>

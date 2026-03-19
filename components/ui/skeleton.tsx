@@ -10,6 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
+import { colors } from "@/lib/tokens";
 
 interface SkeletonProps extends ViewProps {
   width?: number | string;
@@ -27,6 +28,7 @@ export function Skeleton({
 }: SkeletonProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const translateX = useSharedValue(-1);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function Skeleton({
           width: width as any,
           height,
           borderRadius,
-          backgroundColor: isDark ? "#334155" : "#e2e8f0",
+          backgroundColor: c.border,
           overflow: "hidden",
         },
         style,

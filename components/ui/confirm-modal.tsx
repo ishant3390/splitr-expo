@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Pressable, Modal } from "react-native";
 import { useColorScheme } from "nativewind";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 
 interface ConfirmModalProps {
   visible: boolean;
@@ -25,6 +26,7 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
       <Pressable
@@ -40,8 +42,8 @@ export function ConfirmModal({
         <Pressable
           onPress={(e) => e.stopPropagation()}
           style={{
-            backgroundColor: isDark ? "#1e293b" : "#ffffff",
-            borderRadius: 20,
+            backgroundColor: c.card,
+            borderRadius: radius.xl,
             borderCurve: "continuous" as any,
             padding: 24,
             width: "100%",
@@ -53,10 +55,10 @@ export function ConfirmModal({
             elevation: 8,
           }}
         >
-          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: isDark ? "#f1f5f9" : "#0f172a", marginBottom: 8 }}>
+          <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: c.foreground, marginBottom: 8 }}>
             {title}
           </Text>
-          <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: isDark ? "#94a3b8" : "#64748b", marginBottom: 24, lineHeight: 20 }}>
+          <Text style={{ fontSize: fs.md, fontFamily: ff.regular, color: c.mutedForeground, marginBottom: 24, lineHeight: 20 }}>
             {message}
           </Text>
           <View style={{ flexDirection: "row", gap: 12 }}>
@@ -67,12 +69,12 @@ export function ConfirmModal({
               style={{
                 flex: 1,
                 paddingVertical: 12,
-                borderRadius: 10,
-                backgroundColor: isDark ? "#334155" : "#f1f5f9",
+                borderRadius: radius.md,
+                backgroundColor: c.muted,
                 alignItems: "center",
               }}
             >
-              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: isDark ? "#94a3b8" : "#64748b" }}>
+              <Text style={{ fontSize: fs.md, fontFamily: ff.semibold, color: c.mutedForeground }}>
                 {cancelLabel}
               </Text>
             </Pressable>
@@ -83,12 +85,12 @@ export function ConfirmModal({
               style={{
                 flex: 1,
                 paddingVertical: 12,
-                borderRadius: 10,
-                backgroundColor: destructive ? "#ef4444" : "#0d9488",
+                borderRadius: radius.md,
+                backgroundColor: destructive ? c.destructive : c.primary,
                 alignItems: "center",
               }}
             >
-              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#ffffff" }}>
+              <Text style={{ fontSize: fs.md, fontFamily: ff.semibold, color: palette.white }}>
                 {confirmLabel}
               </Text>
             </Pressable>

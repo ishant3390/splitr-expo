@@ -17,6 +17,7 @@ import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useGroups, useUserProfile, useGroupCurrencyMap } from "@/lib/hooks";
 import { formatCents, formatDate, formatRelativeTime } from "@/lib/utils";
 import { formatActivityTitle, formatActivityInvolvement, formatCentsForInvolvement, resolveActivityGroupName } from "@/lib/screen-helpers";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import type { ActivityLogDto } from "@/lib/types";
 
 export default function ActivityScreen() {
@@ -25,6 +26,7 @@ export default function ActivityScreen() {
   const { data: backendUser } = useUserProfile();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const { data: activity = [], isLoading: loading, error: activityError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useUserActivity();
   const { data: groups = [] } = useGroups();
   const groupNameMap = useMemo(() => {
@@ -98,14 +100,14 @@ export default function ActivityScreen() {
           style={{ position: "absolute", bottom: -20, right: -15, opacity: 0.06 }}
           pointerEvents="none"
         >
-          <Clock size={160} color="#ffffff" strokeWidth={1} />
+          <Clock size={160} color={palette.white} strokeWidth={1} />
         </View>
 
         {/* Decorative orb */}
         <View
           style={{
             position: "absolute", top: -30, left: -30,
-            width: 100, height: 100, borderRadius: 50,
+            width: 100, height: 100, borderRadius: radius.full,
             backgroundColor: "rgba(255,255,255,0.06)",
           }}
           pointerEvents="none"
@@ -113,7 +115,7 @@ export default function ActivityScreen() {
 
         {/* Title + search */}
         <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
-          <Text className="text-2xl font-sans-bold" style={{ color: "#ffffff" }}>
+          <Text className="text-2xl font-sans-bold" style={{ color: palette.white }}>
             Activity
           </Text>
           <Pressable testID="search-toggle" onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
@@ -121,7 +123,7 @@ export default function ActivityScreen() {
               className="w-9 h-9 rounded-full items-center justify-center"
               style={{ backgroundColor: showSearch ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }}
             >
-              <Search size={18} color="#ffffff" />
+              <Search size={18} color={palette.white} />
             </View>
           </Pressable>
         </View>
@@ -138,7 +140,7 @@ export default function ActivityScreen() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
-              style={{ flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#ffffff" }}
+              style={{ flex: 1, fontSize: fs.md, fontFamily: ff.regular, color: palette.white }}
               placeholderTextColor="rgba(255,255,255,0.5)"
             />
             {searchQuery.length > 0 && (
@@ -157,7 +159,7 @@ export default function ActivityScreen() {
         <View className="flex-1 items-center justify-center px-5">
           <EmptyState
             icon={AlertTriangle}
-            iconColor="#ef4444"
+            iconColor={c.destructive}
             title="Couldn't load activity"
             subtitle="Check your connection and try again."
             actionLabel="Retry"
@@ -168,7 +170,7 @@ export default function ActivityScreen() {
         <View className="flex-1 items-center justify-center px-5">
           <EmptyState
             icon={Clock}
-            iconColor={isDark ? "#94a3b8" : "#64748b"}
+            iconColor={c.mutedForeground}
             title="No activity yet"
             subtitle="Your expense and settlement activity will appear here"
           />
@@ -181,7 +183,7 @@ export default function ActivityScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) fetchNextPage();
           }}
@@ -189,7 +191,7 @@ export default function ActivityScreen() {
           ListFooterComponent={
             isFetchingNextPage ? (
               <View className="py-4 items-center">
-                <ActivityIndicator size="small" color="#0d9488" />
+                <ActivityIndicator size="small" color={c.primary} />
               </View>
             ) : null
           }

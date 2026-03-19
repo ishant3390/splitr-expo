@@ -3,6 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { Avatar } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
 import type { GroupMemberDto } from "@/lib/types";
+import { palette } from "@/lib/tokens";
 
 interface AvatarStripProps {
   members: GroupMemberDto[];
@@ -34,7 +35,7 @@ export function AvatarStrip({ members, maxVisible = 5, onPress, size = "md" }: A
               zIndex: visible.length - i,
               borderRadius: s.container / 2,
               borderWidth: 2,
-              borderColor: "#ffffff",
+              borderColor: palette.white,
             }}
           >
             <Avatar

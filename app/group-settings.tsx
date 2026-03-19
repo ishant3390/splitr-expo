@@ -28,6 +28,9 @@ import {
   Trash2,
   GitMerge,
   Settings,
+  Camera as CameraIcon,
+  ImageIcon,
+  Pencil,
 } from "lucide-react-native";
 import QRCode from "react-native-qrcode-svg";
 import { LinearGradient } from "expo-linear-gradient";
@@ -41,9 +44,11 @@ import { Input } from "@/components/ui/input";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { ThemedSwitch } from "@/components/ui/themed-switch";
+import { Image } from "expo-image";
 import { groupsApi, contactsApi, inviteApi } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
-import { useArchiveGroup, useDeleteGroup, useCategories } from "@/lib/hooks";
+import { useArchiveGroup, useDeleteGroup, useCategories, useUploadGroupBanner, useDeleteGroupBanner } from "@/lib/hooks";
+import { pickImage, validateImage, buildImageFormDataAsync } from "@/lib/image-utils";
 import { invalidateAfterGroupChange, invalidateAfterMemberChange } from "@/lib/query";
 import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -112,6 +117,44 @@ export default function GroupSettingsScreen() {
 
   // Simplify debts toggle
   const [togglingSimplify, setTogglingSimplify] = useState(false);
+
+  // Banner upload
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const uploadBannerMutation = useUploadGroupBanner(groupId);
+  const deleteBannerMutation = useDeleteGroupBanner(groupId);
+
+  const handleBannerUpload = async (source: "camera" | "gallery") => {
+    const asset = await pickImage(source, { aspect: [16, 9] });
+    if (!asset) return;
+    const error = validateImage(asset);
+    if (error) { toast.error(error); return; }
+    setUploadingBanner(true);
+    try {
+      const formData = await buildImageFormDataAsync(asset.uri, asset.mimeType);
+      const updated = await uploadBannerMutation.mutateAsync(formData);
+      setGroup(updated);
+      toast.success("Banner updated.");
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err);
+      toast.error(apiErr ? getUserMessage(apiErr) : "Failed to upload banner.");
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
+  const handleBannerRemove = async () => {
+    setUploadingBanner(true);
+    try {
+      await deleteBannerMutation.mutateAsync();
+      setGroup((prev) => prev ? { ...prev, bannerImageUrl: undefined } : prev);
+      toast.success("Banner removed.");
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err);
+      toast.error(apiErr ? getUserMessage(apiErr) : "Failed to remove banner.");
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -413,15 +456,28 @@ export default function GroupSettingsScreen() {
           end={{ x: 1, y: 1 }}
           style={{ overflow: "hidden" }}
         >
-          {/* Watermark */}
-          <View
-            style={{ position: "absolute", top: -20, right: -20, opacity: 0.08 }}
-            pointerEvents="none"
-          >
-            <Text style={{ fontSize: 160, lineHeight: 180 }}>
-              {group.emoji || group.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          {/* Banner image background */}
+          {group.bannerImageUrl ? (
+            <Image
+              source={{ uri: group.bannerImageUrl }}
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+              contentFit="cover"
+            />
+          ) : (
+            /* Watermark */
+            <View
+              style={{ position: "absolute", top: -20, right: -20, opacity: 0.08 }}
+              pointerEvents="none"
+            >
+              <Text style={{ fontSize: 160, lineHeight: 180 }}>
+                {group.emoji || group.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          {/* Dark overlay for text contrast when banner exists */}
+          {group.bannerImageUrl && (
+            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.35)" }} />
+          )}
 
           {/* Decorative orb */}
           <View
@@ -500,6 +556,59 @@ export default function GroupSettingsScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* Banner upload controls */}
+            {!isArchived && (
+              <View className="flex-row items-center gap-2 mt-3">
+                {uploadingBanner ? (
+                  <ActivityIndicator size="small" color={palette.white} />
+                ) : (
+                  <>
+                    <Pressable
+                      onPress={() => handleBannerUpload("gallery")}
+                      style={{
+                        backgroundColor: "rgba(255,255,255,0.15)",
+                        borderRadius: radius.full,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <ImageIcon size={14} color={palette.white} />
+                      <Text className="text-xs font-sans-medium" style={{ color: palette.white }}>
+                        {group.bannerImageUrl ? "Change Banner" : "Add Banner"}
+                      </Text>
+                    </Pressable>
+                    {Platform.OS !== "web" && (
+                      <Pressable
+                        onPress={() => handleBannerUpload("camera")}
+                        style={{
+                          backgroundColor: "rgba(255,255,255,0.15)",
+                          borderRadius: radius.full,
+                          padding: 6,
+                        }}
+                      >
+                        <CameraIcon size={14} color={palette.white} />
+                      </Pressable>
+                    )}
+                    {group.bannerImageUrl && (
+                      <Pressable
+                        onPress={handleBannerRemove}
+                        style={{
+                          backgroundColor: "rgba(255,255,255,0.15)",
+                          borderRadius: radius.full,
+                          padding: 6,
+                        }}
+                      >
+                        <X size={14} color={palette.white} />
+                      </Pressable>
+                    )}
+                  </>
+                )}
+              </View>
+            )}
           </View>
         </LinearGradient>
 

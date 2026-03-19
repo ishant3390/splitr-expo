@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, View } from "react-native";
 import { Check } from "lucide-react-native";
 import { clsx } from "clsx";
+import { palette } from "@/lib/tokens";
 
 interface CheckboxProps {
   checked: boolean;
@@ -28,7 +29,7 @@ export function Checkbox({
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
     >
-      {checked && <Check size={14} color="#ffffff" strokeWidth={3} />}
+      {checked && <Check size={14} color={palette.white} strokeWidth={3} />}
     </Pressable>
   );
 }

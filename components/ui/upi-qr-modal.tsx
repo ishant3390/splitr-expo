@@ -4,6 +4,7 @@ import { useColorScheme } from "nativewind";
 import QRCode from "react-native-qrcode-svg";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { Button } from "@/components/ui/button";
+import { radius, palette } from "@/lib/tokens";
 
 interface UpiQrModalProps {
   visible: boolean;
@@ -43,8 +44,8 @@ export function UpiQrModal({
         <View
           style={{
             padding: 16,
-            borderRadius: 16,
-            backgroundColor: "#ffffff",
+            borderRadius: radius.lg,
+            backgroundColor: palette.white,
           }}
         >
           <QRCode value={upiUri} size={200} />

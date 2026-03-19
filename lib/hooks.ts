@@ -550,6 +550,50 @@ export function useUpdateProfile() {
   });
 }
 
+export function useUploadProfileImage() {
+  const fetchToken = useTokenFetcher();
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      const token = await fetchToken();
+      return usersApi.uploadProfileImage(formData, token);
+    },
+    onSuccess: () => invalidateAfterProfileUpdate(),
+  });
+}
+
+export function useDeleteProfileImage() {
+  const fetchToken = useTokenFetcher();
+  return useMutation({
+    mutationFn: async () => {
+      const token = await fetchToken();
+      return usersApi.deleteProfileImage(token);
+    },
+    onSuccess: () => invalidateAfterProfileUpdate(),
+  });
+}
+
+export function useUploadGroupBanner(groupId: string) {
+  const fetchToken = useTokenFetcher();
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      const token = await fetchToken();
+      return groupsApi.uploadBanner(groupId, formData, token);
+    },
+    onSuccess: () => invalidateAfterGroupChange(),
+  });
+}
+
+export function useDeleteGroupBanner(groupId: string) {
+  const fetchToken = useTokenFetcher();
+  return useMutation({
+    mutationFn: async () => {
+      const token = await fetchToken();
+      return groupsApi.deleteBanner(groupId, token);
+    },
+    onSuccess: () => invalidateAfterGroupChange(),
+  });
+}
+
 export function useJoinGroup() {
   const fetchToken = useTokenFetcher();
   return useMutation({

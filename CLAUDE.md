@@ -66,6 +66,9 @@ lib/
   screen-helpers.ts     # Pure helpers: aggregateByPerson, aggregateByCategory, aggregateByMonth, filterExpenses, sortExpenses, inferCategoryFromDescription, etc.
   hooks.ts              # React Query hooks for all API data (+ useMergedContacts for @mention fallback)
   query.ts              # QueryClient config, query keys, stale times
+  errors.ts             # SplitError class, ApiErrorBody type, ERROR_MESSAGES map, parseApiError(), getUserMessage()
+  api-interceptor.ts    # handleApiError() — category-level routing (auth redirect, field errors, refetch, toasts)
+  idempotency.ts        # Idempotency key generation, AsyncStorage persistence, withIdempotency() retry wrapper
   offline.ts            # AsyncStorage-based offline expense queue
   biometrics.ts         # Biometric lock utilities (expo-local-authentication)
   notifications.ts      # Push notification utilities (foreground handler with per-category filtering, permissions, token, preferences, getNotificationCategory mapping)
@@ -106,6 +109,12 @@ lib/
 - Per-group notification toggle in group detail: reads `member.notificationsEnabled`, toggles via `PATCH /v1/groups/{groupId}/members/{memberId}`
 - **Cache invalidation after direct API calls**: Any screen calling `groupsApi`/`expensesApi` directly (outside React Query `useMutation` hooks) MUST call the matching invalidation helper from `lib/query.ts` (`invalidateAfterGroupChange()`, `invalidateAfterExpenseChange(groupId)`, etc.). Prefer using mutation hooks from `lib/hooks.ts` which handle this automatically.
 - **Web focus reliability**: `useFocusEffect` is unreliable on web; screens that need refetch-on-focus should also use `useIsFocused()` from `@react-navigation/native` as a state-based fallback
+- **Error handling**: Never use `msg.includes("ERR-xxx")` string matching. Use `parseApiError(err)` from `lib/errors.ts` to extract structured `ApiErrorBody`, then `getUserMessage(apiErr)` for user-facing strings. Pattern: `const apiErr = parseApiError(err); toast.error(apiErr ? getUserMessage(apiErr) : "Fallback message.");`
+- **Error types**: `SplitError extends Error` carries parsed backend error body. `request()` in `lib/api.ts` throws `SplitError` for JSON error responses with a `code` field, plain `Error` for non-JSON.
+- **Error codes**: 34 codes mapped in `ERROR_MESSAGES` (`lib/errors.ts`). Categories: GENERAL, VALIDATION, AUTHENTICATION, AUTHORIZATION, RESOURCE, BUSINESS_LOGIC, EXTERNAL_SERVICE. See `pipeline/fe/error-handling-spec.md` for full reference.
+- **Business logic errors**: Use `toast.info()` (not `toast.error()`) — these are expected states (nudge cooldown, already a member, quota exceeded).
+- **Version conflict**: Use `isVersionConflict(err)` from `lib/api.ts` — checks `ERR-302` code specifically, does NOT false-positive on `ERR-409`.
+- **Idempotency**: `POST /expenses` and `POST /settlements` automatically include `Idempotency-Key` header (UUID v4) via `withIdempotency()` wrapper in `lib/api.ts`. Keys persisted to AsyncStorage for crash recovery. Retry with exponential backoff on ERR-415 (in-flight) and 5xx. See `lib/idempotency.ts`.
 
 ## Key API Endpoints
 - `POST /v1/groups/{groupId}/expenses` — expenses always belong to a group
@@ -278,7 +287,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (1754 tests, 71 suites)**: `lib/` at 98%, `components/ui/` at 91%, screens improving
+- **Current baseline (3748 tests, 145 suites)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state
@@ -371,3 +380,19 @@ Broad audience — anyone who shares expenses with others. Covers young adults s
 3. **Money without awkwardness** — The UI should make financial interactions feel natural and lightweight. Use friendly language, avoid aggressive collection vibes, celebrate settlements.
 4. **Warmth with restraint** — Delightful touches (confetti, spring animations, haptics) add personality, but never at the cost of usability. Every animation must serve a purpose.
 5. **Inclusive by default** — Accessible first (WCAG AA), web-first launch, visible controls over gesture-only. Works for everyone regardless of device, ability, or technical comfort.
+
+## Design Token Usage
+- **Token source of truth**: `lib/tokens.ts` — all colors, spacing, typography, radii, z-index, durations
+- **Spec files**: `specs/` — read before writing/modifying UI code
+- **Audit**: Run `npm run audit:tokens` before committing UI changes. Zero errors required.
+- **Rule**: Never hardcode hex colors, font sizes, border radii, or font families in component files. Use `tokens.*` for inline styles and Tailwind classes for `className`.
+- **Dark mode**: Use `const c = useThemeColors()` for inline styles. Use NativeWind semantic classes (`text-foreground`, `bg-card`, etc.) for className.
+- **Import pattern**: `import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens"` — alias `fontSize`/`fontFamily` to avoid name collisions with style props.
+- **Scope**: Each component/function that uses `c.*` must define `const c = colors(isDark)` in its own scope (not inherited from parent).
+
+## External Pipeline
+- **Location**: `../pipeline/` (one level above this repo)
+- **Purpose**: External task queue from product owners, backend team, and stakeholders
+- **FE tasks**: `pipeline-fe.md` — read for pending work, update status when picking/completing
+- **BE requests**: `pipeline-be.md` — write here when FE needs something from backend
+- **Workflow**: Check pipeline → read spec in `fe/` → plan → get approval → implement → mark `done`

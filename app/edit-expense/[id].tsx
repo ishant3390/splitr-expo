@@ -19,6 +19,11 @@ import {
   Trash2,
   Check,
   Calendar,
+  Paperclip,
+  Eye,
+  X,
+  Camera,
+  ImageIcon,
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +34,9 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { expensesApi, groupsApi, categoriesApi, isVersionConflict } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
+import { pickImage, validateImage, buildImageFormDataAsync } from "@/lib/image-utils";
+import { invalidateAfterExpenseChange } from "@/lib/query";
+import { ImagePreviewModal } from "@/components/ui/image-preview-modal";
 import { inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, cn, amountToCents, centsToAmount } from "@/lib/utils";
@@ -82,6 +90,10 @@ export default function EditExpenseScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [receiptStatus, setReceiptStatus] = useState<"attached" | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
+  const [loadingReceipt, setLoadingReceipt] = useState(false);
   const userPickedCategoryRef = useRef(false);
   // Track the description loaded from server so we don't infer on initial population
   const initialDescriptionRef = useRef("");
@@ -132,6 +144,7 @@ export default function EditExpenseScreen() {
         }
 
         setExpense(expenseData);
+        setReceiptStatus(expenseData.receiptImageUrl === "attached" ? "attached" : null);
 
         // Deduplicate members
         const rawMembers: GroupMemberDto[] = Array.isArray(membersData) ? membersData : [];
@@ -238,6 +251,59 @@ export default function EditExpenseScreen() {
       initSplitValues(next, splitType, amount);
       return next;
     });
+  };
+
+  const handleViewReceipt = async () => {
+    setLoadingReceipt(true);
+    try {
+      const token = await getToken();
+      const { url } = await expensesApi.getReceiptUrl(id, token!);
+      setReceiptPreviewUrl(url);
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err);
+      toast.error(apiErr ? getUserMessage(apiErr) : "Could not load receipt.");
+    } finally {
+      setLoadingReceipt(false);
+    }
+  };
+
+  const handleAttachReceipt = async (source: "camera" | "gallery") => {
+    const asset = await pickImage(source);
+    if (!asset) return;
+    const error = validateImage(asset);
+    if (error) { toast.error(error); return; }
+    setUploadingReceipt(true);
+    try {
+      const token = await getToken();
+      const formData = await buildImageFormDataAsync(asset.uri, asset.mimeType);
+      await expensesApi.uploadReceipt(id, formData, token!);
+      setReceiptStatus("attached");
+      invalidateAfterExpenseChange(groupId);
+      hapticSuccess();
+      toast.success("Receipt attached.");
+    } catch (err: unknown) {
+      hapticError();
+      const apiErr = parseApiError(err);
+      toast.error(apiErr ? getUserMessage(apiErr) : "Failed to attach receipt.");
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
+  const handleDeleteReceipt = async () => {
+    setUploadingReceipt(true);
+    try {
+      const token = await getToken();
+      await expensesApi.deleteReceipt(id, token!);
+      setReceiptStatus(null);
+      invalidateAfterExpenseChange(groupId);
+      toast.success("Receipt removed.");
+    } catch (err: unknown) {
+      const apiErr = parseApiError(err);
+      toast.error(apiErr ? getUserMessage(apiErr) : "Failed to remove receipt.");
+    } finally {
+      setUploadingReceipt(false);
+    }
   };
 
   const handleSave = async () => {
@@ -738,6 +804,65 @@ export default function EditExpenseScreen() {
             </View>
           </View>
 
+          {/* Receipt section */}
+          <View>
+            <Text className="text-sm font-sans-medium text-foreground mb-2">Receipt</Text>
+            {uploadingReceipt ? (
+              <View className="flex-row items-center gap-2 py-3">
+                <ActivityIndicator size="small" color={c.primary} />
+                <Text className="text-sm text-muted-foreground font-sans">Uploading...</Text>
+              </View>
+            ) : receiptStatus === "attached" ? (
+              <Card className="p-3 gap-2">
+                <View className="flex-row items-center gap-3">
+                  <View className="w-9 h-9 rounded-lg bg-primary/10 items-center justify-center">
+                    <Paperclip size={18} color={c.primary} />
+                  </View>
+                  <Text className="flex-1 text-sm font-sans-medium text-foreground">Receipt attached</Text>
+                  <Pressable
+                    onPress={handleViewReceipt}
+                    disabled={loadingReceipt}
+                    className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10"
+                  >
+                    {loadingReceipt ? (
+                      <ActivityIndicator size="small" color={c.primary} />
+                    ) : (
+                      <>
+                        <Eye size={14} color={c.primary} />
+                        <Text className="text-xs font-sans-semibold text-primary">View</Text>
+                      </>
+                    )}
+                  </Pressable>
+                  <Pressable
+                    onPress={handleDeleteReceipt}
+                    className="w-7 h-7 rounded-full bg-destructive/10 items-center justify-center"
+                  >
+                    <X size={14} color={c.destructive} />
+                  </Pressable>
+                </View>
+              </Card>
+            ) : (
+              <View className="flex-row gap-2">
+                {Platform.OS !== "web" && (
+                  <Pressable
+                    onPress={() => handleAttachReceipt("camera")}
+                    className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"
+                  >
+                    <Camera size={14} color={c.mutedForeground} />
+                    <Text className="text-xs font-sans-medium text-muted-foreground">Photo</Text>
+                  </Pressable>
+                )}
+                <Pressable
+                  onPress={() => handleAttachReceipt("gallery")}
+                  className="flex-row items-center gap-1.5 px-3 py-2 rounded-lg bg-muted"
+                >
+                  <ImageIcon size={14} color={c.mutedForeground} />
+                  <Text className="text-xs font-sans-medium text-muted-foreground">Attach Receipt</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+
           {/* Delete button */}
           <Pressable
             onPress={() => { hapticWarning(); setShowDeleteConfirm(true); }}
@@ -748,6 +873,12 @@ export default function EditExpenseScreen() {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ImagePreviewModal
+        visible={!!receiptPreviewUrl}
+        imageUri={receiptPreviewUrl}
+        onClose={() => setReceiptPreviewUrl(null)}
+      />
 
       <ConfirmModal
         visible={showDeleteConfirm}

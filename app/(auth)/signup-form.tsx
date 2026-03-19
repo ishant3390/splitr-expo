@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ArrowLeft } from "lucide-react-native";
+import { colors } from "@/lib/tokens";
 
 export default function SignUpFormScreen() {
   const router = useRouter();
   const toast = useToast();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(auth)"));
   const { signUp, setActive } = useSignUp();
 
@@ -94,7 +96,7 @@ export default function SignUpFormScreen() {
             onPress={goBack}
             className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
           >
-            <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+            <ArrowLeft size={22} color={c.primary} strokeWidth={2.5} />
           </Pressable>
           <Text className="flex-1 text-lg font-sans-semibold text-foreground text-center mr-10">
             Create Account

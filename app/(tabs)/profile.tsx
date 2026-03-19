@@ -24,15 +24,16 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { useUserProfile } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, formatMemberSince } from "@/lib/utils";
+import { colors, radius, palette } from "@/lib/tokens";
 
 const DARK_MODE_KEY = "@splitr/dark_mode";
 
 const menuItems = [
-  { icon: User, label: "Edit Profile", id: "profile", iconBg: "#f0fdfa", iconBgDark: "rgba(13,148,136,0.12)", iconColor: "#0d9488" },
-  { icon: CreditCard, label: "Payment Methods", id: "payment", iconBg: "#eef2ff", iconBgDark: "rgba(99,102,241,0.12)", iconColor: "#6366f1" },
-  { icon: Bell, label: "Notifications", id: "notifications", iconBg: "#fffbeb", iconBgDark: "rgba(245,158,11,0.12)", iconColor: "#f59e0b" },
-  { icon: Shield, label: "Privacy & Security", id: "privacy", iconBg: "#ecfdf5", iconBgDark: "rgba(16,185,129,0.12)", iconColor: "#10b981" },
-  { icon: HelpCircle, label: "Help & Support", id: "help", iconBg: "#eff6ff", iconBgDark: "rgba(59,130,246,0.12)", iconColor: "#3b82f6" },
+  { icon: User, label: "Edit Profile", id: "profile", iconBg: palette.teal50, iconBgDark: "rgba(13,148,136,0.12)", iconColor: palette.teal600 },
+  { icon: CreditCard, label: "Payment Methods", id: "payment", iconBg: "#eef2ff", iconBgDark: "rgba(99,102,241,0.12)", iconColor: palette.indigo500 },
+  { icon: Bell, label: "Notifications", id: "notifications", iconBg: "#fffbeb", iconBgDark: "rgba(245,158,11,0.12)", iconColor: palette.amber500 },
+  { icon: Shield, label: "Privacy & Security", id: "privacy", iconBg: "#ecfdf5", iconBgDark: "rgba(16,185,129,0.12)", iconColor: palette.emerald500 },
+  { icon: HelpCircle, label: "Help & Support", id: "help", iconBg: "#eff6ff", iconBgDark: "rgba(59,130,246,0.12)", iconColor: palette.blue500 },
 ];
 
 export default function ProfileScreen() {
@@ -41,6 +42,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { colorScheme, setColorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const { data: apiUser = null } = useUserProfile();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const toast = useToast();
@@ -95,14 +97,14 @@ export default function ProfileScreen() {
             style={{ position: "absolute", bottom: -30, right: -20, opacity: 0.06 }}
             pointerEvents="none"
           >
-            <User size={180} color="#ffffff" strokeWidth={1} />
+            <User size={180} color={palette.white} strokeWidth={1} />
           </View>
 
           {/* Decorative orb */}
           <View
             style={{
               position: "absolute", top: -30, left: -30,
-              width: 100, height: 100, borderRadius: 50,
+              width: 100, height: 100, borderRadius: radius.full,
               backgroundColor: "rgba(255,255,255,0.06)",
             }}
             pointerEvents="none"
@@ -110,7 +112,7 @@ export default function ProfileScreen() {
 
           {/* Title */}
           <View className="px-5 pt-3 pb-2">
-            <Text className="text-2xl font-sans-bold" style={{ color: "#ffffff" }}>
+            <Text className="text-2xl font-sans-bold" style={{ color: palette.white }}>
               Profile
             </Text>
           </View>
@@ -119,7 +121,7 @@ export default function ProfileScreen() {
           <View className="items-center px-5 pt-2 pb-4">
             <View
               style={{
-                width: 76, height: 76, borderRadius: 38,
+                width: 76, height: 76, borderRadius: radius.full,
                 borderWidth: 3, borderColor: "rgba(255,255,255,0.3)",
                 overflow: "hidden",
               }}
@@ -133,7 +135,7 @@ export default function ProfileScreen() {
             </View>
             <Text
               className="text-lg font-sans-bold mt-3"
-              style={{ color: "#ffffff" }}
+              style={{ color: palette.white }}
             >
               {user?.fullName ?? ""}
             </Text>
@@ -150,7 +152,7 @@ export default function ProfileScreen() {
             <View
               style={{
                 backgroundColor: "rgba(255,255,255,0.12)",
-                borderRadius: 16,
+                borderRadius: radius.lg,
                 padding: 14,
                 flexDirection: "row",
               }}
@@ -158,7 +160,7 @@ export default function ProfileScreen() {
               <View className="flex-1 items-center">
                 <Text
                   className="text-lg font-sans-bold"
-                  style={{ color: "#ffffff" }}
+                  style={{ color: palette.white }}
                 >
                   {apiUser?.defaultCurrency ?? "USD"}
                 </Text>
@@ -173,7 +175,7 @@ export default function ProfileScreen() {
               <View className="flex-1 items-center">
                 <Text
                   className="text-lg font-sans-bold"
-                  style={{ color: "#ffffff" }}
+                  style={{ color: palette.white }}
                 >
                   {apiUser?.isPremium ? "Yes" : "No"}
                 </Text>
@@ -188,7 +190,7 @@ export default function ProfileScreen() {
               <View className="flex-1 items-center">
                 <Text
                   className="text-lg font-sans-bold"
-                  style={{ color: "#ffffff" }}
+                  style={{ color: palette.white }}
                 >
                   {apiUser?.createdAt
                     ? formatMemberSince(apiUser.createdAt)
@@ -246,7 +248,7 @@ export default function ProfileScreen() {
                       {item.label}
                     </Text>
                   </View>
-                  <ChevronRight size={18} color="#94a3b8" />
+                  <ChevronRight size={18} color={palette.slate400} />
                 </Pressable>
               );
             })}
@@ -257,7 +259,7 @@ export default function ProfileScreen() {
             onPress={handleSignOut}
             className="flex-row items-center justify-center gap-2 py-4"
           >
-            <LogOut size={18} color="#ef4444" />
+            <LogOut size={18} color={c.destructive} />
             <Text className="text-base font-sans-semibold text-destructive">Sign Out</Text>
           </Pressable>
         </View>

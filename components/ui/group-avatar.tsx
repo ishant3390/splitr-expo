@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { palette } from "@/lib/tokens";
 
 // Curated gradient pairs — warm, cool, earthy, vibrant
 const GRADIENT_PAIRS: [string, string][] = [
@@ -65,7 +66,7 @@ export function GroupAvatar({ name, emoji, groupType, id, size = "md" }: GroupAv
         justifyContent: "center",
       }}
     >
-      <Text style={{ fontSize: s.emoji, color: "#ffffff" }}>
+      <Text style={{ fontSize: s.emoji, color: palette.white }}>
         {emoji || name.charAt(0).toUpperCase()}
       </Text>
     </LinearGradient>

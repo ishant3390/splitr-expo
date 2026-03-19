@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { useColorScheme } from "nativewind";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { colors, fontSize as fs, fontFamily as ff, radius } from "@/lib/tokens";
 import { Users, User } from "lucide-react-native";
 import { getInitials } from "@/lib/utils";
 import type { ContactDto, GroupDto } from "@/lib/types";
@@ -27,6 +28,7 @@ function ContactRow({
   isDark: boolean;
   isSelected?: boolean;
 }) {
+  const c = colors(isDark);
   return (
     <Pressable
       onPress={onPress}
@@ -43,9 +45,7 @@ function ContactRow({
             ? "rgba(13, 148, 136, 0.25)"
             : "rgba(13, 148, 136, 0.1)"
           : pressed
-            ? isDark
-              ? "#334155"
-              : "#f1f5f9"
+            ? c.muted
             : "transparent",
       })}
     >
@@ -53,23 +53,23 @@ function ContactRow({
         style={{
           width: 32,
           height: 32,
-          borderRadius: 16,
+          borderRadius: radius.lg,
           backgroundColor: isSelected
             ? isDark
               ? "rgba(13, 148, 136, 0.3)"
               : "rgba(13, 148, 136, 0.15)"
             : isDark
-              ? "#1e293b"
-              : "#e2e8f0",
+              ? c.card
+              : c.border,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
         <Text
           style={{
-            fontSize: 12,
-            fontFamily: "Inter_600SemiBold",
-            color: isSelected ? "#0d9488" : isDark ? "#94a3b8" : "#64748b",
+            fontSize: fs.sm,
+            fontFamily: ff.semibold,
+            color: isSelected ? c.primary : c.mutedForeground,
           }}
         >
           {getInitials(contact.name)}
@@ -79,13 +79,11 @@ function ContactRow({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Text
             style={{
-              fontSize: 14,
-              fontFamily: "Inter_500Medium",
+              fontSize: fs.md,
+              fontFamily: ff.medium,
               color: isSelected
-                ? "#0d9488"
-                : isDark
-                  ? "#f1f5f9"
-                  : "#0f172a",
+                ? c.primary
+                : c.foreground,
             }}
             numberOfLines={1}
           >
@@ -94,7 +92,7 @@ function ContactRow({
           {contact.isGuest && (
             <View
               style={{
-                backgroundColor: isDark ? "#334155" : "#f1f5f9",
+                backgroundColor: c.muted,
                 borderRadius: 4,
                 paddingHorizontal: 4,
                 paddingVertical: 1,
@@ -103,8 +101,8 @@ function ContactRow({
               <Text
                 style={{
                   fontSize: 9,
-                  fontFamily: "Inter_500Medium",
-                  color: "#94a3b8",
+                  fontFamily: ff.medium,
+                  color: c.mutedForeground,
                 }}
               >
                 Guest
@@ -115,9 +113,9 @@ function ContactRow({
         {contact.email && (
           <Text
             style={{
-              fontSize: 12,
-              fontFamily: "Inter_400Regular",
-              color: "#94a3b8",
+              fontSize: fs.sm,
+              fontFamily: ff.regular,
+              color: c.mutedForeground,
               marginTop: 1,
             }}
             numberOfLines={1}
@@ -141,6 +139,7 @@ function GroupRow({
   isDark: boolean;
   isSelected?: boolean;
 }) {
+  const c = colors(isDark);
   return (
     <Pressable
       onPress={onPress}
@@ -157,9 +156,7 @@ function GroupRow({
             ? "rgba(13, 148, 136, 0.25)"
             : "rgba(13, 148, 136, 0.1)"
           : pressed
-            ? isDark
-              ? "#334155"
-              : "#f1f5f9"
+            ? c.muted
             : "transparent",
       })}
     >
@@ -167,32 +164,30 @@ function GroupRow({
         style={{
           width: 32,
           height: 32,
-          borderRadius: 16,
+          borderRadius: radius.lg,
           backgroundColor: isSelected
             ? isDark
               ? "rgba(13, 148, 136, 0.3)"
               : "rgba(13, 148, 136, 0.15)"
             : isDark
-              ? "#1e293b"
-              : "#e2e8f0",
+              ? c.card
+              : c.border,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <Text style={{ fontSize: 14 }}>
+        <Text style={{ fontSize: fs.md }}>
           {group.emoji || group.name.charAt(0)}
         </Text>
       </View>
       <View style={{ flex: 1 }}>
         <Text
           style={{
-            fontSize: 14,
-            fontFamily: "Inter_500Medium",
+            fontSize: fs.md,
+            fontFamily: ff.medium,
             color: isSelected
-              ? "#0d9488"
-              : isDark
-                ? "#f1f5f9"
-                : "#0f172a",
+              ? c.primary
+              : c.foreground,
           }}
           numberOfLines={1}
         >
@@ -201,9 +196,9 @@ function GroupRow({
         {group.memberCount != null && (
           <Text
             style={{
-              fontSize: 12,
-              fontFamily: "Inter_400Regular",
-              color: "#94a3b8",
+              fontSize: fs.sm,
+              fontFamily: ff.regular,
+              color: c.mutedForeground,
               marginTop: 1,
             }}
           >
@@ -226,6 +221,7 @@ export function MentionDropdown({
 }: MentionDropdownProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -252,10 +248,10 @@ export function MentionDropdown({
         entering={FadeIn.duration(150)}
         exiting={FadeOut.duration(100)}
         style={{
-          backgroundColor: isDark ? "#1e293b" : "#ffffff",
+          backgroundColor: c.card,
           borderWidth: 1,
-          borderColor: isDark ? "#334155" : "#e2e8f0",
-          borderRadius: 12,
+          borderColor: c.border,
+          borderRadius: radius.DEFAULT,
           marginHorizontal: 16,
           marginBottom: 4,
           paddingVertical: 12,
@@ -276,19 +272,19 @@ export function MentionDropdown({
           }}
         >
           {isLoading ? (
-            <ActivityIndicator size="small" color="#94a3b8" />
+            <ActivityIndicator size="small" color={c.mutedForeground} />
           ) : (
             <>
               {type === "@" ? (
-                <User size={14} color="#94a3b8" />
+                <User size={14} color={c.mutedForeground} />
               ) : (
-                <Users size={14} color="#94a3b8" />
+                <Users size={14} color={c.mutedForeground} />
               )}
               <Text
                 style={{
-                  fontSize: 13,
-                  fontFamily: "Inter_400Regular",
-                  color: "#94a3b8",
+                  fontSize: fs.base,
+                  fontFamily: ff.regular,
+                  color: c.mutedForeground,
                 }}
               >
                 {type === "@" ? "No contacts found" : "No groups found"}
@@ -305,10 +301,10 @@ export function MentionDropdown({
       entering={FadeIn.duration(150)}
       exiting={FadeOut.duration(100)}
       style={{
-        backgroundColor: isDark ? "#1e293b" : "#ffffff",
+        backgroundColor: c.card,
         borderWidth: 1,
-        borderColor: isDark ? "#334155" : "#e2e8f0",
-        borderRadius: 12,
+        borderColor: c.border,
+        borderRadius: radius.DEFAULT,
         marginHorizontal: 16,
         marginBottom: 4,
         maxHeight: 200,
@@ -331,15 +327,15 @@ export function MentionDropdown({
         }}
       >
         {type === "@" ? (
-          <User size={11} color="#94a3b8" />
+          <User size={11} color={c.mutedForeground} />
         ) : (
-          <Users size={11} color="#94a3b8" />
+          <Users size={11} color={c.mutedForeground} />
         )}
         <Text
           style={{
             fontSize: 10,
-            fontFamily: "Inter_600SemiBold",
-            color: "#94a3b8",
+            fontFamily: ff.semibold,
+            color: c.mutedForeground,
             textTransform: "uppercase",
             letterSpacing: 0.5,
           }}

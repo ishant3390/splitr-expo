@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useColorScheme } from "nativewind";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { colors, radius, palette } from "@/lib/tokens";
 
 interface BottomSheetModalProps {
   visible: boolean;
@@ -33,19 +34,20 @@ export function BottomSheetModal({
 }: BottomSheetModalProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
 
   const content = (
     <Animated.View
       entering={SlideInDown.springify().damping(18).stiffness(180)}
       exiting={SlideOutDown.springify().damping(22).stiffness(220)}
       style={{
-        backgroundColor: isDark ? "#1e293b" : "#ffffff",
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        backgroundColor: c.card,
+        borderTopLeftRadius: radius["2xl"],
+        borderTopRightRadius: radius["2xl"],
         padding: 24,
         paddingBottom: Platform.OS === "ios" ? 36 : 24,
         gap: 16,
-        shadowColor: "#000",
+        shadowColor: palette.black,
         shadowOffset: { width: 0, height: -8 },
         shadowOpacity: 0.1,
         shadowRadius: 24,
@@ -59,7 +61,7 @@ export function BottomSheetModal({
             width: 40,
             height: 5,
             borderRadius: 2.5,
-            backgroundColor: isDark ? "#475569" : "#d1d5db",
+            backgroundColor: isDark ? palette.slate600 : palette.slate300,
           }}
         />
       </View>

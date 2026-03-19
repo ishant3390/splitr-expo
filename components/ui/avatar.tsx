@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text } from "react-native";
 import { Image } from "expo-image";
 import { clsx } from "clsx";
+import { palette } from "@/lib/tokens";
 
 interface AvatarProps {
   src?: string;
@@ -35,7 +36,7 @@ export function Avatar({ src, fallback, size = "md", className }: AvatarProps) {
             width: s.image,
             height: s.image,
             borderWidth: 2,
-            borderColor: "#ffffff",
+            borderColor: palette.white,
             borderRadius: s.image / 2,
           }}
           contentFit="cover"

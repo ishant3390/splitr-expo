@@ -140,6 +140,30 @@ export const usersApi = {
 
   balance: (token: string) =>
     request<import("./types").UserBalanceRawDto>("/v1/users/me/balance", undefined, token),
+
+  uploadProfileImage: (formData: FormData, token: string) =>
+    fetch(`${BASE_URL}/v1/users/me/profile-image`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorBody = await res.text().catch(() => "Unknown error");
+        throw buildApiError(errorBody, res.status);
+      }
+      return res.json() as Promise<UserDto>;
+    }),
+
+  deleteProfileImage: (token: string) =>
+    fetch(`${BASE_URL}/v1/users/me/profile-image`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorBody = await res.text().catch(() => "Unknown error");
+        throw buildApiError(errorBody, res.status);
+      }
+    }),
 };
 
 // ---- Groups ----
@@ -216,6 +240,30 @@ export const groupsApi = {
       { method: "POST", body: JSON.stringify({ targetUserId }) },
       token
     ),
+
+  uploadBanner: (groupId: string, formData: FormData, token: string) =>
+    fetch(`${BASE_URL}/v1/groups/${groupId}/banner`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorBody = await res.text().catch(() => "Unknown error");
+        throw buildApiError(errorBody, res.status);
+      }
+      return res.json() as Promise<GroupDto>;
+    }),
+
+  deleteBanner: (groupId: string, token: string) =>
+    fetch(`${BASE_URL}/v1/groups/${groupId}/banner`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorBody = await res.text().catch(() => "Unknown error");
+        throw buildApiError(errorBody, res.status);
+      }
+    }),
 
   // Expenses
   listExpenses: (groupId: string, token: string, params?: Record<string, string>) => {
@@ -313,6 +361,20 @@ export const expensesApi = {
 
   delete: (expenseId: string, token: string) =>
     request<void>(`/v1/expenses/${expenseId}`, { method: "DELETE" }, token),
+
+  getReceiptUrl: (expenseId: string, token: string) =>
+    request<{ url: string }>(`/v1/expenses/${expenseId}/receipt`, undefined, token),
+
+  deleteReceipt: (expenseId: string, token: string) =>
+    fetch(`${BASE_URL}/v1/expenses/${expenseId}/receipt`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorBody = await res.text().catch(() => "Unknown error");
+        throw buildApiError(errorBody, res.status);
+      }
+    }),
 
   uploadReceipt: (expenseId: string, formData: FormData, token: string) =>
     fetch(`${BASE_URL}/v1/expenses/${expenseId}/receipt`, {

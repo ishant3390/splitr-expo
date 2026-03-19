@@ -3,6 +3,7 @@ import { Modal, Pressable, Platform, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { X } from "lucide-react-native";
+import { palette, radius } from "@/lib/tokens";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -191,13 +192,13 @@ export function ImagePreviewModal({
               zIndex: 10,
               width: 40,
               height: 40,
-              borderRadius: 20,
+              borderRadius: radius.xl,
               backgroundColor: "rgba(255,255,255,0.15)",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <X size={24} color="#ffffff" />
+            <X size={24} color={palette.white} />
           </Pressable>
 
           <Pressable onPress={(e) => e.stopPropagation()}>
@@ -241,13 +242,13 @@ export function ImagePreviewModal({
             zIndex: 10,
             width: 40,
             height: 40,
-            borderRadius: 20,
+            borderRadius: radius.xl,
             backgroundColor: "rgba(255,255,255,0.15)",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <X size={24} color="#ffffff" />
+          <X size={24} color={palette.white} />
         </Pressable>
 
         {/* Zoomable image */}

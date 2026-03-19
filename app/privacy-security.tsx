@@ -34,6 +34,7 @@ import { ThemedSwitch } from "@/components/ui/themed-switch";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { useToast } from "@/components/ui/toast";
 import { hapticLight, hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
+import { colors, palette } from "@/lib/tokens";
 import { usersApi } from "@/lib/api";
 import {
   authenticateAppUnlock,
@@ -54,6 +55,7 @@ export default function PrivacySecurityScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const toast = useToast();
   const { getToken, signOut } = useAuth();
   const { user: clerkUser } = useUser();
@@ -276,7 +278,7 @@ export default function PrivacySecurityScreen() {
             onPress={() => { hapticLight(); router.back(); }}
             className="w-10 h-10 rounded-full bg-muted items-center justify-center"
           >
-            <ArrowLeft size={20} color="#64748b" />
+            <ArrowLeft size={20} color={c.mutedForeground} />
           </Pressable>
           <Text className="text-xl font-sans-bold text-foreground">Privacy & Security</Text>
         </View>
@@ -346,7 +348,7 @@ export default function PrivacySecurityScreen() {
             <Card className="overflow-hidden">
               {sessionsLoading ? (
                 <View className="p-4 items-center">
-                  <ActivityIndicator size="small" color="#0d9488" />
+                  <ActivityIndicator size="small" color={c.primary} />
                 </View>
               ) : sessions.length === 0 ? (
                 <View className="p-4">
@@ -363,7 +365,7 @@ export default function PrivacySecurityScreen() {
                     }`}
                   >
                     <View className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 items-center justify-center">
-                      <Smartphone size={18} color="#3b82f6" />
+                      <Smartphone size={18} color={palette.blue500} />
                     </View>
                     <View className="flex-1">
                       <Text className="text-sm font-sans-medium text-card-foreground">
@@ -390,7 +392,7 @@ export default function PrivacySecurityScreen() {
                         className="px-3 py-1.5 rounded-lg bg-destructive/10"
                       >
                         {revokingSessionId === session.id ? (
-                          <ActivityIndicator size="small" color="#ef4444" />
+                          <ActivityIndicator size="small" color={c.destructive} />
                         ) : (
                           <Text className="text-xs font-sans-semibold text-destructive">Revoke</Text>
                         )}
@@ -415,7 +417,7 @@ export default function PrivacySecurityScreen() {
                 className="flex-row items-center gap-3 p-4 border-b border-border"
               >
                 <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-                  <Download size={18} color="#0d9488" />
+                  <Download size={18} color={c.primary} />
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-sans-medium text-card-foreground">
@@ -426,9 +428,9 @@ export default function PrivacySecurityScreen() {
                   </Text>
                 </View>
                 {exporting ? (
-                  <ActivityIndicator size="small" color="#0d9488" />
+                  <ActivityIndicator size="small" color={c.primary} />
                 ) : (
-                  <ChevronRight size={16} color="#94a3b8" />
+                  <ChevronRight size={16} color={palette.slate400} />
                 )}
               </Pressable>
 
@@ -439,7 +441,7 @@ export default function PrivacySecurityScreen() {
                 className="flex-row items-center gap-3 p-4"
               >
                 <View className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center">
-                  <HardDriveDownload size={18} color="#f59e0b" />
+                  <HardDriveDownload size={18} color={c.warning} />
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-sans-medium text-card-foreground">
@@ -450,9 +452,9 @@ export default function PrivacySecurityScreen() {
                   </Text>
                 </View>
                 {clearingCache ? (
-                  <ActivityIndicator size="small" color="#f59e0b" />
+                  <ActivityIndicator size="small" color={c.warning} />
                 ) : (
-                  <ChevronRight size={16} color="#94a3b8" />
+                  <ChevronRight size={16} color={palette.slate400} />
                 )}
               </Pressable>
             </Card>
@@ -469,7 +471,7 @@ export default function PrivacySecurityScreen() {
                   icon: Lock,
                   title: "Encryption",
                   description: "TLS 1.3 in transit, AES-256 at rest",
-                  color: "#0d9488",
+                  color: c.primary,
                   bg: "bg-primary/10",
                 },
                 {
@@ -483,7 +485,7 @@ export default function PrivacySecurityScreen() {
                   icon: Eye,
                   title: "Privacy First",
                   description: "We never sell your data to third parties",
-                  color: "#059669",
+                  color: palette.emerald600,
                   bg: "bg-emerald-100 dark:bg-emerald-900",
                 },
               ].map((item, idx) => {
@@ -519,14 +521,14 @@ export default function PrivacySecurityScreen() {
                 className="flex-row items-center justify-between p-4 border-b border-border"
               >
                 <Text className="text-sm font-sans-medium text-card-foreground">Privacy Policy</Text>
-                <ExternalLink size={16} color="#94a3b8" />
+                <ExternalLink size={16} color={palette.slate400} />
               </Pressable>
               <Pressable
                 onPress={() => { hapticLight(); Linking.openURL("https://splitr.ai/terms"); }}
                 className="flex-row items-center justify-between p-4"
               >
                 <Text className="text-sm font-sans-medium text-card-foreground">Terms of Service</Text>
-                <ExternalLink size={16} color="#94a3b8" />
+                <ExternalLink size={16} color={palette.slate400} />
               </Pressable>
             </Card>
           </Animated.View>
@@ -539,7 +541,7 @@ export default function PrivacySecurityScreen() {
             <Card className="p-4 border-destructive/20">
               <View className="flex-row items-center gap-3">
                 <View className="w-10 h-10 rounded-full bg-destructive/10 items-center justify-center">
-                  <Trash2 size={18} color="#ef4444" />
+                  <Trash2 size={18} color={c.destructive} />
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-sans-semibold text-card-foreground">

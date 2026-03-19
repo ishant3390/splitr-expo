@@ -38,6 +38,23 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
+const mockUploadMutate = jest.fn(() => Promise.resolve({ profileImageUrl: "https://cdn.splitr.ai/test.jpg" }));
+const mockDeleteMutate = jest.fn(() => Promise.resolve());
+jest.mock("@/lib/hooks", () => ({
+  useUploadProfileImage: () => ({ mutateAsync: mockUploadMutate }),
+  useDeleteProfileImage: () => ({ mutateAsync: mockDeleteMutate }),
+}));
+
+jest.mock("@/lib/query", () => ({
+  invalidateAfterProfileUpdate: jest.fn(),
+}));
+
+jest.mock("@/lib/image-utils", () => ({
+  pickImage: jest.fn(() => Promise.resolve(null)),
+  validateImage: jest.fn(() => null),
+  buildImageFormDataAsync: jest.fn(() => Promise.resolve(new FormData())),
+}));
+
 beforeEach(() => {
   mockMe.mockReset().mockResolvedValue({
     name: "Test User",
@@ -183,10 +200,24 @@ describe("EditProfileScreen", () => {
     });
   });
 
-  it("renders Photo managed by Clerk text", async () => {
+  it("renders Add Photo text", async () => {
     render(<EditProfileScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Photo managed by Clerk")).toBeTruthy();
+      expect(screen.getByText("Add Photo")).toBeTruthy();
+    });
+  });
+
+  it("renders Change Photo when profileImageUrl is set", async () => {
+    mockMe.mockResolvedValueOnce({
+      name: "Test User",
+      phone: "+1234567890",
+      defaultCurrency: "USD",
+      email: "test@example.com",
+      profileImageUrl: "https://cdn.splitr.ai/test.jpg",
+    });
+    render(<EditProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Change Photo")).toBeTruthy();
     });
   });
 });

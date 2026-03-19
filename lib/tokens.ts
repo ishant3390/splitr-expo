@@ -79,6 +79,7 @@ export interface SemanticColors {
   cardForeground: string;
   muted: string;
   mutedForeground: string;
+  placeholder: string;
   border: string;
   input: string;
   secondary: string;
@@ -105,6 +106,7 @@ const lightColors: SemanticColors = {
   cardForeground: palette.slate900,  // #0f172a
   muted: palette.slate100,           // #f1f5f9
   mutedForeground: palette.slate500, // #64748b
+  placeholder: palette.slate400,     // #94a3b8 — subtler than mutedForeground in light mode
   border: palette.slate200,          // #e2e8f0
   input: palette.slate200,           // #e2e8f0
   secondary: palette.slate100,       // #f1f5f9
@@ -120,7 +122,7 @@ const lightColors: SemanticColors = {
   destructive: palette.red500,       // #ef4444
   destructiveForeground: palette.white,
   warning: palette.amber500,         // #f59e0b
-  warningForeground: "#1a1a1a",
+  warningForeground: palette.slate900, // #0f172a — dark text on amber badge
   ring: palette.teal600,             // #0d9488
 };
 
@@ -131,6 +133,7 @@ const darkColors: SemanticColors = {
   cardForeground: palette.slate100,  // #f1f5f9
   muted: palette.slate700,           // #334155
   mutedForeground: palette.slate400, // #94a3b8
+  placeholder: palette.slate500,     // #64748b — subtler than mutedForeground in dark mode
   border: palette.slate700,          // #334155
   input: palette.slate700,           // #334155
   secondary: palette.slate800,       // #1e293b
@@ -146,7 +149,7 @@ const darkColors: SemanticColors = {
   destructive: palette.red500,       // #ef4444
   destructiveForeground: palette.white,
   warning: palette.amber500,         // #f59e0b
-  warningForeground: "#1a1a1a",
+  warningForeground: palette.white,  // #ffffff — light text on amber badge in dark mode
   ring: palette.teal600,             // #0d9488
 };
 

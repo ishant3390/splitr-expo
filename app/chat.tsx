@@ -82,6 +82,7 @@ import {
   parseMentionsForDisplay,
 } from "@/lib/mention-utils";
 import { invalidateAfterExpenseChange, invalidateAfterGroupChange } from "@/lib/query";
+import { colors, fontSize as fs, fontFamily as ff, radius, type SemanticColors } from "@/lib/tokens";
 import type {
   ChatActionRequired,
   ChatExpenseCreated,
@@ -185,6 +186,7 @@ function shouldShowTimestamp(
 function TypingDot({ delay: d }: { delay: number }) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(0.4);
 
@@ -221,7 +223,7 @@ function TypingDot({ delay: d }: { delay: number }) {
   return (
     <Animated.View
       style={[
-        { width: 8, height: 8, borderRadius: 4, backgroundColor: isDark ? "#94a3b8" : "#64748b" },
+        { width: 8, height: 8, borderRadius: 4, backgroundColor: c.mutedForeground },
         animStyle,
       ]}
     />
@@ -231,18 +233,19 @@ function TypingDot({ delay: d }: { delay: number }) {
 function TypingDotsIndicator({ label }: { label: string }) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   return (
     <View className="px-4 py-2 items-start">
       <View className="flex-row items-start gap-2">
         <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center mt-1">
-          <Bot size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+          <Bot size={14} color={c.mutedForeground} />
         </View>
         <View>
           {/* iMessage-style typing bubble */}
           <View
             style={{
-              backgroundColor: isDark ? "#334155" : "#f1f5f9",
-              borderRadius: 18, 
+              backgroundColor: c.muted,
+              borderRadius: radius.lg, 
               paddingHorizontal: 16, 
               paddingVertical: 12,
               minWidth: 60,
@@ -276,6 +279,7 @@ function SendButton({
   enabled: boolean;
   isDark: boolean;
 }) {
+  const c = colors(isDark);
   const scale = useSharedValue(1);
   const prevEnabled = useRef(enabled);
 
@@ -313,15 +317,15 @@ function SendButton({
         style={{
           width: 44,
           height: 44,
-          borderRadius: 22,
+          borderRadius: radius["2xl"],
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: enabled
-            ? "#0d9488"
-            : isDark ? "#334155" : "#f1f5f9",
+            ? c.primary
+            : c.muted,
         }}
       >
-        <Send size={18} color={enabled ? "#ffffff" : "#94a3b8"} />
+        <Send size={18} color={enabled ? c.primaryForeground : c.mutedForeground} />
       </Pressable>
     </Animated.View>
   );
@@ -423,6 +427,7 @@ const MessageItem = React.memo(
     onReact,
   }: MessageItemProps) {
     const isUser = item.role === "user";
+    const c = colors(isDark);
     const position = getBubblePosition(allMessages, index);
     const showAvatar = !isUser && (position === "last" || position === "only");
 
@@ -431,9 +436,7 @@ const MessageItem = React.memo(
 
 // ---- Bubble Tail Component (iMessage-style) ----
 
-function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePosition }) {
-  const isLastOrOnly = position === "only" || position === "last";
-  
+function BubbleTail({ isUser, position, themeColors }: { isUser: boolean; position: BubblePosition; themeColors: SemanticColors }) {
   if (position === "middle" || position === "first") return null;
 
   if (isUser) {
@@ -450,7 +453,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
           borderBottomWidth: 8,
           borderBottomColor: "transparent",
           borderLeftWidth: 10,
-          borderLeftColor: "#0d9488",
+          borderLeftColor: themeColors.primary,
         }}
       />
     );
@@ -469,7 +472,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
         borderBottomWidth: 8,
         borderBottomColor: "transparent",
         borderRightWidth: 10,
-        borderRightColor: "#f1f5f9",
+        borderRightColor: themeColors.muted,
       }}
     />
   );
@@ -581,12 +584,12 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                   width: 28,
                   height: 28,
                   borderRadius: 14,
-                  backgroundColor: isDark ? "#334155" : "#e2e8f0",
+                  backgroundColor: c.border,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <RotateCcw size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+                <RotateCcw size={14} color={c.mutedForeground} />
               </View>
             </Animated.View>
 
@@ -605,7 +608,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
               >
                 {showAvatar && (
                   <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center">
-                    <Bot size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+                    <Bot size={14} color={c.mutedForeground} />
                   </View>
                 )}
               </View>
@@ -616,7 +619,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                 <View
                   style={{
                     borderLeftWidth: 2,
-                    borderLeftColor: "#0d9488",
+                    borderLeftColor: c.primary,
                     paddingLeft: 8,
                     marginBottom: 4,
                     opacity: 0.7,
@@ -624,9 +627,9 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                 >
                   <Text
                     style={{
-                      fontSize: 11,
-                      fontFamily: "Inter_500Medium",
-                      color: "#0d9488",
+                      fontSize: fs.xs,
+                      fontFamily: ff.medium,
+                      color: c.primary,
                       marginBottom: 1,
                     }}
                   >
@@ -635,9 +638,9 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                   <Text
                     numberOfLines={2}
                     style={{
-                      fontSize: 12,
-                      fontFamily: "Inter_400Regular",
-                      color: isDark ? "#94a3b8" : "#64748b",
+                      fontSize: fs.sm,
+                      fontFamily: ff.regular,
+                      color: c.mutedForeground,
                     }}
                   >
                     {item.replyTo.content}
@@ -670,8 +673,8 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                       style={{
                         flexDirection: "row",
                         alignSelf: isUser ? "flex-end" : "flex-start",
-                        backgroundColor: isDark ? "#334155" : "#ffffff",
-                        borderRadius: 20,
+                        backgroundColor: c.card,
+                        borderRadius: radius.xl,
                         paddingHorizontal: 6,
                         paddingVertical: 4,
                         marginBottom: 4,
@@ -691,15 +694,15 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                           style={{
                             width: 36,
                             height: 36,
-                            borderRadius: 18,
+                            borderRadius: radius.lg,
                             alignItems: "center",
                             justifyContent: "center",
-                            backgroundColor: reaction === emoji ? (isDark ? "#475569" : "#e2e8f0") : "transparent",
+                            backgroundColor: reaction === emoji ? c.border : "transparent",
                           }}
                           accessibilityLabel={`React with ${emoji}`}
                           accessibilityRole="button"
                         >
-                          <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                          <Text style={{ fontSize: fs["2xl"] }}>{emoji}</Text>
                         </Pressable>
                       ))}
                       {/* Copy button for assistant messages */}
@@ -712,14 +715,14 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                           style={{
                             width: 36,
                             height: 36,
-                            borderRadius: 18,
+                            borderRadius: radius.lg,
                             alignItems: "center",
                             justifyContent: "center",
                           }}
                           accessibilityLabel="Copy message"
                           accessibilityRole="button"
                         >
-                          <Text style={{ fontSize: 20 }}>{"\u{1F4CB}"}</Text>
+                          <Text style={{ fontSize: fs["2xl"] }}>{"\u{1F4CB}"}</Text>
                         </Pressable>
                       )}
                     </Animated.View>
@@ -736,10 +739,10 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                       ) : (
                       <Text
                         style={{
-                          fontSize: 14,
+                          fontSize: fs.md,
                           lineHeight: 20,
-                          fontFamily: "Inter_400Regular",
-                          color: isUser ? "#ffffff" : "#000000",
+                          fontFamily: ff.regular,
+                          color: isUser ? c.primaryForeground : c.foreground,
                         }}
                       >
                         {parseMentionsForDisplay(item.content).map((seg, i) =>
@@ -747,8 +750,8 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                             <Text
                               key={i}
                               style={{
-                                color: isUser ? "#bbdefb" : "#0d9488",
-                                fontFamily: "Inter_600SemiBold",
+                                color: isUser ? "#bbdefb" : c.primary,
+                                fontFamily: ff.semibold,
                               }}
                             >
                               {seg.mentionType}{seg.value}
@@ -761,7 +764,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                       )}
                     </View>
                     {/* iMessage-style bubble tail */}
-                    <BubbleTail isUser={isUser} position={position} />
+                    <BubbleTail isUser={isUser} position={position} themeColors={c} />
                   </Pressable>
                   {/* B46: Reaction badge */}
                   {reaction ? (
@@ -769,15 +772,15 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                       entering={FadeIn.duration(150)}
                       style={{
                         alignSelf: isUser ? "flex-end" : "flex-start",
-                        backgroundColor: isDark ? "#334155" : "#f1f5f9",
-                        borderRadius: 12,
+                        backgroundColor: c.muted,
+                        borderRadius: radius.DEFAULT,
                         paddingHorizontal: 6,
                         paddingVertical: 2,
                         marginTop: 2,
                       }}
                       accessibilityLabel={`Reaction: ${reaction}`}
                     >
-                      <Text style={{ fontSize: 14 }}>{reaction}</Text>
+                      <Text style={{ fontSize: fs.md }}>{reaction}</Text>
                     </Animated.View>
                   ) : null}
                 </View>
@@ -791,7 +794,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                   accessibilityLabel="Retry message"
                   accessibilityRole="button"
                 >
-                  <RotateCcw size={12} color="#ef4444" />
+                  <RotateCcw size={12} color={c.destructive} />
                   <Text className="text-xs text-red-500 font-sans-medium">
                     Tap to retry
                   </Text>
@@ -803,7 +806,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                 item.actionRequired.options && (
                   <View className="mt-3 gap-2">
                     <View className="flex-row items-center gap-1.5">
-                      <Users size={13} color="#64748b" />
+                      <Users size={13} color={c.mutedForeground} />
                       <Text className="text-xs text-muted-foreground font-sans-medium">
                         Which group?
                       </Text>
@@ -837,7 +840,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                             </View>
                             {group.lastActivity && (
                               <View className="flex-row items-center gap-1">
-                                <Clock size={10} color="#94a3b8" />
+                                <Clock size={10} color={c.mutedForeground} />
                                 <Text className="text-[10px] text-muted-foreground font-sans">
                                   {group.lastActivity}
                                 </Text>
@@ -915,7 +918,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                           accessibilityLabel="Edit expense"
                           accessibilityRole="button"
                         >
-                          <Pencil size={14} color={isDark ? "#f1f5f9" : "#0f172a"} />
+                          <Pencil size={14} color={c.foreground} />
                           <Text className="text-sm font-sans-medium text-foreground ml-1">
                             Edit
                           </Text>
@@ -928,7 +931,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                           accessibilityLabel="Confirm expense"
                           accessibilityRole="button"
                         >
-                          <CheckCircle2 size={14} color="#ffffff" />
+                          <CheckCircle2 size={14} color={c.primaryForeground} />
                           <Text className="text-sm font-sans-medium text-primary-foreground ml-1">
                             Confirm
                           </Text>
@@ -937,7 +940,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                     )}
                     {item.actionHandled && (
                       <View className="flex-row items-center justify-center gap-1.5 py-1">
-                        <CheckCircle2 size={14} color="#10b981" />
+                        <CheckCircle2 size={14} color={c.success} />
                         <Text className="text-xs text-emerald-500 font-sans-medium">
                           Confirmed
                         </Text>
@@ -951,7 +954,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                 item.actionRequired.groupPreview && (
                   <Card className="mt-3 p-4 border-primary/30 bg-primary/5">
                     <View className="flex-row items-center gap-2 mb-2">
-                      <Plus size={16} color="#0d9488" />
+                      <Plus size={16} color={c.primary} />
                       <Text className="text-sm font-sans-semibold text-foreground">
                         Create new group?
                       </Text>
@@ -980,7 +983,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                         accessibilityLabel="Create group"
                         accessibilityRole="button"
                       >
-                        <Plus size={14} color="#ffffff" />
+                        <Plus size={14} color={c.primaryForeground} />
                         <Text className="text-sm font-sans-medium text-primary-foreground ml-1">
                           Create Group
                         </Text>
@@ -988,7 +991,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
                     )}
                     {item.actionHandled && (
                       <View className="flex-row items-center justify-center gap-1.5 py-1">
-                        <CheckCircle2 size={14} color="#10b981" />
+                        <CheckCircle2 size={14} color={c.success} />
                         <Text className="text-xs text-emerald-500 font-sans-medium">
                           Creating...
                         </Text>
@@ -1001,7 +1004,7 @@ function BubbleTail({ isUser, position }: { isUser: boolean; position: BubblePos
               {item.createdExpense && (
                 <Card className="mt-3 p-4 bg-emerald-500/10 border-emerald-500/30">
                   <View className="flex-row items-center gap-2 mb-2">
-                    <CheckCircle2 size={18} color="#10b981" />
+                    <CheckCircle2 size={18} color={c.success} />
                     <Text className="text-sm font-sans-semibold text-foreground">
                       Expense Added!
                     </Text>
@@ -1081,6 +1084,7 @@ export default function ChatScreen() {
   const { getToken } = useAuth();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const { isOnline: isConnected } = useNetwork();
   const toast = useToast();
   const { data: contacts, isLoading: contactsLoading, refreshRecents } = useMergedContacts();
@@ -1950,25 +1954,25 @@ export default function ChatScreen() {
           style={{
             width: 40,
             height: 40,
-            borderRadius: 20,
+            borderRadius: radius.xl,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
+            backgroundColor: c.secondary,
           }}
         >
-          <Home size={20} color={isDark ? "#94a3b8" : "#64748b"} />
+          <Home size={20} color={c.mutedForeground} />
         </Pressable>
         <View
           style={{
             width: 36,
             height: 36,
-            borderRadius: 18,
+            borderRadius: radius.lg,
             backgroundColor: "rgba(13, 148, 136, 0.1)",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Bot size={20} color="#0d9488" />
+          <Bot size={20} color={c.primary} />
         </View>
         <View className="flex-1">
           <Text className="text-base font-sans-semibold text-foreground">
@@ -1990,12 +1994,12 @@ export default function ChatScreen() {
           style={{
             width: 40,
             height: 40,
-            borderRadius: 12,
+            borderRadius: radius.DEFAULT,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <MessageSquarePlus size={22} color={isDark ? "#94a3b8" : "#64748b"} />
+          <MessageSquarePlus size={22} color={c.mutedForeground} />
         </Pressable>
       </View>
 
@@ -2047,8 +2051,8 @@ export default function ChatScreen() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 18,
-                backgroundColor: isDark ? "#334155" : "#ffffff",
+                borderRadius: radius.lg,
+                backgroundColor: c.card,
                 alignItems: "center",
                 justifyContent: "center",
                 shadowColor: "#000",
@@ -2057,10 +2061,10 @@ export default function ChatScreen() {
                 shadowRadius: 4,
                 elevation: 4,
                 borderWidth: 1,
-                borderColor: isDark ? "#475569" : "#e2e8f0",
+                borderColor: c.border,
               }}
             >
-              <ChevronDown size={20} color={isDark ? "#f1f5f9" : "#0f172a"} />
+              <ChevronDown size={20} color={c.foreground} />
             </Pressable>
           </Animated.View>
         )}
@@ -2093,7 +2097,7 @@ export default function ChatScreen() {
               accessibilityLabel="Stop generating"
               accessibilityRole="button"
             >
-              <Square size={12} color={isDark ? "#f1f5f9" : "#0f172a"} fill={isDark ? "#f1f5f9" : "#0f172a"} />
+              <Square size={12} color={c.foreground} fill={c.foreground} />
               <Text className="text-xs font-sans-medium text-foreground">
                 Stop generating
               </Text>
@@ -2128,7 +2132,7 @@ export default function ChatScreen() {
         {/* H5: Offline indicator */}
         {!isConnected && (
           <View className="flex-row items-center justify-center gap-1.5 py-2 bg-amber-500/10">
-            <WifiOff size={14} color="#f59e0b" />
+            <WifiOff size={14} color={c.warning} />
             <Text className="text-xs text-amber-600 dark:text-amber-400 font-sans-medium">
               You're offline. Chat requires an internet connection.
             </Text>
@@ -2164,13 +2168,13 @@ export default function ChatScreen() {
                 style={{
                   width: 24,
                   height: 24,
-                  borderRadius: 12,
-                  backgroundColor: isDark ? "#334155" : "#f1f5f9",
+                  borderRadius: radius.DEFAULT,
+                  backgroundColor: c.muted,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <X size={14} color={isDark ? "#f1f5f9" : "#64748b"} />
+                <X size={14} color={c.foreground} />
               </Pressable>
             </View>
           </View>
@@ -2185,24 +2189,24 @@ export default function ChatScreen() {
               paddingHorizontal: 16,
               paddingVertical: 8,
               borderTopWidth: 1,
-              borderTopColor: isDark ? "#334155" : "#e2e8f0",
-              backgroundColor: isDark ? "#1e293b" : "#f8fafc",
+              borderTopColor: c.border,
+              backgroundColor: c.secondary,
               gap: 8,
             }}
           >
             <View
               style={{
                 borderLeftWidth: 2,
-                borderLeftColor: "#0d9488",
+                borderLeftColor: c.primary,
                 paddingLeft: 8,
                 flex: 1,
               }}
             >
               <Text
                 style={{
-                  fontSize: 11,
-                  fontFamily: "Inter_500Medium",
-                  color: "#0d9488",
+                  fontSize: fs.xs,
+                  fontFamily: ff.medium,
+                  color: c.primary,
                   marginBottom: 1,
                 }}
               >
@@ -2211,9 +2215,9 @@ export default function ChatScreen() {
               <Text
                 numberOfLines={1}
                 style={{
-                  fontSize: 12,
-                  fontFamily: "Inter_400Regular",
-                  color: isDark ? "#94a3b8" : "#64748b",
+                  fontSize: fs.sm,
+                  fontFamily: ff.regular,
+                  color: c.mutedForeground,
                 }}
               >
                 {replyTo.content}
@@ -2226,13 +2230,13 @@ export default function ChatScreen() {
               style={{
                 width: 24,
                 height: 24,
-                borderRadius: 12,
-                backgroundColor: isDark ? "#334155" : "#e2e8f0",
+                borderRadius: radius.DEFAULT,
+                backgroundColor: c.border,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <X size={12} color={isDark ? "#94a3b8" : "#64748b"} />
+              <X size={12} color={c.mutedForeground} />
             </Pressable>
           </View>
         )}
@@ -2248,17 +2252,17 @@ export default function ChatScreen() {
             style={{
               width: 44,
               height: 44,
-              borderRadius: 22,
+              borderRadius: radius["2xl"],
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: !loading && !isQuotaExceeded && isConnected
-                ? (isDark ? "#334155" : "#f1f5f9")
+                ? c.muted
                 : (isDark ? "rgba(51,65,85,0.5)" : "rgba(241,245,249,0.5)"),
             }}
           >
             <Camera
               size={20}
-              color={!loading && !isQuotaExceeded && isConnected ? (isDark ? "#f1f5f9" : "#64748b") : "#94a3b8"}
+              color={!loading && !isQuotaExceeded && isConnected ? (isDark ? c.foreground : c.mutedForeground) : c.mutedForeground}
             />
           </Pressable>
           
@@ -2271,24 +2275,24 @@ export default function ChatScreen() {
             style={{
               width: 44,
               height: 44,
-              borderRadius: 22,
+              borderRadius: radius["2xl"],
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: isRecording
-                ? "#ef4444"
+                ? c.destructive
                 : !loading && !isQuotaExceeded && isConnected
-                  ? (isDark ? "#334155" : "#f1f5f9")
+                  ? c.muted
                   : (isDark ? "rgba(51,65,85,0.5)" : "rgba(241,245,249,0.5)"),
             }}
           >
             {isRecording ? (
               <Animated.View style={recordingPulseStyle}>
-                <Mic size={20} color="#ffffff" />
+                <Mic size={20} color={c.primaryForeground} />
               </Animated.View>
             ) : (
               <Mic
                 size={20}
-                color={!loading && !isQuotaExceeded && isConnected ? (isDark ? "#f1f5f9" : "#64748b") : "#94a3b8"}
+                color={!loading && !isQuotaExceeded && isConnected ? (isDark ? c.foreground : c.mutedForeground) : c.mutedForeground}
               />
             )}
           </Pressable>
@@ -2308,14 +2312,14 @@ export default function ChatScreen() {
                       ? "Describe the receipt..."
                       : "Type a message... (@ for people, # for groups)"
               }
-              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
+              placeholderTextColor={c.placeholder}
               multiline
               maxLength={500}
               editable={!isQuotaExceeded && isConnected}
               className="bg-muted rounded-2xl px-4 py-3 max-h-24 text-foreground"
               style={{
-                fontSize: 16,
-                fontFamily: "Inter_400Regular",
+                fontSize: fs.lg,
+                fontFamily: ff.regular,
               }}
               onSubmitEditing={() => handleSend()}
               accessibilityLabel="Chat message input"

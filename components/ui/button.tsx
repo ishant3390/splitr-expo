@@ -3,8 +3,10 @@ import { Pressable, Text, View, type PressableProps, ActivityIndicator } from "r
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { clsx } from "clsx";
+import { useColorScheme } from "nativewind";
 import { GRADIENTS } from "@/lib/gradients";
 import { SHADOWS } from "@/lib/shadows";
+import { colors, palette } from "@/lib/tokens";
 
 type ButtonVariant = "default" | "outline" | "ghost" | "destructive" | "accent";
 type ButtonSize = "sm" | "md" | "lg" | "icon";
@@ -58,6 +60,9 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -74,7 +79,7 @@ export function Button({
       {loading && (
         <ActivityIndicator
           size="small"
-          color={variant === "outline" || variant === "ghost" ? "#0d9488" : "#ffffff"}
+          color={variant === "outline" || variant === "ghost" ? c.primary : palette.white}
           className="mr-2"
         />
       )}

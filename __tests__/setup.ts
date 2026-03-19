@@ -24,6 +24,7 @@ jest.mock("expo-image", () => ({
 jest.mock("expo-image-picker", () => ({
   launchCameraAsync: jest.fn(() => Promise.resolve({ canceled: true, assets: [] })),
   launchImageLibraryAsync: jest.fn(() => Promise.resolve({ canceled: true, assets: [] })),
+  requestCameraPermissionsAsync: jest.fn(() => Promise.resolve({ status: "granted" })),
 }));
 
 // Mock expo-router

@@ -37,6 +37,7 @@ import { SwipeableRow } from "@/components/ui/swipeable-row";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { getActivityIcon } from "@/lib/category-icons";
 import { AvatarStrip } from "@/components/ui/avatar-strip";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
 import { colors, fontSize as fs, radius, palette } from "@/lib/tokens";
@@ -265,20 +266,31 @@ export default function GroupDetailScreen() {
           end={{ x: 1, y: 1 }}
           style={{ overflow: "hidden" }}
         >
-          {/* Giant emoji watermark */}
-          <View
-            style={{
-              position: "absolute",
-              top: -20,
-              right: -20,
-              opacity: 0.08,
-            }}
-            pointerEvents="none"
-          >
-            <Text style={{ fontSize: 180, lineHeight: 200 }}>
-              {group.emoji || group.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          {/* Banner image or emoji watermark */}
+          {group.bannerImageUrl ? (
+            <>
+              <Image
+                source={{ uri: group.bannerImageUrl }}
+                style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+                contentFit="cover"
+              />
+              <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.3)" }} />
+            </>
+          ) : (
+            <View
+              style={{
+                position: "absolute",
+                top: -20,
+                right: -20,
+                opacity: 0.08,
+              }}
+              pointerEvents="none"
+            >
+              <Text style={{ fontSize: 180, lineHeight: 200 }}>
+                {group.emoji || group.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
 
           {/* Navigation bar */}
           <View className="flex-row items-center justify-between px-4 pt-3 pb-2">

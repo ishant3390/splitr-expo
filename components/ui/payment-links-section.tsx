@@ -14,6 +14,7 @@ import {
 import type { PaymentHandles } from "@/lib/types";
 import { hapticSelection } from "@/lib/haptics";
 import { useToast } from "@/components/ui/toast";
+import { colors, radius } from "@/lib/tokens";
 
 interface PaymentLinksSectionProps {
   providers: PaymentProvider[];
@@ -37,6 +38,7 @@ export function PaymentLinksSection({
   const toast = useToast();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
 
   if (providers.length === 0) return null;
 
@@ -87,10 +89,10 @@ export function PaymentLinksSection({
           gap: 6,
           paddingHorizontal: 14,
           paddingVertical: 10,
-          borderRadius: 12,
+          borderRadius: radius.DEFAULT,
           borderWidth: 1.5,
-          borderColor: isDark ? "#334155" : "#e2e8f0",
-          backgroundColor: isDark ? "#1e293b" : "#ffffff",
+          borderColor: c.border,
+          backgroundColor: c.card,
         }}
       >
         <CategoryIcon config={iconConfig} size="sm" />
@@ -99,7 +101,7 @@ export function PaymentLinksSection({
         </Text>
         <ExternalLink
           size={12}
-          color={isDark ? "#94a3b8" : "#64748b"}
+          color={c.mutedForeground}
         />
       </Pressable>
     );

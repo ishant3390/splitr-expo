@@ -96,6 +96,6 @@ Five distinct hues for pie/bar charts, exported as `chartColors`:
 | Icon `color` prop | `colors(isDark)` | `color={c.primary}` |
 | Conditional inline styles | `colors(isDark)` | `style={{ borderColor: c.border }}` |
 | Dynamic/computed values | `colors(isDark)` | `backgroundColor: isActive ? c.primary : c.muted` |
-| `placeholderTextColor` | `colors(isDark)` | `placeholderTextColor={c.mutedForeground}` |
+| `placeholderTextColor` | `colors(isDark)` | `placeholderTextColor={c.placeholder}` |
 
 **Key rule:** Use `className` for static layout/container styling. Use `colors()` for dynamic props that need runtime resolution (icon colors, conditional styles, non-className props like `placeholderTextColor`).

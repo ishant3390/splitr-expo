@@ -14,6 +14,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import { syncQueuedExpenses, getQueuedExpenses } from "@/lib/offline";
 import { useToast } from "@/components/ui/toast";
 import { WifiOff } from "lucide-react-native";
+import { fontSize as fs, fontFamily as ff, palette } from "@/lib/tokens";
 
 interface NetworkContextValue {
   isOnline: boolean;
@@ -101,7 +102,7 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
       {!isOnline && (
         <View
           style={{
-            backgroundColor: "#ef4444",
+            backgroundColor: palette.red500,
             paddingVertical: 6,
             paddingHorizontal: 16,
             flexDirection: "row",
@@ -110,12 +111,12 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
             gap: 8,
           }}
         >
-          <WifiOff size={14} color="#ffffff" />
+          <WifiOff size={14} color={palette.white} />
           <Text
             style={{
-              color: "#ffffff",
-              fontSize: 13,
-              fontFamily: "Inter_500Medium",
+              color: palette.white,
+              fontSize: fs.base,
+              fontFamily: ff.medium,
             }}
           >
             No internet connection

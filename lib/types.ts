@@ -18,6 +18,7 @@ export interface UserDto {
   name: string;
   phone?: string;
   avatarUrl?: string;
+  profileImageUrl?: string;
   defaultCurrency?: string;
   referralCode?: string;
   isPremium?: boolean;
@@ -78,6 +79,7 @@ export interface UserSummaryDto {
   name: string;
   email: string;
   avatarUrl?: string;
+  profileImageUrl?: string;
 }
 
 // ---- Group ----
@@ -92,6 +94,7 @@ export interface GroupDto {
   simplifyDebts?: boolean;
   inviteCode?: string;
   imageUrl?: string;
+  bannerImageUrl?: string;
   isArchived?: boolean;
   archivedAt?: string;
   createdBy?: string;
@@ -179,6 +182,7 @@ export interface ExpenseDto {
   createdBy?: UserSummaryDto;
   createdByGuest?: GuestUserDto;
   inputMetadata?: Record<string, unknown>;
+  receiptImageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   version?: number;

@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import { Button } from "./button";
 import type { LucideIcon } from "lucide-react-native";
+import { radius, palette } from "@/lib/tokens";
 
 interface EmptyStateProps {
   icon: LucideIcon;
@@ -14,7 +15,7 @@ interface EmptyStateProps {
 
 export function EmptyState({
   icon: Icon,
-  iconColor = "#94a3b8",
+  iconColor = palette.slate400,
   title,
   subtitle,
   actionLabel,
@@ -37,7 +38,7 @@ export function EmptyState({
             position: "absolute",
             width: 84,
             height: 84,
-            borderRadius: 26,
+            borderRadius: radius["2xl"],
             backgroundColor: `${iconColor}08`,
           }}
         />
@@ -45,7 +46,7 @@ export function EmptyState({
           style={{
             width: 72,
             height: 72,
-            borderRadius: 22,
+            borderRadius: radius["2xl"],
             backgroundColor: `${iconColor}15`,
             alignItems: "center",
             justifyContent: "center",

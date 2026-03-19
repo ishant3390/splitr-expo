@@ -1,6 +1,7 @@
 import React from "react";
 import { Switch as RNSwitch, type SwitchProps } from "react-native";
 import { useColorScheme } from "nativewind";
+import { colors, palette } from "@/lib/tokens";
 
 interface ThemedSwitchProps extends Omit<SwitchProps, "onValueChange"> {
   checked: boolean;
@@ -10,14 +11,15 @@ interface ThemedSwitchProps extends Omit<SwitchProps, "onValueChange"> {
 export function ThemedSwitch({ checked, onCheckedChange, ...props }: ThemedSwitchProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
-  const falseTrackColor = isDark ? "#334155" : "#e2e8f0";
+  const c = colors(isDark);
+  const falseTrackColor = c.border;
 
   return (
     <RNSwitch
       value={checked}
       onValueChange={onCheckedChange}
-      trackColor={{ false: falseTrackColor, true: "#0d9488" }}
-      thumbColor="#ffffff"
+      trackColor={{ false: falseTrackColor, true: c.primary }}
+      thumbColor={palette.white}
       ios_backgroundColor={falseTrackColor}
       {...props}
     />

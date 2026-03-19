@@ -16,6 +16,7 @@ import {
   InstagramIcon,
 } from "@/components/icons/social-icons";
 import { Mail, Phone } from "lucide-react-native";
+import { palette } from "@/lib/tokens";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -157,7 +158,7 @@ export default function AuthScreen() {
               onPress={() => router.push("/(auth)/signup-form")}
               className="flex-row items-center justify-center gap-3"
             >
-              <Mail size={20} color="#ffffff" />
+              <Mail size={20} color={palette.white} />
               <Text className="text-base font-sans-semibold text-primary-foreground">
                 Sign up with email or phone
               </Text>
@@ -178,7 +179,7 @@ export default function AuthScreen() {
             />
             <Button variant="default" onPress={handleSignInWithOtp}>
               <View className="flex-row items-center justify-center gap-2">
-                <Phone size={18} color="#ffffff" />
+                <Phone size={18} color={palette.white} />
                 <Text className="text-base font-sans-semibold text-primary-foreground">
                   Send verification code
                 </Text>

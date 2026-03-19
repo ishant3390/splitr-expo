@@ -2,6 +2,7 @@ import React from "react";
 import { TextInput, View, Text, type TextInputProps } from "react-native";
 import { useColorScheme } from "nativewind";
 import { clsx } from "clsx";
+import { colors } from "@/lib/tokens";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -19,6 +20,7 @@ export function Input({
 }: InputProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   return (
     <View className={clsx("w-full", containerClassName)}>
       {label && (
@@ -32,7 +34,7 @@ export function Input({
           error && "border border-destructive",
           className
         )}
-        placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
+        placeholderTextColor={c.placeholder}
         {...props}
       />
       {error && (

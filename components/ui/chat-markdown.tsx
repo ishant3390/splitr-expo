@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { useColorScheme } from "nativewind";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 
 interface ChatMarkdownProps {
   content: string;
@@ -111,8 +112,9 @@ function InlineRenderer({
   isUser: boolean;
   isDark: boolean;
 }) {
-  const textColor = isUser ? "#ffffff" : isDark ? "#f1f5f9" : "#0f172a";
-  const codeColor = isUser ? "rgba(255,255,255,0.15)" : isDark ? "#334155" : "#f1f5f9";
+  const c = colors(isDark);
+  const textColor = isUser ? palette.white : c.foreground;
+  const codeColor = isUser ? "rgba(255,255,255,0.15)" : c.muted;
 
   return (
     <>
@@ -120,7 +122,7 @@ function InlineRenderer({
         switch (seg.type) {
           case "bold":
             return (
-              <Text key={i} style={{ fontFamily: "Inter_700Bold", color: textColor }}>
+              <Text key={i} style={{ fontFamily: ff.bold, color: textColor }}>
                 {seg.value}
               </Text>
             );
@@ -136,9 +138,9 @@ function InlineRenderer({
                 key={i}
                 style={{
                   fontFamily: "monospace",
-                  fontSize: 13,
+                  fontSize: fs.base,
                   backgroundColor: codeColor,
-                  color: isUser ? "#ccfbf1" : "#0d9488",
+                  color: isUser ? palette.teal100 : c.primary,
                   borderRadius: 3,
                   paddingHorizontal: 4,
                 }}
@@ -161,10 +163,11 @@ function InlineRenderer({
 export function ChatMarkdown({ content, isUser = false }: ChatMarkdownProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const blocks = parseBlocks(content);
-  const textColor = isUser ? "#ffffff" : isDark ? "#f1f5f9" : "#0f172a";
-  const codeBlockBg = isUser ? "rgba(255,255,255,0.1)" : isDark ? "#1e293b" : "#f1f5f9";
-  const mutedColor = isDark ? "#94a3b8" : "#64748b";
+  const textColor = isUser ? palette.white : c.foreground;
+  const codeBlockBg = isUser ? "rgba(255,255,255,0.1)" : c.secondary;
+  const mutedColor = c.mutedForeground;
 
   // Simple content (no blocks, single paragraph) — render inline only
   if (blocks.length === 1 && blocks[0].type === "paragraph") {
@@ -172,7 +175,7 @@ export function ChatMarkdown({ content, isUser = false }: ChatMarkdownProps) {
     const hasFormatting = segments.some((s) => s.type !== "text");
     if (!hasFormatting) return null; // Let the default renderer handle plain text
     return (
-      <Text style={{ fontSize: 14, lineHeight: 20, fontFamily: "Inter_400Regular" }}>
+      <Text style={{ fontSize: fs.md, lineHeight: 20, fontFamily: ff.regular }}>
         <InlineRenderer segments={segments} isUser={isUser} isDark={isDark} />
       </Text>
     );
@@ -189,7 +192,7 @@ export function ChatMarkdown({ content, isUser = false }: ChatMarkdownProps) {
                 key={i}
                 style={{
                   backgroundColor: codeBlockBg,
-                  borderRadius: 8,
+                  borderRadius: radius.md,
                   paddingHorizontal: 12,
                   paddingVertical: 8,
                   marginVertical: 2,
@@ -198,9 +201,9 @@ export function ChatMarkdown({ content, isUser = false }: ChatMarkdownProps) {
                 <Text
                   style={{
                     fontFamily: "monospace",
-                    fontSize: 12,
+                    fontSize: fs.sm,
                     lineHeight: 18,
-                    color: isUser ? "#ccfbf1" : isDark ? "#e2e8f0" : "#334155",
+                    color: isUser ? palette.teal100 : isDark ? palette.slate200 : palette.slate700,
                   }}
                 >
                   {block.content}
@@ -211,15 +214,15 @@ export function ChatMarkdown({ content, isUser = false }: ChatMarkdownProps) {
           case "bullet":
             return (
               <View key={i} style={{ flexDirection: "row", paddingLeft: 4, gap: 6 }}>
-                <Text style={{ color: mutedColor, fontSize: 14, lineHeight: 20 }}>
+                <Text style={{ color: mutedColor, fontSize: fs.md, lineHeight: 20 }}>
                   {"\u2022"}
                 </Text>
                 <Text
                   style={{
                     flex: 1,
-                    fontSize: 14,
+                    fontSize: fs.md,
                     lineHeight: 20,
-                    fontFamily: "Inter_400Regular",
+                    fontFamily: ff.regular,
                   }}
                 >
                   <InlineRenderer
@@ -237,9 +240,9 @@ export function ChatMarkdown({ content, isUser = false }: ChatMarkdownProps) {
                 <Text
                   style={{
                     color: mutedColor,
-                    fontSize: 14,
+                    fontSize: fs.md,
                     lineHeight: 20,
-                    fontFamily: "Inter_500Medium",
+                    fontFamily: ff.medium,
                     minWidth: 16,
                   }}
                 >
@@ -248,9 +251,9 @@ export function ChatMarkdown({ content, isUser = false }: ChatMarkdownProps) {
                 <Text
                   style={{
                     flex: 1,
-                    fontSize: 14,
+                    fontSize: fs.md,
                     lineHeight: 20,
-                    fontFamily: "Inter_400Regular",
+                    fontFamily: ff.regular,
                   }}
                 >
                   <InlineRenderer
@@ -268,9 +271,9 @@ export function ChatMarkdown({ content, isUser = false }: ChatMarkdownProps) {
               <Text
                 key={i}
                 style={{
-                  fontSize: 14,
+                  fontSize: fs.md,
                   lineHeight: 20,
-                  fontFamily: "Inter_400Regular",
+                  fontFamily: ff.regular,
                   color: textColor,
                 }}
               >

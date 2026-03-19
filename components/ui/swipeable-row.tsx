@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { Trash2, Pencil } from "lucide-react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
+import { fontSize as fs, fontFamily as ff, palette, radius } from "@/lib/tokens";
 
 interface SwipeableRowProps {
   children: React.ReactNode;
@@ -28,7 +29,7 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
           accessibilityRole="button"
           accessibilityLabel="Edit"
         >
-          <Pencil size={18} color="#ffffff" />
+          <Pencil size={18} color={palette.white} />
           <Text style={styles.actionText}>Edit</Text>
         </Pressable>
       )}
@@ -39,7 +40,7 @@ export function SwipeableRow({ children, onDelete, onEdit }: SwipeableRowProps) 
           accessibilityRole="button"
           accessibilityLabel="Delete"
         >
-          <Trash2 size={18} color="#ffffff" />
+          <Trash2 size={18} color={palette.white} />
           <Text style={styles.actionText}>Delete</Text>
         </Pressable>
       )}
@@ -71,18 +72,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   editAction: {
-    backgroundColor: "#0d9488",
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
+    backgroundColor: palette.teal600,
+    borderTopLeftRadius: radius.DEFAULT,
+    borderBottomLeftRadius: radius.DEFAULT,
   },
   deleteAction: {
-    backgroundColor: "#ef4444",
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
+    backgroundColor: palette.red500,
+    borderTopRightRadius: radius.DEFAULT,
+    borderBottomRightRadius: radius.DEFAULT,
   },
   actionText: {
-    color: "#ffffff",
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    color: palette.white,
+    fontSize: fs.xs,
+    fontFamily: ff.semibold,
   },
 });

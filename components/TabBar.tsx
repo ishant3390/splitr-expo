@@ -21,6 +21,7 @@ import {
 } from "@/components/icons/tab-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
+import { fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 
 const ICON_MAP: Record<string, typeof HomeIcon> = {
   index: HomeIcon,
@@ -36,8 +37,8 @@ const LABEL_MAP: Record<string, string> = {
   profile: "Profile",
 };
 
-const ACTIVE_COLOR = "#0d9488";
-const INACTIVE_COLOR = "#94a3b8";
+const ACTIVE_COLOR = palette.teal600;
+const INACTIVE_COLOR = palette.slate400;
 
 const SPRING_BOUNCY = { damping: 10, stiffness: 200, mass: 0.6 };
 const SPRING_SMOOTH = { damping: 14, stiffness: 150, mass: 0.8 };
@@ -123,7 +124,7 @@ function TabLabel({ name, isFocused }: { name: string; isFocused: boolean }) {
         styles.label,
         {
           color: isFocused ? ACTIVE_COLOR : INACTIVE_COLOR,
-          fontFamily: isFocused ? "Inter_600SemiBold" : "Inter_500Medium",
+          fontFamily: isFocused ? ff.semibold : ff.medium,
         },
         animatedStyle,
       ]}
@@ -163,7 +164,7 @@ function FABButton() {
     <View style={styles.fabContainer}>
       <Animated.View style={[styles.fabShadow, animatedStyle]}>
         <Pressable onPress={handlePress} onLongPress={handleLongPress} delayLongPress={400} style={styles.fab} accessibilityLabel="Add Expense" accessibilityRole="button">
-          <Plus size={24} color="#ffffff" strokeWidth={2.5} />
+          <Plus size={24} color={palette.white} strokeWidth={2.5} />
         </Pressable>
       </Animated.View>
     </View>
@@ -293,18 +294,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   fabShadow: {
-    shadowColor: "#0d9488",
+    shadowColor: palette.teal600,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 8,
-    borderRadius: 26,
+    borderRadius: radius["2xl"],
   },
   fab: {
     width: 52,
     height: 52,
-    borderRadius: 26,
-    backgroundColor: "#0d9488",
+    borderRadius: radius["2xl"],
+    backgroundColor: palette.teal600,
     alignItems: "center",
     justifyContent: "center",
   },

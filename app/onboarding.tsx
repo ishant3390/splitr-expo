@@ -8,6 +8,7 @@ import { Users, Receipt, HandCoins, Sparkles } from "lucide-react-native";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { SHADOWS } from "@/lib/shadows";
+import { radius, palette } from "@/lib/tokens";
 
 export const ONBOARDING_KEY = "@splitr/onboarding_complete";
 
@@ -22,15 +23,15 @@ interface OnboardingStep {
 const STEPS: OnboardingStep[] = [
   {
     icon: Sparkles,
-    iconColor: "#0d9488",
-    iconBg: "#ccfbf1",
+    iconColor: palette.teal600,
+    iconBg: palette.teal100,
     title: "Welcome to Splitr",
     subtitle:
       "The easiest way to split expenses with friends, roommates, and travel buddies. No more awkward money conversations.",
   },
   {
     icon: Users,
-    iconColor: "#6366f1",
+    iconColor: palette.indigo500,
     iconBg: "#e0e7ff",
     title: "Create a Group",
     subtitle:
@@ -38,7 +39,7 @@ const STEPS: OnboardingStep[] = [
   },
   {
     icon: Receipt,
-    iconColor: "#f59e0b",
+    iconColor: palette.amber500,
     iconBg: "#fef3c7",
     title: "Add Expenses",
     subtitle:
@@ -46,7 +47,7 @@ const STEPS: OnboardingStep[] = [
   },
   {
     icon: HandCoins,
-    iconColor: "#10b981",
+    iconColor: palette.emerald500,
     iconBg: "#d1fae5",
     title: "Settle Up",
     subtitle:
@@ -112,7 +113,7 @@ export default function OnboardingScreen() {
               style={{
                 width: 80,
                 height: 80,
-                borderRadius: 24,
+                borderRadius: radius["2xl"],
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 32,

@@ -96,6 +96,14 @@ jest.mock("@/lib/hooks", () => ({
       { id: "cat-food", name: "Food", icon: "food" },
     ],
   }),
+  useUploadGroupBanner: () => ({ mutateAsync: jest.fn(() => Promise.resolve({})) }),
+  useDeleteGroupBanner: () => ({ mutateAsync: jest.fn(() => Promise.resolve()) }),
+}));
+
+jest.mock("@/lib/image-utils", () => ({
+  pickImage: jest.fn(() => Promise.resolve(null)),
+  validateImage: jest.fn(() => null),
+  buildImageFormDataAsync: jest.fn(() => Promise.resolve(new FormData())),
 }));
 
 jest.mock("@/lib/screen-helpers", () => ({

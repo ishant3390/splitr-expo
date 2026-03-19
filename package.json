@@ -16,7 +16,8 @@
     "test:e2e:headed": "playwright test --project=chromium --headed",
     "test:e2e:integration": "playwright test --project=integration",
     "test:e2e:integration:headed": "playwright test --project=integration --headed",
-    "test:e2e:all": "playwright test"
+    "test:e2e:all": "playwright test",
+    "audit:tokens": "npx tsx scripts/audit-tokens.ts"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.19.31",

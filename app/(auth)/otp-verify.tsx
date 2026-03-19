@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { OTPInput } from "@/components/ui/otp-input";
 import { ArrowLeft, Mail, Phone as PhoneIcon, CheckCircle2 } from "lucide-react-native";
+import { colors } from "@/lib/tokens";
 
 export default function OTPVerifyScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(auth)"));
   const params = useLocalSearchParams<{ contact: string; phone?: string; mode: string; method?: string }>();
   const { signUp, setActive: setActiveSignUp } = useSignUp();
@@ -138,7 +140,7 @@ export default function OTPVerifyScreen() {
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
         <View className="items-center gap-4 px-6">
           <View className="w-20 h-20 rounded-full bg-success/10 items-center justify-center">
-            <CheckCircle2 size={44} color="#10b981" />
+            <CheckCircle2 size={44} color={c.success} />
           </View>
           <Text className="text-2xl font-sans-bold text-foreground">Verified!</Text>
           <Text className="text-base text-muted-foreground font-sans text-center">
@@ -157,7 +159,7 @@ export default function OTPVerifyScreen() {
           onPress={goBack}
           className="w-10 h-10 items-center justify-center rounded-full bg-muted active:bg-muted/80"
         >
-          <ArrowLeft size={22} color="#0d9488" strokeWidth={2.5} />
+          <ArrowLeft size={22} color={c.primary} strokeWidth={2.5} />
         </Pressable>
         <Text className="flex-1 text-lg font-sans-semibold text-foreground text-center mr-10">
           Verify Account
@@ -175,9 +177,9 @@ export default function OTPVerifyScreen() {
         <View className="items-center mb-6">
           <View className="w-16 h-16 rounded-2xl bg-primary/10 items-center justify-center">
             {verifyMethod === "email" ? (
-              <Mail size={32} color="#0d9488" />
+              <Mail size={32} color={c.primary} />
             ) : (
-              <PhoneIcon size={32} color="#0d9488" />
+              <PhoneIcon size={32} color={c.primary} />
             )}
           </View>
         </View>
@@ -235,9 +237,9 @@ export default function OTPVerifyScreen() {
             <Button variant="ghost" onPress={toggleMethod}>
               <View className="flex-row items-center gap-2">
                 {verifyMethod === "email" ? (
-                  <PhoneIcon size={16} color="#0d9488" />
+                  <PhoneIcon size={16} color={c.primary} />
                 ) : (
-                  <Mail size={16} color="#0d9488" />
+                  <Mail size={16} color={c.primary} />
                 )}
                 <Text className="text-sm font-sans-medium text-primary">
                   Verify via {verifyMethod === "email" ? "phone" : "email"} instead

@@ -9,6 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { ChevronDown } from "lucide-react-native";
 import { hapticLight } from "@/lib/haptics";
+import { colors } from "@/lib/tokens";
 
 interface AccordionItemProps {
   title: string;
@@ -22,6 +23,7 @@ interface AccordionItemProps {
 export function AccordionItem({ title, children, expanded = false, onToggle }: AccordionItemProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const rotation = useSharedValue(expanded ? 180 : 0);
   const height = useSharedValue(expanded ? 1 : 0);
   const opacity = useSharedValue(expanded ? 1 : 0);
@@ -59,7 +61,7 @@ export function AccordionItem({ title, children, expanded = false, onToggle }: A
           {title}
         </Text>
         <Animated.View style={chevronStyle}>
-          <ChevronDown size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+          <ChevronDown size={18} color={c.mutedForeground} />
         </Animated.View>
       </Pressable>
       <Animated.View style={contentStyle}>

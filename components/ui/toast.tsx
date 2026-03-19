@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { View, Text, Pressable } from "react-native";
 import { useColorScheme } from "nativewind";
 import { X, CheckCircle2, AlertTriangle, Info } from "lucide-react-native";
+import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -40,9 +41,9 @@ export function useToast() {
 }
 
 const ICON_MAP = {
-  success: { Icon: CheckCircle2, color: "#10b981" },
-  error: { Icon: AlertTriangle, color: "#ef4444" },
-  info: { Icon: Info, color: "#0d9488" },
+  success: { Icon: CheckCircle2, color: palette.emerald500 },
+  error: { Icon: AlertTriangle, color: palette.red500 },
+  info: { Icon: Info, color: palette.teal600 },
 };
 
 const BG_MAP_LIGHT = {
@@ -60,6 +61,7 @@ const BG_MAP_DARK = {
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(-20);
   const { Icon, color } = ICON_MAP[toast.type];
@@ -95,7 +97,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         backgroundColor: bgMap[toast.type],
         borderWidth: 1,
         borderColor: color + "30",
-        borderRadius: 16,
+        borderRadius: radius.lg,
         borderLeftWidth: 3,
         borderLeftColor: color,
         paddingHorizontal: 16,
@@ -103,7 +105,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         marginBottom: 8,
         flexDirection: "row",
         alignItems: "center",
-        shadowColor: "#000",
+        shadowColor: palette.black,
         shadowOpacity: 0.08,
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 8,
@@ -115,9 +117,9 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         style={{
           flex: 1,
           marginLeft: 10,
-          fontSize: 14,
-          color: isDark ? "#f1f5f9" : "#1e293b",
-          fontFamily: "Inter_500Medium",
+          fontSize: fs.md,
+          color: isDark ? c.foreground : c.secondaryForeground,
+          fontFamily: ff.medium,
         }}
         numberOfLines={3}
       >
@@ -131,15 +133,15 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
             marginLeft: 8,
             paddingHorizontal: 10,
             paddingVertical: 4,
-            borderRadius: 6,
+            borderRadius: radius.sm,
             backgroundColor: color + "20",
           }}
         >
-          <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color }}>{toast.action.label}</Text>
+          <Text style={{ fontSize: fs.base, fontFamily: ff.semibold, color }}>{toast.action.label}</Text>
         </Pressable>
       )}
       <Pressable onPress={onDismiss} hitSlop={8} style={{ marginLeft: toast.action ? 4 : 0 }}>
-        <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
+        <X size={16} color={c.mutedForeground} />
       </Pressable>
     </Animated.View>
   );
