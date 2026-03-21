@@ -433,53 +433,92 @@ export default function GroupsScreen() {
                   onContextMenu: (e: any) => { e.preventDefault(); handleLongPress(group); }
                 } : {})}
               >
-                <Card className="p-4">
-                  <View className="flex-row gap-3">
-                    <GroupAvatar
-                      name={group.name}
-                      emoji={group.emoji}
-                      groupType={group.groupType}
-                      id={group.id}
-                    />
-                    <View className="flex-1" style={{ gap: 2 }}>
-                      <View className="flex-row items-center justify-between">
-                        <Text className="text-base font-sans-semibold text-card-foreground flex-shrink" numberOfLines={1}>
-                          {group.name}
-                        </Text>
-                        {balanceKnown && (
-                          <Text className={cn(
-                            "text-sm font-sans-semibold ml-2",
-                            hasBalance
-                              ? (balanceCents! > 0 ? "text-emerald-500" : "text-red-500")
-                              : "text-muted-foreground"
-                          )}>
-                            {hasBalance
-                              ? `${balanceCents! > 0 ? "+" : "-"}${formatCents(Math.abs(balanceCents!), group.defaultCurrency)}`
-                              : "settled up"}
+                <View style={SHADOWS.card}>
+                  <Card className="p-0 overflow-hidden">
+                    <View className="flex-row">
+                      <View
+                        style={{
+                          width: 4,
+                          backgroundColor: hasBalance
+                            ? (balanceCents! > 0 ? palette.emerald500 : palette.red500)
+                            : palette.slate300,
+                          borderTopLeftRadius: 12,
+                          borderBottomLeftRadius: 12,
+                        }}
+                      />
+                      <View className="flex-1 p-3.5">
+                        <View className="flex-row items-center gap-3">
+                          <GroupAvatar
+                            name={group.name}
+                            emoji={group.emoji}
+                            groupType={group.groupType}
+                            id={group.id}
+                          />
+                          <View className="flex-1">
+                            <Text className="text-base font-sans-semibold text-card-foreground" numberOfLines={1}>
+                              {group.name}
+                            </Text>
+                            <View className="flex-row items-center gap-1.5 mt-0.5">
+                              <Users size={12} color={c.mutedForeground} />
+                              <Text className="text-xs font-sans text-muted-foreground">
+                                {group.memberCount ?? 0} members
+                              </Text>
+                              {group.updatedAt && (
+                                <>
+                                  <Text className="text-xs text-muted-foreground">·</Text>
+                                  <Text className="text-xs font-sans text-muted-foreground">
+                                    {formatRelativeTime(group.updatedAt)}
+                                  </Text>
+                                </>
+                              )}
+                            </View>
+                          </View>
+                          <Pressable
+                            onPress={() => { hapticWarning(); handleLongPress(group); }}
+                            hitSlop={8}
+                            accessibilityLabel="Group actions"
+                            style={{ padding: 4 }}
+                          >
+                            <MoreVertical size={18} color={c.mutedForeground} />
+                          </Pressable>
+                        </View>
+                        {/* Balance row */}
+                        <View
+                          className="mt-2.5 pt-2.5 flex-row items-center justify-between"
+                          style={{ borderTopWidth: 1, borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }}
+                        >
+                          <Text className="text-xs font-sans text-muted-foreground">
+                            Your balance
                           </Text>
-                        )}
-                      </View>
-                      <View className="flex-row items-center justify-between">
-                        <Text className="text-xs text-muted-foreground font-sans">
-                          {group.memberCount ?? 0} members
-                        </Text>
-                        {group.updatedAt && (
-                          <Text className="text-xs text-muted-foreground font-sans">
-                            {formatRelativeTime(group.updatedAt)}
-                          </Text>
-                        )}
+                          {balanceKnown && (
+                            <View
+                              className={cn(
+                                "px-2 py-0.5 rounded-full",
+                                hasBalance
+                                  ? (balanceCents! > 0 ? "bg-emerald-50 dark:bg-emerald-950/40" : "bg-red-50 dark:bg-red-950/40")
+                                  : "bg-muted"
+                              )}
+                            >
+                              <Text
+                                className={cn(
+                                  "text-sm font-sans-bold",
+                                  hasBalance
+                                    ? (balanceCents! > 0 ? "text-emerald-600" : "text-red-500")
+                                    : "text-muted-foreground"
+                                )}
+                                style={{ fontVariant: ["tabular-nums"] }}
+                              >
+                                {hasBalance
+                                  ? `${balanceCents! > 0 ? "+" : "-"}${formatCents(Math.abs(balanceCents!), group.defaultCurrency)}`
+                                  : "settled up"}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                     </View>
-                    <Pressable
-                      onPress={() => { hapticWarning(); handleLongPress(group); }}
-                      hitSlop={8}
-                      accessibilityLabel="Group actions"
-                      style={{ padding: 4, alignSelf: "center" }}
-                    >
-                      <MoreVertical size={18} color={c.mutedForeground} />
-                    </Pressable>
-                  </View>
-                </Card>
+                  </Card>
+                </View>
               </Pressable>
               </Animated.View>
             );

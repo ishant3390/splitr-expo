@@ -20,7 +20,7 @@ import {
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { getActivityIcon } from "@/lib/category-icons";
 import { Card } from "@/components/ui/card";
-import { Avatar } from "@/components/ui/avatar";
+import { GroupAvatar } from "@/components/ui/group-avatar";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useUserBalance, useTopDebtor, useGroups, useUserProfile, useGroupCurrencyMap } from "@/lib/hooks";
 import { useNetwork } from "@/components/NetworkProvider";
@@ -30,7 +30,7 @@ import { MultiCurrencyAmount, formatMultiCurrency } from "@/components/ui/multi-
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedPressable } from "@/components/ui/animated-pressable";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { CheckCircle, Users, Clock, HandCoins } from "lucide-react-native";
+import { CheckCircle, Users, Clock, HandCoins, ChevronRight } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColorScheme } from "nativewind";
 import { GRADIENTS } from "@/lib/gradients";
@@ -123,7 +123,15 @@ export default function HomeScreen() {
 
   const topDebtor = useTopDebtor(balanceData);
 
-  const { data: groups = [] } = useGroups();
+  const { data: groups = [], refetch: refetchGroups } = useGroups();
+  const balanceMap = useMemo(() => {
+    const map = new Map<string, { balanceCents: number; currency: string }>();
+    (balanceData?.groupBalances ?? []).forEach((gb) => map.set(gb.groupId, { balanceCents: gb.balanceCents, currency: gb.currency }));
+    return map;
+  }, [balanceData?.groupBalances]);
+  const activeGroups = useMemo(() => {
+    return [...groups].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 2);
+  }, [groups]);
   const groupNameMap = useMemo(() => {
     const map = new Map<string, string>();
     groups.forEach((g) => map.set(g.id, g.name));
@@ -210,15 +218,16 @@ export default function HomeScreen() {
     useCallback(() => {
       refetchActivity();
       refetchBalance();
-    }, [refetchActivity, refetchBalance])
+      refetchGroups();
+    }, [refetchActivity, refetchBalance, refetchGroups])
   );
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchActivity(), refetchBalance()]);
+    await Promise.all([refetchActivity(), refetchBalance(), refetchGroups()]);
     setRefreshing(false);
-  }, [refetchActivity, refetchBalance]);
+  }, [refetchActivity, refetchBalance, refetchGroups]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -442,11 +451,125 @@ export default function HomeScreen() {
             )
           )}
 
+          {/* Active Groups */}
+          {activeGroups.length > 0 && (
+            <View>
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-lg font-sans-semibold text-foreground">
+                  Active Groups
+                </Text>
+                {groups.length > 2 && (
+                  <Pressable onPress={() => { hapticLight(); router.push("/(tabs)/groups"); }} accessibilityRole="button">
+                    <Text className="text-sm font-sans-medium" style={{ color: c.primary }}>
+                      View all
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+              <View className="gap-3">
+                {activeGroups.map((group, idx) => {
+                  const bal = balanceMap.get(group.id);
+                  const balanceCents = bal?.balanceCents ?? 0;
+                  const currency = bal?.currency ?? group.defaultCurrency ?? "USD";
+                  return (
+                    <Animated.View
+                      key={group.id}
+                      entering={FadeInDown.delay(idx * 100).duration(400).springify()}
+                    >
+                      <AnimatedPressable
+                        onPress={() => { hapticLight(); router.push(`/(tabs)/groups/${group.id}` as any); }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`View ${group.name}`}
+                      >
+                        <View style={SHADOWS.card}>
+                          <Card className="p-0 overflow-hidden">
+                            {/* Gradient accent strip */}
+                            <View className="flex-row">
+                              <View
+                                style={{
+                                  width: 4,
+                                  backgroundColor: balanceCents > 0 ? palette.emerald500 : balanceCents < 0 ? palette.red500 : palette.slate300,
+                                  borderTopLeftRadius: 12,
+                                  borderBottomLeftRadius: 12,
+                                }}
+                              />
+                              <View className="flex-1 p-3.5">
+                                <View className="flex-row items-center gap-3">
+                                  <GroupAvatar name={group.name} emoji={group.emoji} groupType={group.groupType} id={group.id} />
+                                  <View className="flex-1">
+                                    <Text className="text-base font-sans-semibold text-card-foreground" numberOfLines={1}>
+                                      {group.name}
+                                    </Text>
+                                    <View className="flex-row items-center gap-1.5 mt-0.5">
+                                      <Users size={12} color={c.mutedForeground} />
+                                      <Text className="text-xs font-sans text-muted-foreground">
+                                        {group.memberCount} member{group.memberCount !== 1 ? "s" : ""}
+                                      </Text>
+                                      <Text className="text-xs text-muted-foreground">·</Text>
+                                      <Text className="text-xs font-sans text-muted-foreground">
+                                        {formatRelativeTime(group.updatedAt)}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                  <ChevronRight size={16} color={c.mutedForeground} />
+                                </View>
+                                {/* Balance row */}
+                                <View
+                                  className={cn(
+                                    "mt-2.5 pt-2.5 flex-row items-center justify-between",
+                                  )}
+                                  style={{ borderTopWidth: 1, borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }}
+                                >
+                                  <Text className="text-xs font-sans text-muted-foreground">
+                                    Your balance
+                                  </Text>
+                                  <View
+                                    className={cn(
+                                      "px-2 py-0.5 rounded-full",
+                                      balanceCents > 0
+                                        ? "bg-emerald-50 dark:bg-emerald-950/40"
+                                        : balanceCents < 0
+                                        ? "bg-red-50 dark:bg-red-950/40"
+                                        : "bg-muted"
+                                    )}
+                                  >
+                                    <Text
+                                      className={cn(
+                                        "text-sm font-sans-bold",
+                                        balanceCents > 0 ? "text-emerald-600" : balanceCents < 0 ? "text-red-500" : "text-muted-foreground"
+                                      )}
+                                      style={{ fontVariant: ["tabular-nums"] }}
+                                    >
+                                      {balanceCents > 0 ? `+${formatCents(balanceCents, currency)}` : balanceCents < 0 ? `-${formatCents(Math.abs(balanceCents), currency)}` : "settled up"}
+                                    </Text>
+                                  </View>
+                                </View>
+                              </View>
+                            </View>
+                          </Card>
+                        </View>
+                      </AnimatedPressable>
+                    </Animated.View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {/* Recent Activity */}
           <View>
-            <Text className="text-lg font-sans-semibold text-foreground mb-3">
-              Recent Activity
-            </Text>
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-lg font-sans-semibold text-foreground">
+                Recent Activity
+              </Text>
+              {activity.length > 5 && (
+                <Pressable onPress={() => { hapticLight(); router.push("/(tabs)/activity"); }} accessibilityRole="button">
+                  <Text className="text-sm font-sans-medium" style={{ color: c.primary }}>
+                    View all
+                  </Text>
+                </Pressable>
+              )}
+            </View>
             {loading ? (
               <SkeletonList count={3} type="activity" />
             ) : hasError ? (
@@ -469,7 +592,7 @@ export default function HomeScreen() {
               />
             ) : (
               <View className="gap-2">
-                {activity.map((item, idx) => {
+                {activity.slice(0, 5).map((item, idx) => {
                   const actorName = item.actorUserName ?? item.actorGuestName ?? "?";
                   const title = formatActivityTitle(item, backendUser?.id);
                   const groupName = resolveActivityGroupName(item) ?? (item.groupId ? groupNameMap.get(item.groupId) : null) ?? null;
@@ -498,7 +621,7 @@ export default function HomeScreen() {
                   return (
                     <Animated.View
                       key={item.id}
-                      entering={FadeInDown.delay(Math.min(idx, 5) * 50).duration(300).springify()}
+                      entering={FadeInDown.delay(idx * 50).duration(300).springify()}
                     >
                     <AnimatedPressable
                       onPress={() => { hapticLight(); destination && router.push(destination as any); }}
@@ -543,17 +666,29 @@ export default function HomeScreen() {
                               </Text>
                             )}
                             {involvement.text != null && (
-                              <Text
-                                className={`text-xs font-sans-medium mt-0.5 ${
+                              <View
+                                className={cn(
+                                  "px-1.5 py-0.5 rounded-md mt-1 self-end",
                                   involvement.color === "success"
-                                    ? "text-emerald-600"
+                                    ? "bg-emerald-50 dark:bg-emerald-950/40"
                                     : involvement.color === "destructive"
-                                    ? "text-red-500"
-                                    : "text-muted-foreground"
-                                }`}
+                                    ? "bg-red-50 dark:bg-red-950/40"
+                                    : "bg-muted"
+                                )}
                               >
-                                {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents, itemCurrency)}` : ""}
-                              </Text>
+                                <Text
+                                  className={cn(
+                                    "text-xs font-sans-semibold",
+                                    involvement.color === "success"
+                                      ? "text-emerald-600"
+                                      : involvement.color === "destructive"
+                                      ? "text-red-500"
+                                      : "text-muted-foreground"
+                                  )}
+                                >
+                                  {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents, itemCurrency)}` : ""}
+                                </Text>
+                              </View>
                             )}
                             <Text className="text-xs text-muted-foreground font-sans">
                               {formatRelativeTime(item.createdAt)}

@@ -11,14 +11,28 @@ import { getActivityIcon } from "@/lib/category-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
 import { Card } from "@/components/ui/card";
+import { SHADOWS } from "@/lib/shadows";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useGroups, useUserProfile, useGroupCurrencyMap } from "@/lib/hooks";
-import { formatCents, formatDate, formatRelativeTime } from "@/lib/utils";
+import { cn, formatCents, formatDate, formatRelativeTime } from "@/lib/utils";
 import { formatActivityTitle, formatActivityInvolvement, formatCentsForInvolvement, resolveActivityGroupName } from "@/lib/screen-helpers";
 import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import type { ActivityLogDto } from "@/lib/types";
+
+type ActivityFilter = "all" | "expenses" | "settlements";
+
+const EXPENSE_TYPES = new Set(["expense_created", "expense_updated", "expense_deleted"]);
+const SETTLEMENT_TYPES = new Set(["settlement_created", "settlement_deleted"]);
+
+const TABULAR_NUMS_STYLE = { fontVariant: ["tabular-nums"] as const };
+
+const FILTER_CHIPS: { key: ActivityFilter; label: string }[] = [
+  { key: "all", label: "All Activity" },
+  { key: "expenses", label: "Expenses" },
+  { key: "settlements", label: "Settlements" },
+];
 
 export default function ActivityScreen() {
   const router = useRouter();
@@ -38,6 +52,7 @@ export default function ActivityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<ActivityFilter>("all");
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return activity;
@@ -51,15 +66,21 @@ export default function ActivityScreen() {
     });
   }, [activity, searchQuery]);
 
+  const typeFiltered = useMemo(() => {
+    if (activeFilter === "all") return filtered;
+    const typeSet = activeFilter === "expenses" ? EXPENSE_TYPES : SETTLEMENT_TYPES;
+    return filtered.filter((item) => typeSet.has(item.activityType));
+  }, [filtered, activeFilter]);
+
   const sections = useMemo(() => {
-    const grouped = filtered.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
+    const grouped = typeFiltered.reduce<Record<string, ActivityLogDto[]>>((acc, item) => {
       const label = item.createdAt ? formatDate(item.createdAt) : "Recent";
       if (!acc[label]) acc[label] = [];
       acc[label].push(item);
       return acc;
     }, {});
     return Object.entries(grouped).map(([title, data]) => ({ title, data }));
-  }, [filtered]);
+  }, [typeFiltered]);
 
   useFocusEffect(
     useCallback(() => {
@@ -113,17 +134,27 @@ export default function ActivityScreen() {
           pointerEvents="none"
         />
 
-        {/* Title + search */}
-        <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
-          <Text className="text-2xl font-sans-bold" style={{ color: palette.white }}>
-            Activity
-          </Text>
-          <Pressable testID="search-toggle" onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}>
+        {/* Title + subtitle + search */}
+        <View className="flex-row items-center justify-between px-5 pt-4 pb-3">
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={{ fontSize: fs["3xl"], fontFamily: ff.bold, color: palette.white }}>
+              Activity
+            </Text>
+            <Text style={{ fontSize: fs.sm, fontFamily: ff.regular, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>
+              Keep track of your group's shared journey.
+            </Text>
+          </View>
+          <Pressable
+            testID="search-toggle"
+            accessibilityRole="button"
+            accessibilityLabel={showSearch ? "Close search" : "Open search"}
+            onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(""); }}
+          >
             <View
-              className="w-9 h-9 rounded-full items-center justify-center"
+              className="w-10 h-10 rounded-full items-center justify-center"
               style={{ backgroundColor: showSearch ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)" }}
             >
-              <Search size={18} color={palette.white} />
+              <Search size={20} color={palette.white} />
             </View>
           </Pressable>
         </View>
@@ -152,8 +183,46 @@ export default function ActivityScreen() {
         )}
 
         {/* Bottom spacing */}
-        <View style={{ height: 12 }} />
+        <View style={{ height: 16 }} />
       </LinearGradient>
+
+      {/* Filter Chips */}
+      <View className="flex-row px-5 pt-3 pb-1 gap-2">
+        {FILTER_CHIPS.map(({ key, label }) => {
+          const isActive = activeFilter === key;
+          return (
+            <Pressable
+              key={key}
+              testID={`filter-chip-${key}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={label}
+              onPress={() => setActiveFilter(key)}
+            >
+              <View
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 6,
+                  borderRadius: radius.full,
+                  backgroundColor: isActive ? c.primary : "transparent",
+                  borderWidth: isActive ? 0 : 1,
+                  borderColor: c.border,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: fs.sm,
+                    fontFamily: isActive ? ff.semibold : ff.medium,
+                    color: isActive ? palette.white : c.mutedForeground,
+                  }}
+                >
+                  {label}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
 
       {activityError && sections.length === 0 ? (
         <View className="flex-1 items-center justify-center px-5">
@@ -171,8 +240,8 @@ export default function ActivityScreen() {
           <EmptyState
             icon={Clock}
             iconColor={c.mutedForeground}
-            title="No activity yet"
-            subtitle="Your expense and settlement activity will appear here"
+            title={activeFilter === "expenses" ? "No expenses found" : activeFilter === "settlements" ? "No settlements found" : "No activity yet"}
+            subtitle={activeFilter === "all" ? "Your expense and settlement activity will appear here" : `No ${activeFilter} match your current filters`}
           />
         </View>
       ) : (
@@ -196,9 +265,12 @@ export default function ActivityScreen() {
             ) : null
           }
           renderSectionHeader={({ section: { title } }) => (
-            <Text className="text-sm font-sans-semibold text-muted-foreground mb-2 mt-4">
-              {title}
-            </Text>
+            <View className="flex-row items-center gap-3 mt-5 mb-2">
+              <Text style={{ fontSize: fs.xs, fontFamily: ff.semibold, color: c.mutedForeground, letterSpacing: 1 }}>
+                {title.toUpperCase()}
+              </Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+            </View>
           )}
           renderItem={({ item }) => {
             const title = formatActivityTitle(item, backendUser?.id);
@@ -218,6 +290,7 @@ export default function ActivityScreen() {
             const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
             const itemCurrency = (item.details?.currency as string) ?? groupCurrencyMap.get(item.groupId ?? "") ?? "USD";
             const involvement = formatActivityInvolvement(item);
+            const involvedCount = item.details?.involvedCount as number | undefined;
 
             const destination = item.groupId
               ? { pathname: `/(tabs)/groups/${item.groupId}` as const }
@@ -229,70 +302,84 @@ export default function ActivityScreen() {
                 disabled={!destination}
                 className="active:opacity-70 mb-2"
               >
-                <Card className="p-4">
-                  <View className="flex-row items-center gap-3">
-                    <CategoryIcon
-                      config={getActivityIcon(
-                        item.activityType,
-                        (item.details?.categoryName ?? item.details?.category) as string | undefined,
-                        (item.details?.newDescription ?? item.details?.description) as string | undefined,
-                        backendUser?.defaultCurrency,
-                      )}
-                    />
-                    <View className="flex-1">
-                      <Text className="text-sm font-sans-semibold text-card-foreground">
-                        {title}
-                      </Text>
-                      {groupName && (
-                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                          in {groupName}
+                <View style={SHADOWS.card}>
+                  <Card className="p-4">
+                    <View className="flex-row items-center gap-3">
+                      <CategoryIcon
+                        config={getActivityIcon(
+                          item.activityType,
+                          (item.details?.categoryName ?? item.details?.category) as string | undefined,
+                          (item.details?.newDescription ?? item.details?.description) as string | undefined,
+                          backendUser?.defaultCurrency,
+                        )}
+                      />
+                      <View className="flex-1">
+                        <Text className="text-sm font-sans-semibold text-card-foreground">
+                          {title}
+                          {groupName && (
+                            <Text style={{ fontFamily: ff.regular, fontStyle: "italic", color: c.mutedForeground }}>
+                              {" "}in {groupName}
+                            </Text>
+                          )}
                         </Text>
-                      )}
-                      {isExpenseUpdated && amountChanged ? (
-                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                          {formatCents(oldAmount!, itemCurrency)} {"\u2192"} {formatCents(newAmount!, itemCurrency)}
+                        {/* Metadata line */}
+                        <Text style={{ fontSize: fs.xs, fontFamily: ff.regular, color: c.mutedForeground, marginTop: 2 }}>
+                          {formatRelativeTime(item.createdAt)}
+                          {involvedCount != null && involvedCount > 1 && ` · Shared with ${involvedCount} people`}
                         </Text>
-                      ) : null}
-                      {isExpenseUpdated && descChanged ? (
-                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                          "{oldDesc}" {"\u2192"} "{newDesc}"
-                        </Text>
-                      ) : null}
-                      {isMemberActivity && memberRole ? (
-                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                          as {memberRole}
-                        </Text>
-                      ) : isGroupLifecycle ? (
-                        <Text className="text-xs text-muted-foreground font-sans mt-0.5">
-                          {item.activityType === "group_created" ? "New group" : item.activityType === "group_archived" ? "Archived" : item.activityType === "group_deleted" ? "Deleted" : item.activityType === "group_updated" ? "Updated" : "Restored"}
-                        </Text>
-                      ) : null}
+                        {isExpenseUpdated && amountChanged ? (
+                          <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                            {formatCents(oldAmount!, itemCurrency)} {"\u2192"} {formatCents(newAmount!, itemCurrency)}
+                          </Text>
+                        ) : null}
+                        {isExpenseUpdated && descChanged ? (
+                          <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                            "{oldDesc}" {"\u2192"} "{newDesc}"
+                          </Text>
+                        ) : null}
+                        {isMemberActivity && memberRole ? (
+                          <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                            as {memberRole}
+                          </Text>
+                        ) : isGroupLifecycle ? (
+                          <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                            {item.activityType === "group_created" ? "New group" : item.activityType === "group_archived" ? "Archived" : item.activityType === "group_deleted" ? "Deleted" : item.activityType === "group_updated" ? "Updated" : "Restored"}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <View className="items-end">
+                        {displayAmount != null && (
+                          <Text className={cn(
+                            "text-sm font-sans-bold",
+                            involvement.color === "success" ? "text-emerald-600"
+                              : involvement.color === "destructive" ? "text-red-500"
+                              : "text-foreground"
+                          )} style={TABULAR_NUMS_STYLE}>
+                            {involvement.color === "success" ? "+" : involvement.color === "destructive" ? "-" : ""}
+                            {formatCents(displayAmount, itemCurrency)}
+                          </Text>
+                        )}
+                        {involvement.text != null && (
+                          <View className={cn(
+                            "px-2 py-0.5 rounded-full mt-1",
+                            involvement.color === "success" ? "bg-emerald-50 dark:bg-emerald-950/40"
+                              : involvement.color === "destructive" ? "bg-red-50 dark:bg-red-950/40"
+                              : "bg-muted"
+                          )}>
+                            <Text className={cn(
+                              "text-xs font-sans-semibold",
+                              involvement.color === "success" ? "text-emerald-600"
+                                : involvement.color === "destructive" ? "text-red-500"
+                                : "text-muted-foreground"
+                            )}>
+                              {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents, itemCurrency)}` : ""}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
-                    <View className="items-end">
-                      {displayAmount != null && (
-                        <Text className="text-sm font-sans-semibold text-foreground">
-                          {formatCents(displayAmount, itemCurrency)}
-                        </Text>
-                      )}
-                      {involvement.text != null && (
-                        <Text
-                          className={`text-xs font-sans-medium mt-0.5 ${
-                            involvement.color === "success"
-                              ? "text-emerald-600"
-                              : involvement.color === "destructive"
-                              ? "text-red-500"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {involvement.text}{involvement.amountCents != null ? ` ${formatCentsForInvolvement(involvement.amountCents, itemCurrency)}` : ""}
-                        </Text>
-                      )}
-                      <Text className="text-xs text-muted-foreground font-sans">
-                        {formatRelativeTime(item.createdAt)}
-                      </Text>
-                    </View>
-                  </View>
-                </Card>
+                  </Card>
+                </View>
               </Pressable>
             );
           }}

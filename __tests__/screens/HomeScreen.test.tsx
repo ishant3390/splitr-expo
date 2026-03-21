@@ -48,7 +48,8 @@ const mockUseUserBalance = jest.fn(() => ({
   refetch: mockRefetchBalance,
 }));
 
-const mockUseGroups = jest.fn(() => ({ data: [] }));
+const mockRefetchGroups = jest.fn();
+const mockUseGroups = jest.fn((): any => ({ data: [], refetch: mockRefetchGroups }));
 const mockUseUserProfile = jest.fn(() => ({ data: { id: "backend-user-1", name: "Test User" } }));
 
 jest.mock("@/lib/hooks", () => ({
@@ -1042,7 +1043,7 @@ describe("HomeScreen", () => {
   // --- Group name subtitle ---
 
   it("shows group name subtitle on activity cards", async () => {
-    mockUseGroups.mockReturnValue({ data: [{ id: "g1", name: "Trip" }] });
+    mockUseGroups.mockReturnValue({ data: [{ id: "g1", name: "Trip" }], refetch: mockRefetchGroups });
     mockUseUserActivity.mockReturnValue({
       data: [
         {
@@ -1136,6 +1137,216 @@ describe("HomeScreen", () => {
       expect(screen.getByText("You owe")).toBeTruthy();
       expect(screen.getByText("$30.00")).toBeTruthy();
     });
+  });
+
+  // --- Active Groups Section ---
+
+  const makeGroups = (count: number) => {
+    const base = [
+      { id: "g1", name: "Trip to Paris", emoji: "✈️", groupType: "trip", memberCount: 4, defaultCurrency: "USD", createdAt: "2026-03-01T00:00:00Z", updatedAt: "2026-03-20T10:00:00Z" },
+      { id: "g2", name: "House Bills", emoji: "🏠", groupType: "home", memberCount: 3, defaultCurrency: "USD", createdAt: "2026-03-01T00:00:00Z", updatedAt: "2026-03-19T10:00:00Z" },
+      { id: "g3", name: "Office Lunch", emoji: "🍕", groupType: "other", memberCount: 5, defaultCurrency: "USD", createdAt: "2026-03-01T00:00:00Z", updatedAt: "2026-03-18T10:00:00Z" },
+    ];
+    return base.slice(0, count);
+  };
+
+  it("renders Active Groups section when groups exist", async () => {
+    mockUseGroups.mockReturnValue({ data: makeGroups(2), refetch: mockRefetchGroups });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Active Groups")).toBeTruthy();
+      expect(screen.getByText("Trip to Paris")).toBeTruthy();
+      expect(screen.getByText("House Bills")).toBeTruthy();
+    });
+  });
+
+  it("shows 2 most recent groups sorted by updatedAt", async () => {
+    mockUseGroups.mockReturnValue({ data: makeGroups(3), refetch: mockRefetchGroups });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Trip to Paris")).toBeTruthy();
+      expect(screen.getByText("House Bills")).toBeTruthy();
+    });
+    // Oldest group excluded
+    expect(screen.queryByText("Office Lunch")).toBeNull();
+  });
+
+  it("hides Active Groups section when no groups exist", async () => {
+    mockUseGroups.mockReturnValue({ data: [], refetch: mockRefetchGroups });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.queryByText("Active Groups")).toBeNull();
+    });
+  });
+
+  it("Active Groups 'View all' navigates to groups tab", async () => {
+    mockUseGroups.mockReturnValue({ data: makeGroups(3), refetch: mockRefetchGroups });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText("View all").length).toBeGreaterThanOrEqual(1);
+    });
+    // Press the first "View all" (Active Groups)
+    fireEvent.press(screen.getAllByText("View all")[0]);
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/groups");
+  });
+
+  it("Active Groups 'View all' hidden when ≤2 groups", async () => {
+    mockUseGroups.mockReturnValue({ data: makeGroups(2), refetch: mockRefetchGroups });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Active Groups")).toBeTruthy();
+    });
+    // No "View all" for Active Groups when only 2 groups
+    // Activity section might still not have View all if activity ≤5
+    const viewAlls = screen.queryAllByText("View all");
+    // If any exist they should be for activity, not groups
+    viewAlls.forEach((va) => {
+      // Pressing should not navigate to groups
+    });
+    // More direct: just check groups View all is missing by counting
+    expect(viewAlls.length).toBe(0);
+  });
+
+  it("group card press navigates to group detail", async () => {
+    mockUseGroups.mockReturnValue({ data: makeGroups(2), refetch: mockRefetchGroups });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Trip to Paris")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Trip to Paris"));
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/groups/g1");
+  });
+
+  it("group card shows balance from balanceMap", async () => {
+    mockUseGroups.mockReturnValue({ data: makeGroups(2), refetch: mockRefetchGroups });
+    mockUseUserBalance.mockReturnValue({
+      data: {
+        totalOwedCents: 5000,
+        totalOwesCents: 2000,
+        netBalanceCents: 3000,
+        totalOwedByCurrency: [{ currency: "USD", amount: 5000 }],
+        totalOwingByCurrency: [{ currency: "USD", amount: 2000 }],
+        groupBalances: [
+          { groupId: "g1", groupName: "Trip to Paris", balanceCents: 3000, currency: "USD" },
+          { groupId: "g2", groupName: "House Bills", balanceCents: -1500, currency: "USD" },
+        ],
+      },
+      error: null,
+      refetch: mockRefetchBalance,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("+$30.00")).toBeTruthy();
+      expect(screen.getByText("-$15.00")).toBeTruthy();
+    });
+  });
+
+  it("group card shows 'settled up' when balance is zero", async () => {
+    mockUseGroups.mockReturnValue({ data: makeGroups(1), refetch: mockRefetchGroups });
+    mockUseUserBalance.mockReturnValue({
+      data: {
+        totalOwedCents: 0,
+        totalOwesCents: 0,
+        netBalanceCents: 0,
+        totalOwedByCurrency: [],
+        totalOwingByCurrency: [],
+        groupBalances: [
+          { groupId: "g1", groupName: "Trip to Paris", balanceCents: 0, currency: "USD" },
+        ],
+      },
+      error: null,
+      refetch: mockRefetchBalance,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("settled up")).toBeTruthy();
+    });
+  });
+
+  it("pull-to-refresh also calls refetchGroups", async () => {
+    const { UNSAFE_root } = render(<HomeScreen />);
+    await waitFor(() => {
+      expect(mockRefetchGroups).toHaveBeenCalled();
+    });
+    const callsBefore = mockRefetchGroups.mock.calls.length;
+    const RN = require("react-native");
+    const scrollViews = UNSAFE_root.findAllByType(RN.ScrollView);
+    const mainScroll = scrollViews.find((sv: any) => sv.props.refreshControl);
+    const refreshControl = mainScroll!.props.refreshControl;
+    await waitFor(async () => {
+      await refreshControl.props.onRefresh();
+    });
+    expect(mockRefetchGroups.mock.calls.length).toBeGreaterThan(callsBefore);
+  });
+
+  it("limits activity to 5 items when more are available", async () => {
+    const items = Array.from({ length: 8 }, (_, i) => ({
+      id: `a${i}`,
+      activityType: "expense_created",
+      actorUserName: `User${i}`,
+      groupName: "Trip",
+      createdAt: `2026-03-0${i + 1}T10:00:00Z`,
+      details: { description: `Expense ${i}`, amountCents: 1000 },
+    }));
+    mockUseUserActivity.mockReturnValue({
+      data: items,
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("User0 added Expense 0")).toBeTruthy();
+      expect(screen.getByText("User4 added Expense 4")).toBeTruthy();
+    });
+    // 6th item should NOT be rendered
+    expect(screen.queryByText("User5 added Expense 5")).toBeNull();
+  });
+
+  it("shows Activity 'View all' when >5 items and navigates to activity tab", async () => {
+    const items = Array.from({ length: 6 }, (_, i) => ({
+      id: `a${i}`,
+      activityType: "expense_created",
+      actorUserName: `User${i}`,
+      groupName: "Trip",
+      createdAt: `2026-03-0${i + 1}T10:00:00Z`,
+      details: { description: `Expense ${i}`, amountCents: 1000 },
+    }));
+    mockUseUserActivity.mockReturnValue({
+      data: items,
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("View all")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("View all"));
+    expect(mockPush).toHaveBeenCalledWith("/(tabs)/activity");
+  });
+
+  it("hides Activity 'View all' when ≤5 items", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amountCents: 5000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
+    });
+    expect(screen.queryByText("View all")).toBeNull();
   });
 
   it("shows single-currency GBP balance without defaulting to USD", async () => {

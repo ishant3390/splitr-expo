@@ -255,6 +255,7 @@ import { KEYWORD_TO_CATEGORY } from "./category-keywords";
 /** Category key → CATEGORY_ICON_MAP key mapping for keyword-inferred categories. */
 const INFERRED_CATEGORY_TO_ICON_KEY: Record<string, string> = {
   food: "food",
+  drinks: "bar",
   transport: "transport",
   accommodation: "accommodation",
   entertainment: "entertainment",

@@ -74,6 +74,7 @@ lib/
   notifications.ts      # Push notification utilities (foreground handler with per-category filtering, permissions, token, preferences, getNotificationCategory mapping)
   payment-links.ts      # Payment deep link utilities (URL construction, validation, region mapping, provider info)
   haptics.ts            # Haptic feedback wrappers
+  image-utils.ts        # Image upload utilities: validateImage, pickImage, compressImage (expo-image-manipulator), buildImageFormData, sanitizeImageUrl
   mention-utils.ts      # @/# mention detection, filtering, insertion, wire format, recency merge
   mention-recency.ts    # AsyncStorage-backed recent mention tracking (cap 20)
 ```
@@ -108,6 +109,7 @@ lib/
 - Notifications: web platform renders passthrough (no expo-notifications on web)
 - Per-group notification toggle in group detail: reads `member.notificationsEnabled`, toggles via `PATCH /v1/groups/{groupId}/members/{memberId}`
 - **Cache invalidation after direct API calls**: Any screen calling `groupsApi`/`expensesApi` directly (outside React Query `useMutation` hooks) MUST call the matching invalidation helper from `lib/query.ts` (`invalidateAfterGroupChange()`, `invalidateAfterExpenseChange(groupId)`, etc.). Prefer using mutation hooks from `lib/hooks.ts` which handle this automatically.
+- **Image uploads**: All image uploads MUST go through `compressImage()` from `lib/image-utils.ts` before network transfer (resizes to 1600px, JPEG 0.7). Max upload size is 10MB. Use `sanitizeImageUrl()` when reading image URLs from backend responses (fixes double `https://` prefix). Upload mutations set query data directly with `?t=` cache-bust (no `invalidateQueries` — expo-image caches by URL). Profile photo uploads also sync to Clerk via `clerkUser.setProfileImage()`.
 - **Web focus reliability**: `useFocusEffect` is unreliable on web; screens that need refetch-on-focus should also use `useIsFocused()` from `@react-navigation/native` as a state-based fallback
 - **Error handling**: Never use `msg.includes("ERR-xxx")` string matching. Use `parseApiError(err)` from `lib/errors.ts` to extract structured `ApiErrorBody`, then `getUserMessage(apiErr)` for user-facing strings. Pattern: `const apiErr = parseApiError(err); toast.error(apiErr ? getUserMessage(apiErr) : "Fallback message.");`
 - **Error types**: `SplitError extends Error` carries parsed backend error body. `request()` in `lib/api.ts` throws `SplitError` for JSON error responses with a `code` field, plain `Error` for non-JSON.
@@ -287,7 +289,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (3748 tests, 145 suites)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
+- **Current baseline (2142 unit tests, 80 suites; 129 smoke; 70 integration)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state
@@ -307,12 +309,12 @@ lib/
 - **Requires**: `CLERK_SECRET_KEY` in `.env.local` for authenticated tests
 - **Auth setup**: `e2e/auth.setup.ts` extends base test fixture with Clerk token injection
 - **Unauthenticated tests**: Use `@playwright/test` directly (e.g., `e2e/auth.spec.ts`)
-- **Count**: 123 smoke tests across 18 spec files
+- **Count**: 129 smoke tests across 19 spec files
 - Run `npx playwright install chromium` once before first run
 
 ### E2E Integration Tests (Playwright + Backend)
 - **Purpose**: Full CRUD integration tests against live backend at `localhost:8085`
-- **Structure**: `e2e/integration/` with 12 spec files (59 tests total)
+- **Structure**: `e2e/integration/` with 14 spec files (70 tests total)
 - **Helpers**: `e2e/integration/helpers/` — `api-client.ts` (REST client), `fixtures.ts` (data factories), `cleanup.ts` (auto-cleanup fixture)
 - **Auth fixture**: `cleanup.ts` extends Playwright test with `apiClient` injected + auto-cleanup via `afterEach`
 - **Data strategy**: All test data prefixed with `[E2E]` + timestamp; tracked resources auto-deleted in reverse order
@@ -323,7 +325,7 @@ lib/
   - `expense-lifecycle.spec.ts` (5) — UI add, API add, delete, auto-category, split validation
   - `settlement-flow.spec.ts` (6) — suggestions, record payment, history, balance changes, delete revert
   - `member-management.spec.ts` (5) — UI add, API add, count update, remove, email member
-  - `home-data.spec.ts` (5) — balance card, owed amounts, recent activity, category filter, View All nav
+  - `home-data.spec.ts` (5) — balance card, owed amounts, recent activity, View All nav
   - `profile-management.spec.ts` (3) — display data, edit name, change currency
   - `activity-data.spec.ts` (5) — time grouping, expense items, settlement items, search, pagination
   - `invite-flow.spec.ts` (4) — share modal, preview, self-join handling, regenerate code
@@ -331,6 +333,8 @@ lib/
   - `navigation-data.spec.ts` (5) — group card nav, expense edit, back nav, tab state, View All
   - `settings-screens.spec.ts` (4) — notifications, privacy, help, payment methods
   - `payment-handles.spec.ts` (9) — API save/clear/partial update, settlement suggestions with handles, UI save + verify, Pay Directly gate, region methods
+  - `profile-image.spec.ts` (7) — API upload/delete, unique URL, UI avatar update, member avatarUrl sync
+  - `group-banner.spec.ts` (4) — API upload/delete, unique URL, banner display on group detail
 
 ### E2E Test Conventions
 - **Smoke tests**: Import `{ test, expect }` from `./auth.setup`

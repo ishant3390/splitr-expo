@@ -21,7 +21,6 @@ import {
 } from "lucide-react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Card } from "@/components/ui/card";
-import { GroupAvatar } from "@/components/ui/group-avatar";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { groupsApi, expensesApi } from "@/lib/api";

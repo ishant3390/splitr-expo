@@ -7,6 +7,10 @@ export const KEYWORD_TO_CATEGORY: Array<{ keywords: string[]; category: string }
     category: "food",
   },
   {
+    keywords: ["beer", "wine", "cocktail", "whiskey", "vodka", "rum", "tequila", "champagne", "pub", "brewery", "spirits", "shots", "margarita", "mimosa", "prosecco"],
+    category: "drinks",
+  },
+  {
     keywords: ["uber", "lyft", "taxi", "cab", "gas", "fuel", "parking", "toll", "flight", "train", "bus", "metro", "subway", "transport", "commute", "ferry", "amtrak", "greyhound"],
     category: "transport",
   },
