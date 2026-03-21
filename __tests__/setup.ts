@@ -20,6 +20,14 @@ jest.mock("expo-image", () => ({
   Image: "Image",
 }));
 
+// Mock expo-image-manipulator
+jest.mock("expo-image-manipulator", () => ({
+  manipulateAsync: jest.fn(() =>
+    Promise.resolve({ uri: "file://compressed.jpg", base64: "abc123" })
+  ),
+  SaveFormat: { JPEG: "jpeg", PNG: "png" },
+}));
+
 // Mock expo-image-picker
 jest.mock("expo-image-picker", () => ({
   launchCameraAsync: jest.fn(() => Promise.resolve({ canceled: true, assets: [] })),

@@ -21,6 +21,7 @@ import {
   expensesApi,
 } from "./api";
 import { queryKeys, staleTimes, invalidateAfterExpenseChange, invalidateAfterSettlementChange, invalidateAfterGroupChange, invalidateAfterMemberChange, invalidateAfterProfileUpdate } from "./query";
+import { sanitizeImageUrl } from "./image-utils";
 import { dedupeMembers, computeBalancesFromMembers } from "./screen-helpers";
 import { membersToContacts, dedupeContacts, mergeWithRecency } from "./mention-utils";
 import { getRecentMentions, type RecentMention } from "./mention-recency";
@@ -64,7 +65,10 @@ export function useUserProfile() {
     queryKey: queryKeys.user,
     queryFn: async () => {
       const token = await fetchToken();
-      return usersApi.me(token);
+      const user = await usersApi.me(token);
+      // Sanitize double-protocol URLs (BE-6 safety net)
+      if (user.profileImageUrl) user.profileImageUrl = sanitizeImageUrl(user.profileImageUrl);
+      return user;
     },
     staleTime: staleTimes.user,
   });
@@ -211,7 +215,10 @@ export function useGroup(groupId: string) {
     queryKey: queryKeys.group(groupId),
     queryFn: async () => {
       const token = await fetchToken();
-      return groupsApi.get(groupId, token);
+      const group = await groupsApi.get(groupId, token);
+      // Sanitize double-protocol URLs (BE-6 safety net)
+      if (group.bannerImageUrl) group.bannerImageUrl = sanitizeImageUrl(group.bannerImageUrl);
+      return group;
     },
     staleTime: staleTimes.groups,
     enabled: !!groupId,
@@ -552,45 +559,72 @@ export function useUpdateProfile() {
 
 export function useUploadProfileImage() {
   const fetchToken = useTokenFetcher();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (formData: FormData) => {
       const token = await fetchToken();
       return usersApi.uploadProfileImage(formData, token);
     },
-    onSuccess: () => invalidateAfterProfileUpdate(),
+    onSuccess: (updatedUser: UserDto) => {
+      // Sanitize double-protocol URLs (BE-6) then bust expo-image cache
+      if (updatedUser.profileImageUrl) {
+        updatedUser.profileImageUrl = `${sanitizeImageUrl(updatedUser.profileImageUrl)}?t=${Date.now()}`;
+      }
+      qc.setQueryData(queryKeys.user, updatedUser);
+    },
   });
 }
 
 export function useDeleteProfileImage() {
   const fetchToken = useTokenFetcher();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
       const token = await fetchToken();
       return usersApi.deleteProfileImage(token);
     },
-    onSuccess: () => invalidateAfterProfileUpdate(),
+    onSuccess: () => {
+      // Clear profileImageUrl in cache directly so avatar falls back to Clerk image
+      qc.setQueryData(queryKeys.user, (old: UserDto | undefined) => {
+        if (!old) return old;
+        return { ...old, profileImageUrl: undefined, avatarUrl: undefined };
+      });
+    },
   });
 }
 
 export function useUploadGroupBanner(groupId: string) {
   const fetchToken = useTokenFetcher();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (formData: FormData) => {
       const token = await fetchToken();
       return groupsApi.uploadBanner(groupId, formData, token);
     },
-    onSuccess: () => invalidateAfterGroupChange(),
+    onSuccess: (updatedGroup: GroupDto) => {
+      // Sanitize double-protocol URLs (BE-6) then bust expo-image cache
+      if (updatedGroup.bannerImageUrl) {
+        updatedGroup.bannerImageUrl = `${sanitizeImageUrl(updatedGroup.bannerImageUrl)}?t=${Date.now()}`;
+      }
+      qc.setQueryData(queryKeys.group(groupId), updatedGroup);
+    },
   });
 }
 
 export function useDeleteGroupBanner(groupId: string) {
   const fetchToken = useTokenFetcher();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
       const token = await fetchToken();
       return groupsApi.deleteBanner(groupId, token);
     },
-    onSuccess: () => invalidateAfterGroupChange(),
+    onSuccess: () => {
+      qc.setQueryData(queryKeys.group(groupId), (old: GroupDto | undefined) => {
+        if (!old) return old;
+        return { ...old, bannerImageUrl: undefined };
+      });
+    },
   });
 }
 

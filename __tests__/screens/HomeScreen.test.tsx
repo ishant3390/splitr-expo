@@ -122,15 +122,6 @@ describe("HomeScreen", () => {
     });
   });
 
-  it("shows category bar", async () => {
-    render(<HomeScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("All")).toBeTruthy();
-      expect(screen.getByText("Food")).toBeTruthy();
-      expect(screen.getByText("Transport")).toBeTruthy();
-    });
-  });
-
   // --- Nudge Reminder Card Tests ---
 
   it("does not show nudge card when totalOwedCents is 0", async () => {
@@ -671,71 +662,7 @@ describe("HomeScreen", () => {
   });
 
   // --- Category filtering (lines 391-406) ---
-  it("filters activity by category selection", async () => {
-    mockUseUserActivity.mockReturnValue({
-      data: [
-        {
-          id: "a1",
-          activityType: "expense_created",
-          actorUserName: "Alice",
-          groupName: "Trip",
-          createdAt: "2026-03-05T10:00:00Z",
-          details: { description: "Pizza", categoryName: "food" },
-        },
-        {
-          id: "a2",
-          activityType: "expense_created",
-          actorUserName: "Bob",
-          groupName: "Trip",
-          createdAt: "2026-03-05T11:00:00Z",
-          details: { description: "Taxi ride", categoryName: "transport" },
-        },
-      ],
-      isLoading: false,
-      error: null,
-      refetch: mockRefetchActivity,
-    });
-    render(<HomeScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Alice added Pizza")).toBeTruthy();
-      expect(screen.getByText("Bob added Taxi ride")).toBeTruthy();
-    });
-    // Press "Food" category
-    fireEvent.press(screen.getByText("Food"));
-    await waitFor(() => {
-      expect(screen.getByText("Alice added Pizza")).toBeTruthy();
-      expect(screen.queryByText("Bob added Taxi ride")).toBeNull();
-    });
-  });
-
-  it("shows empty state for filtered category with no matching activity", async () => {
-    mockUseUserActivity.mockReturnValue({
-      data: [
-        {
-          id: "a1",
-          activityType: "expense_created",
-          actorUserName: "Alice",
-          groupName: "Trip",
-          createdAt: "2026-03-05T10:00:00Z",
-          details: { description: "Pizza", categoryName: "food" },
-        },
-      ],
-      isLoading: false,
-      error: null,
-      refetch: mockRefetchActivity,
-    });
-    render(<HomeScreen />);
-    await waitFor(() => {
-      expect(screen.getByText("Alice added Pizza")).toBeTruthy();
-    });
-    // Press "Travel" category — no matching items
-    fireEvent.press(screen.getByText("Travel"));
-    await waitFor(() => {
-      expect(screen.getByText(/No travel activity/)).toBeTruthy();
-    });
-  });
-
-  // --- "No activity yet" empty state action (line 415) ---
+  // --- "No activity yet" empty state action ---
   it("navigates to create-group from empty state action", async () => {
     render(<HomeScreen />);
     await waitFor(() => {

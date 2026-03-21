@@ -19,7 +19,6 @@ test.describe("Profile Screen", () => {
   test("shows settings menu items", async ({ page }) => {
     await expect(page.getByText("Edit Profile")).toBeVisible();
     await expect(page.getByText("Notifications")).toBeVisible();
-    await expect(page.getByText("Dark Mode")).toBeVisible();
     await expect(page.getByText("Sign Out")).toBeVisible();
   });
 });

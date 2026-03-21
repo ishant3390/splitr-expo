@@ -1,10 +1,11 @@
-import { validateImage, pickImage, buildImageFormData, buildImageFormDataAsync, MAX_IMAGE_SIZE, ALLOWED_IMAGE_TYPES } from "@/lib/image-utils";
+import { validateImage, pickImage, buildImageFormData, buildImageFormDataAsync, compressImage, sanitizeImageUrl, MAX_IMAGE_SIZE, ALLOWED_IMAGE_TYPES } from "@/lib/image-utils";
 import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync } from "expo-image-manipulator";
 import { Platform } from "react-native";
 
 describe("image-utils", () => {
   describe("validateImage", () => {
-    it("returns null for valid JPEG under 5MB", () => {
+    it("returns null for valid JPEG under 10MB", () => {
       const asset = { uri: "file://photo.jpg", mimeType: "image/jpeg", fileSize: 1024 * 1024, width: 100, height: 100 } as ImagePicker.ImagePickerAsset;
       expect(validateImage(asset)).toBeNull();
     });
@@ -24,9 +25,9 @@ describe("image-utils", () => {
       expect(validateImage(asset)).toBeNull();
     });
 
-    it("returns error for file over 5MB", () => {
+    it("returns error for file over 10MB", () => {
       const asset = { uri: "file://big.jpg", mimeType: "image/jpeg", fileSize: MAX_IMAGE_SIZE + 1, width: 100, height: 100 } as ImagePicker.ImagePickerAsset;
-      expect(validateImage(asset)).toBe("Image must be under 5 MB");
+      expect(validateImage(asset)).toBe("Image must be under 10 MB");
     });
 
     it("returns error for unsupported MIME type", () => {
@@ -50,7 +51,7 @@ describe("image-utils", () => {
       expect(validateImage(asset)).toBeNull(); // Allows it — server validates
     });
 
-    it("returns null for exactly 5MB file", () => {
+    it("returns null for exactly 10MB file", () => {
       const asset = { uri: "file://exact.jpg", mimeType: "image/jpeg", fileSize: MAX_IMAGE_SIZE, width: 100, height: 100 } as ImagePicker.ImagePickerAsset;
       expect(validateImage(asset)).toBeNull();
     });
@@ -170,9 +171,94 @@ describe("image-utils", () => {
     });
   });
 
+  describe("compressImage", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("skips compression when file is under 1MB and base64 not needed", async () => {
+      const result = await compressImage("file://small.jpg", 500_000);
+      expect(result).toEqual({ uri: "file://small.jpg" });
+      expect(manipulateAsync).not.toHaveBeenCalled();
+    });
+
+    it("compresses when file is over 1MB", async () => {
+      const result = await compressImage("file://large.jpg", 3_000_000);
+      expect(manipulateAsync).toHaveBeenCalledWith(
+        "file://large.jpg",
+        [{ resize: { width: 1600 } }],
+        { compress: 0.7, format: "jpeg", base64: false }
+      );
+      expect(result.uri).toBe("file://compressed.jpg");
+    });
+
+    it("compresses when fileSize is undefined (web)", async () => {
+      const result = await compressImage("blob://photo.jpg");
+      expect(manipulateAsync).toHaveBeenCalled();
+      expect(result.uri).toBe("file://compressed.jpg");
+    });
+
+    it("returns base64 when options.base64 is true", async () => {
+      const result = await compressImage("file://receipt.jpg", 2_000_000, { base64: true });
+      expect(manipulateAsync).toHaveBeenCalledWith(
+        "file://receipt.jpg",
+        [{ resize: { width: 1600 } }],
+        { compress: 0.7, format: "jpeg", base64: true }
+      );
+      expect(result.base64).toBe("abc123");
+    });
+
+    it("compresses small file when base64 is requested", async () => {
+      const result = await compressImage("file://small.jpg", 500_000, { base64: true });
+      expect(manipulateAsync).toHaveBeenCalled();
+      expect(result.base64).toBe("abc123");
+    });
+
+    it("falls back to original URI on manipulator error", async () => {
+      (manipulateAsync as jest.Mock).mockRejectedValueOnce(new Error("manipulator crash"));
+      const result = await compressImage("file://broken.jpg", 3_000_000);
+      expect(result).toEqual({ uri: "file://broken.jpg" });
+    });
+
+    it("falls back to original URI without base64 when manipulator errors and base64 requested", async () => {
+      (manipulateAsync as jest.Mock).mockRejectedValueOnce(new Error("manipulator crash"));
+      const result = await compressImage("file://broken.jpg", 2_000_000, { base64: true });
+      expect(result).toEqual({ uri: "file://broken.jpg" });
+      expect(result.base64).toBeUndefined();
+    });
+  });
+
+  describe("sanitizeImageUrl", () => {
+    it("returns undefined for null/undefined", () => {
+      expect(sanitizeImageUrl(null)).toBeUndefined();
+      expect(sanitizeImageUrl(undefined)).toBeUndefined();
+      expect(sanitizeImageUrl("")).toBeUndefined();
+    });
+
+    it("fixes double https:// prefix", () => {
+      expect(sanitizeImageUrl("https://https://cdn.example.com/img.jpg")).toBe("https://cdn.example.com/img.jpg");
+    });
+
+    it("fixes triple https:// prefix", () => {
+      expect(sanitizeImageUrl("https://https://https://cdn.example.com/img.jpg")).toBe("https://cdn.example.com/img.jpg");
+    });
+
+    it("leaves valid https URL unchanged", () => {
+      expect(sanitizeImageUrl("https://cdn.example.com/img.jpg")).toBe("https://cdn.example.com/img.jpg");
+    });
+
+    it("leaves valid http URL unchanged", () => {
+      expect(sanitizeImageUrl("http://localhost:8085/img.jpg")).toBe("http://localhost:8085/img.jpg");
+    });
+
+    it("fixes double http:// prefix", () => {
+      expect(sanitizeImageUrl("http://http://localhost/img.jpg")).toBe("http://localhost/img.jpg");
+    });
+  });
+
   describe("constants", () => {
-    it("MAX_IMAGE_SIZE is 5MB", () => {
-      expect(MAX_IMAGE_SIZE).toBe(5 * 1024 * 1024);
+    it("MAX_IMAGE_SIZE is 10MB", () => {
+      expect(MAX_IMAGE_SIZE).toBe(10 * 1024 * 1024);
     });
 
     it("ALLOWED_IMAGE_TYPES has 4 types", () => {

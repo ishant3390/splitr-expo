@@ -90,9 +90,9 @@ describe("ProfileScreen", () => {
     expect(screen.getByText("Help & Support")).toBeTruthy();
   });
 
-  it("renders Dark Mode toggle", () => {
+  it("renders Appearance theme selector", () => {
     render(<ProfileScreen />);
-    expect(screen.getByText("Dark Mode")).toBeTruthy();
+    expect(screen.getByText("Appearance")).toBeTruthy();
   });
 
   it("renders Sign Out button", () => {
@@ -107,8 +107,16 @@ describe("ProfileScreen", () => {
     });
   });
 
-  // --- Dark mode toggle (lines 44-48) ---
-  it("toggles dark mode on switch press", () => {
+  // --- Theme selector (System / Light / Dark) ---
+  it("renders appearance section with three theme options", () => {
+    render(<ProfileScreen />);
+    expect(screen.getByText("Appearance")).toBeTruthy();
+    expect(screen.getByText("System")).toBeTruthy();
+    expect(screen.getByText("Light")).toBeTruthy();
+    expect(screen.getByText("Dark")).toBeTruthy();
+  });
+
+  it("switches to dark theme on Dark button press", () => {
     const mockSetColorScheme = jest.fn();
     const nativewind = require("nativewind");
     jest.spyOn(nativewind, "useColorScheme").mockReturnValue({
@@ -118,14 +126,39 @@ describe("ProfileScreen", () => {
     });
     const AsyncStorageMock = require("@react-native-async-storage/async-storage");
     render(<ProfileScreen />);
-    expect(screen.getByText("Dark Mode")).toBeTruthy();
-    // ThemedSwitch renders a native Switch — find it by role
-    const switches = screen.getAllByRole("switch");
-    expect(switches.length).toBeGreaterThan(0);
-    // Fire onValueChange to toggle dark mode
-    fireEvent(switches[0], "valueChange", true);
+    fireEvent.press(screen.getByText("Dark"));
     expect(mockSetColorScheme).toHaveBeenCalledWith("dark");
     expect(AsyncStorageMock.setItem).toHaveBeenCalledWith("@splitr/dark_mode", "dark");
+  });
+
+  it("switches to light theme on Light button press", () => {
+    const mockSetColorScheme = jest.fn();
+    const nativewind = require("nativewind");
+    jest.spyOn(nativewind, "useColorScheme").mockReturnValue({
+      colorScheme: "dark",
+      setColorScheme: mockSetColorScheme,
+      toggleColorScheme: jest.fn(),
+    });
+    const AsyncStorageMock = require("@react-native-async-storage/async-storage");
+    render(<ProfileScreen />);
+    fireEvent.press(screen.getByText("Light"));
+    expect(mockSetColorScheme).toHaveBeenCalledWith("light");
+    expect(AsyncStorageMock.setItem).toHaveBeenCalledWith("@splitr/dark_mode", "light");
+  });
+
+  it("switches to system theme on System button press", () => {
+    const mockSetColorScheme = jest.fn();
+    const nativewind = require("nativewind");
+    jest.spyOn(nativewind, "useColorScheme").mockReturnValue({
+      colorScheme: "dark",
+      setColorScheme: mockSetColorScheme,
+      toggleColorScheme: jest.fn(),
+    });
+    const AsyncStorageMock = require("@react-native-async-storage/async-storage");
+    render(<ProfileScreen />);
+    fireEvent.press(screen.getByText("System"));
+    expect(mockSetColorScheme).toHaveBeenCalledWith("system");
+    expect(AsyncStorageMock.setItem).toHaveBeenCalledWith("@splitr/dark_mode", "system");
   });
 
   // --- Sign out flow (lines 50-52, 183-191) ---

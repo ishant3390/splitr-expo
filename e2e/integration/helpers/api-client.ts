@@ -64,6 +64,8 @@ export class ApiClient {
       email: string;
       name: string;
       defaultCurrency?: string;
+      profileImageUrl?: string;
+      avatarUrl?: string;
       paymentHandles?: Record<string, string>;
     }>("/v1/users/me");
   }
@@ -82,6 +84,112 @@ export class ApiClient {
       "/v1/users/me",
       { method: "PATCH", body: JSON.stringify(data) }
     );
+  }
+
+  // ---- Profile Image ----
+
+  async uploadProfileImage(filePath: string): Promise<{
+    id: string;
+    profileImageUrl?: string;
+    avatarUrl?: string;
+  }> {
+    const fs = await import("fs");
+    const path = await import("path");
+    const fileBuffer = fs.readFileSync(filePath);
+    const fileName = path.basename(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".webp": "image/webp",
+    };
+    const mimeType = mimeMap[ext] || "image/jpeg";
+
+    // Use Node's built-in FormData (available in Node 18+)
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer], { type: mimeType });
+    formData.append("file", blob, fileName);
+
+    const url = `${API_BASE}/v1/users/me/profile-image`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "Unknown error");
+      throw new Error(`API ${res.status} POST /v1/users/me/profile-image: ${errBody}`);
+    }
+
+    return res.json();
+  }
+
+  async deleteProfileImage(): Promise<void> {
+    const url = `${API_BASE}/v1/users/me/profile-image`;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+      },
+    });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "Unknown error");
+      throw new Error(`API ${res.status} DELETE /v1/users/me/profile-image: ${errBody}`);
+    }
+  }
+
+  // ---- Group Banner ----
+
+  async uploadGroupBanner(groupId: string, filePath: string): Promise<{
+    id: string;
+    bannerImageUrl?: string;
+  }> {
+    const fs = await import("fs");
+    const path = await import("path");
+    const fileBuffer = fs.readFileSync(filePath);
+    const fileName = path.basename(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".webp": "image/webp",
+    };
+    const mimeType = mimeMap[ext] || "image/jpeg";
+
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer], { type: mimeType });
+    formData.append("file", blob, fileName);
+
+    const url = `${API_BASE}/v1/groups/${groupId}/banner`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.token}` },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "Unknown error");
+      throw new Error(`API ${res.status} POST /v1/groups/${groupId}/banner: ${errBody}`);
+    }
+
+    return res.json();
+  }
+
+  async deleteGroupBanner(groupId: string): Promise<void> {
+    const url = `${API_BASE}/v1/groups/${groupId}/banner`;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${this.token}` },
+    });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "Unknown error");
+      throw new Error(`API ${res.status} DELETE /v1/groups/${groupId}/banner: ${errBody}`);
+    }
   }
 
   // ---- Groups ----

@@ -23,7 +23,7 @@ import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useToast } from "@/components/ui/toast";
 import { getInitials } from "@/lib/utils";
 import { colors, palette } from "@/lib/tokens";
-import { pickImage, validateImage, buildImageFormDataAsync } from "@/lib/image-utils";
+import { pickImage, validateImage, buildImageFormDataAsync, compressImage } from "@/lib/image-utils";
 import { useUploadProfileImage, useDeleteProfileImage } from "@/lib/hooks";
 import { invalidateAfterProfileUpdate } from "@/lib/query";
 import type { UserDto, UpdateUserRequest } from "@/lib/types";
@@ -112,9 +112,28 @@ export default function EditProfileScreen() {
     }
     setUploadingImage(true);
     try {
-      const formData = await buildImageFormDataAsync(asset.uri, asset.mimeType);
+      const compressed = await compressImage(asset.uri, asset.fileSize ?? undefined);
+      // If compression produced a new file it's JPEG; if it fell back, preserve original MIME
+      const mime = compressed.uri !== asset.uri ? "image/jpeg" : (asset.mimeType ?? "image/jpeg");
+      const formData = await buildImageFormDataAsync(compressed.uri, mime);
       const updated = await uploadMutation.mutateAsync(formData);
-      setProfileImageUrl(updated.profileImageUrl ?? null);
+      // Bust expo-image cache by appending timestamp to the URL
+      const freshUrl = updated.profileImageUrl
+        ? `${updated.profileImageUrl}?t=${Date.now()}`
+        : null;
+      setProfileImageUrl(freshUrl);
+
+      // Sync to Clerk so all screens using Clerk's user.imageUrl show the new photo
+      if (clerkUser) {
+        try {
+          const blob = await fetch(compressed.uri).then((r) => r.blob());
+          const file = new File([blob], "profile.jpg", { type: mime });
+          await clerkUser.setProfileImage({ file });
+        } catch {
+          // Non-blocking — backend is source of truth, Clerk sync is best-effort
+        }
+      }
+
       toast.success("Profile photo updated.");
     } catch (err: unknown) {
       const apiErr = parseApiError(err);
@@ -129,6 +148,16 @@ export default function EditProfileScreen() {
     try {
       await deleteMutation.mutateAsync();
       setProfileImageUrl(null);
+
+      // Sync removal to Clerk
+      if (clerkUser) {
+        try {
+          await clerkUser.setProfileImage({ file: null });
+        } catch {
+          // Non-blocking
+        }
+      }
+
       toast.success("Profile photo removed.");
     } catch (err: unknown) {
       const apiErr = parseApiError(err);

@@ -40,4 +40,55 @@ test.describe("Edit Profile Flow", () => {
   test("shows save button", async ({ page }) => {
     await expect(page.getByText("Save Changes")).toBeVisible();
   });
+
+  test("shows avatar with Add Photo or Change Photo", async ({ page }) => {
+    const hasChangePhoto = await page.getByText("Change Photo").isVisible().catch(() => false);
+    const hasAddPhoto = await page.getByText("Add Photo").isVisible().catch(() => false);
+    expect(hasChangePhoto || hasAddPhoto).toBe(true);
+  });
+
+  test("avatar area has accessible button role", async ({ page }) => {
+    const avatarButton = page.getByRole("button", { name: /profile photo/i });
+    await expect(avatarButton).toBeVisible({ timeout: 5000 });
+  });
+
+  test("validates empty name on save", async ({ page }) => {
+    const nameInput = page.getByPlaceholder("Your name");
+    const originalValue = await nameInput.inputValue();
+    await nameInput.clear();
+    await page.getByText("Save Changes").click();
+    await expect(page.getByText("Name cannot be empty")).toBeVisible({ timeout: 5000 });
+    // Restore
+    await nameInput.fill(originalValue);
+  });
+
+  test("name field is editable", async ({ page }) => {
+    const nameInput = page.getByPlaceholder("Your name");
+    const originalValue = await nameInput.inputValue();
+    await nameInput.clear();
+    await nameInput.fill("E2E Temp Name");
+    await expect(nameInput).toHaveValue("E2E Temp Name");
+    // Restore without saving
+    await nameInput.clear();
+    await nameInput.fill(originalValue);
+  });
+});
+
+test.describe("Receipt Scanner Screen", () => {
+  test("renders capture screen with gallery option", async ({ page }) => {
+    await page.goto("/receipt-scanner");
+    await page.waitForTimeout(2000);
+    await expect(page.getByText("Scan Receipt")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Scan a Receipt")).toBeVisible();
+    await expect(page.getByText("Choose from Gallery")).toBeVisible();
+  });
+});
+
+test.describe("Add Expense Screen — Receipt Attachment", () => {
+  test("shows receipt gallery button for attachment", async ({ page }) => {
+    await page.goto("/add");
+    await page.waitForTimeout(2000);
+    const galleryBtn = page.getByText("Gallery", { exact: true });
+    await expect(galleryBtn).toBeVisible({ timeout: 5000 });
+  });
 });

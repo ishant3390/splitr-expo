@@ -5,8 +5,10 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
-import { AppState, Appearance, Platform, Pressable, Text, View } from "react-native";
+import { Appearance, AppState, Pressable, Text, View } from "react-native";
+import { useColorScheme } from "nativewind";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { restoreTheme } from "@/lib/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { usersApi } from "@/lib/api";
 import { queryClient } from "@/lib/query";
@@ -235,6 +237,7 @@ function BiometricLockGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  const { setColorScheme } = useColorScheme();
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -266,16 +269,10 @@ export default function RootLayout() {
     ]);
   }, []);
 
-  // Restore persisted dark mode preference on app start
+  // Restore persisted theme preference on app start
   useEffect(() => {
-    AsyncStorage.getItem("@splitr/dark_mode").then((value) => {
-      if (value === "dark" || value === "light") {
-        if (Platform.OS !== "web") {
-          Appearance.setColorScheme(value);
-        }
-      }
-    });
-  }, []);
+    restoreTheme(setColorScheme);
+  }, [setColorScheme]);
 
   useEffect(() => {
     if (fontsLoaded) {

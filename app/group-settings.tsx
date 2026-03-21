@@ -48,7 +48,7 @@ import { Image } from "expo-image";
 import { groupsApi, contactsApi, inviteApi } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useArchiveGroup, useDeleteGroup, useCategories, useUploadGroupBanner, useDeleteGroupBanner } from "@/lib/hooks";
-import { pickImage, validateImage, buildImageFormDataAsync } from "@/lib/image-utils";
+import { pickImage, validateImage, buildImageFormDataAsync, compressImage, sanitizeImageUrl } from "@/lib/image-utils";
 import { invalidateAfterGroupChange, invalidateAfterMemberChange } from "@/lib/query";
 import { formatCents, getInitials, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
@@ -130,8 +130,14 @@ export default function GroupSettingsScreen() {
     if (error) { toast.error(error); return; }
     setUploadingBanner(true);
     try {
-      const formData = await buildImageFormDataAsync(asset.uri, asset.mimeType);
+      const compressed = await compressImage(asset.uri, asset.fileSize ?? undefined);
+      const mime = compressed.uri !== asset.uri ? "image/jpeg" : (asset.mimeType ?? "image/jpeg");
+      const formData = await buildImageFormDataAsync(compressed.uri, mime);
       const updated = await uploadBannerMutation.mutateAsync(formData);
+      // Sanitize double-protocol URLs (BE-6) and cache-bust
+      if (updated.bannerImageUrl) {
+        updated.bannerImageUrl = `${sanitizeImageUrl(updated.bannerImageUrl)}?t=${Date.now()}`;
+      }
       setGroup(updated);
       toast.success("Banner updated.");
     } catch (err: unknown) {
@@ -164,6 +170,8 @@ export default function GroupSettingsScreen() {
         groupsApi.listMembers(groupId, token!),
         groupsApi.listExpenses(groupId, token!, { limit: "100" }),
       ]);
+      // Sanitize double-protocol URLs (BE-6 safety net)
+      if (groupData.bannerImageUrl) groupData.bannerImageUrl = sanitizeImageUrl(groupData.bannerImageUrl);
       setGroup(groupData);
       const dedupedMembers = dedupeMembers(membersData);
       setMembers(dedupedMembers);

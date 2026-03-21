@@ -41,6 +41,7 @@ import { expensesApi } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
+import { compressImage } from "@/lib/image-utils";
 import type { ReceiptScanResultDto, ReceiptScanResponseDto } from "@/lib/types";
 
 /** Animated scan line that sweeps vertically over the receipt image */
@@ -155,6 +156,7 @@ export default function ReceiptScannerScreen() {
   const [result, setResult] = useState<ReceiptScanResultDto | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [quota, setQuota] = useState<{ used: number; limit: number } | null>(null);
+  const lastBase64Ref = React.useRef<string | null>(null);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)"));
 
@@ -166,11 +168,16 @@ export default function ReceiptScannerScreen() {
         return;
       }
       const photo = await ImagePicker.launchCameraAsync({
-        quality: 0.85,
-        base64: true,
+        quality: 0.9,
       });
       if (!photo.canceled && photo.assets[0]) {
-        processImage(photo.assets[0].uri, photo.assets[0].base64!);
+        const compressed = await compressImage(photo.assets[0].uri, photo.assets[0].fileSize ?? undefined, { base64: true });
+        if (!compressed.base64) {
+          toast.error("Failed to process image. Please try again.");
+          return;
+        }
+        lastBase64Ref.current = compressed.base64;
+        processImage(compressed.uri, compressed.base64);
       }
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -180,11 +187,16 @@ export default function ReceiptScannerScreen() {
       }
       const pick = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        quality: 0.85,
-        base64: true,
+        quality: 0.9,
       });
       if (!pick.canceled && pick.assets[0]) {
-        processImage(pick.assets[0].uri, pick.assets[0].base64!);
+        const compressed = await compressImage(pick.assets[0].uri, pick.assets[0].fileSize ?? undefined, { base64: true });
+        if (!compressed.base64) {
+          toast.error("Failed to process image. Please try again.");
+          return;
+        }
+        lastBase64Ref.current = compressed.base64;
+        processImage(compressed.uri, compressed.base64);
       }
     }
   };
@@ -370,7 +382,7 @@ export default function ReceiptScannerScreen() {
                 </Text>
               </Card>
               <View className="gap-3">
-                <Button variant="default" size="lg" onPress={() => processImage(imageUri!, "")} className="w-full">
+                <Button variant="default" size="lg" onPress={() => lastBase64Ref.current && processImage(imageUri!, lastBase64Ref.current)} className="w-full">
                   <Text className="text-base font-sans-semibold text-primary-foreground">
                     Try Again
                   </Text>

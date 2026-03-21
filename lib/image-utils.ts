@@ -4,8 +4,9 @@
 
 import { Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
-export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 export const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -22,7 +23,7 @@ const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".heic"];
 export function validateImage(asset: ImagePicker.ImagePickerAsset): string | null {
   // Check file size (skip if undefined — web doesn't always provide it)
   if (asset.fileSize != null && asset.fileSize > MAX_IMAGE_SIZE) {
-    return "Image must be under 5 MB";
+    return "Image must be under 10 MB";
   }
 
   // Check MIME type if available
@@ -43,6 +44,60 @@ export function validateImage(asset: ImagePicker.ImagePickerAsset): string | nul
 
   // If neither MIME nor extension is available, allow it (server will validate)
   return null;
+}
+
+/** Threshold below which we skip compression (1 MB). */
+const COMPRESS_THRESHOLD = 1 * 1024 * 1024;
+/** Maximum longest dimension after resize. */
+const MAX_DIMENSION = 1600;
+/** JPEG quality for compressed output (0–1). */
+const COMPRESS_QUALITY = 0.7;
+
+export interface CompressedImage {
+  uri: string;
+  base64?: string;
+}
+
+/**
+ * Compress an image by resizing + JPEG quality reduction.
+ * - Skips if the file is already under 1 MB (and base64 not requested).
+ * - Resizes longest dimension to 1600 px (preserves aspect ratio by only setting width).
+ * - Outputs JPEG at 0.7 quality.
+ * - Falls back to the original URI if the manipulator fails.
+ */
+export async function compressImage(
+  uri: string,
+  originalFileSize?: number,
+  options?: { base64?: boolean }
+): Promise<CompressedImage> {
+  const needBase64 = options?.base64 === true;
+
+  // Skip compression for small files when base64 isn't needed
+  if (!needBase64 && originalFileSize != null && originalFileSize < COMPRESS_THRESHOLD) {
+    return { uri };
+  }
+
+  try {
+    // Only set width — expo-image-manipulator auto-calculates height to preserve aspect ratio
+    const result = await manipulateAsync(
+      uri,
+      [{ resize: { width: MAX_DIMENSION } }],
+      { compress: COMPRESS_QUALITY, format: SaveFormat.JPEG, base64: needBase64 }
+    );
+    return { uri: result.uri, base64: result.base64 };
+  } catch {
+    // Manipulator failed — return original so the server can be the final gate
+    return { uri };
+  }
+}
+
+/**
+ * Fix double-protocol URLs (e.g. "https://https://cdn.example.com/...").
+ * Backend bug BE-6 can produce these; this is a defensive FE fix.
+ */
+export function sanitizeImageUrl(url: string | undefined | null): string | undefined {
+  if (!url) return undefined;
+  return url.replace(/^(https?:\/\/)\1+/, "$1");
 }
 
 /**

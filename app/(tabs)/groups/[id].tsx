@@ -25,6 +25,7 @@ import { GroupAvatar } from "@/components/ui/group-avatar";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { groupsApi, expensesApi } from "@/lib/api";
+import { sanitizeImageUrl } from "@/lib/image-utils";
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useCategories } from "@/lib/hooks";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -107,6 +108,8 @@ export default function GroupDetailScreen() {
         groupsApi.listExpenses(id, token!, { limit: "5" }),
         groupsApi.activity(id, token!, { limit: 50 }).catch(() => [] as ActivityLogDto[]),
       ]);
+      // Sanitize double-protocol URLs (BE-6 safety net)
+      if (groupData.bannerImageUrl) groupData.bannerImageUrl = sanitizeImageUrl(groupData.bannerImageUrl);
       setGroup(groupData);
       const dedupedMembers = dedupeMembers(membersData);
       setMembers(dedupedMembers);

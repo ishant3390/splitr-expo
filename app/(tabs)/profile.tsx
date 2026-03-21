@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, Platform } from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { applyTheme, getStoredTheme, type ThemePreference } from "@/lib/theme";
 import {
   User,
   CreditCard,
@@ -14,19 +14,18 @@ import {
   LogOut,
   ChevronRight,
   Moon,
+  Sun,
+  Monitor,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
-import { ThemedSwitch } from "@/components/ui/themed-switch";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { useUserProfile } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, formatMemberSince } from "@/lib/utils";
 import { colors, radius, palette } from "@/lib/tokens";
-
-const DARK_MODE_KEY = "@splitr/dark_mode";
 
 const menuItems = [
   { icon: User, label: "Edit Profile", id: "profile", iconBg: palette.teal50, iconBgDark: "rgba(13,148,136,0.12)", iconColor: palette.teal600 },
@@ -45,12 +44,16 @@ export default function ProfileScreen() {
   const c = colors(isDark);
   const { data: apiUser = null } = useUserProfile();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const toast = useToast();
 
-  const handleToggleDarkMode = () => {
-    const next = colorScheme === "dark" ? "light" : "dark";
-    setColorScheme(next);
-    AsyncStorage.setItem(DARK_MODE_KEY, next);
+  useEffect(() => {
+    getStoredTheme().then(setThemePreference);
+  }, []);
+
+  const handleThemeChange = (next: ThemePreference) => {
+    setThemePreference(next);
+    applyTheme(next, setColorScheme);
   };
 
   const handleSignOut = () => {
@@ -127,8 +130,8 @@ export default function ProfileScreen() {
               }}
             >
               <Avatar
-                src={user?.imageUrl}
-                fallback={getInitials(user?.fullName ?? "?")}
+                src={apiUser?.profileImageUrl || user?.imageUrl}
+                fallback={getInitials(apiUser?.name || user?.fullName || "?")}
                 size="lg"
                 className="w-full h-full"
               />
@@ -213,18 +216,58 @@ export default function ProfileScreen() {
 
           {/* Settings */}
           <Card className="overflow-hidden">
-            {/* Dark mode toggle */}
-            <View className="flex-row items-center justify-between p-4 border-b border-border">
-              <View className="flex-row items-center gap-3">
+            {/* Theme selector */}
+            <View className="p-4 border-b border-border">
+              <View className="flex-row items-center gap-3 mb-3">
                 <View
                   className="w-9 h-9 rounded-lg items-center justify-center"
                   style={{ backgroundColor: isDark ? "rgba(139,92,246,0.12)" : "#f5f3ff" }}
                 >
                   <Moon size={18} color="#8b5cf6" />
                 </View>
-                <Text className="text-sm font-sans-medium text-card-foreground">Dark Mode</Text>
+                <Text className="text-sm font-sans-medium text-card-foreground">Appearance</Text>
               </View>
-              <ThemedSwitch checked={colorScheme === "dark"} onCheckedChange={handleToggleDarkMode} />
+              <View
+                className="flex-row gap-2"
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Appearance theme"
+              >
+                {([
+                  { key: "system" as const, label: "System", Icon: Monitor },
+                  { key: "light" as const, label: "Light", Icon: Sun },
+                  { key: "dark" as const, label: "Dark", Icon: Moon },
+                ]).map(({ key, label, Icon }) => {
+                  const isActive = themePreference === key;
+                  const inactiveColor = isDark ? palette.slate400 : palette.slate500;
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() => handleThemeChange(key)}
+                      accessibilityRole="radio"
+                      accessibilityLabel={`${label} theme`}
+                      accessibilityState={{ selected: isActive }}
+                      className="flex-1 flex-row items-center justify-center gap-1.5 py-2 rounded-lg"
+                      style={{
+                        backgroundColor: isActive
+                          ? isDark ? "rgba(13,148,136,0.15)" : palette.teal50
+                          : isDark ? "rgba(255,255,255,0.05)" : palette.slate100,
+                        borderWidth: isActive ? 1.5 : 1,
+                        borderColor: isActive
+                          ? palette.teal600
+                          : isDark ? "rgba(255,255,255,0.08)" : palette.slate200,
+                      }}
+                    >
+                      <Icon size={15} color={isActive ? palette.teal600 : inactiveColor} />
+                      <Text
+                        className="text-xs font-sans-medium"
+                        style={{ color: isActive ? palette.teal600 : inactiveColor }}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
 
             {menuItems.map((item, index) => {

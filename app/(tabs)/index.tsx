@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
-import { hapticLight, hapticSelection, hapticSuccess, hapticError } from "@/lib/haptics";
+import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@clerk/clerk-expo";
 import { groupsApi } from "@/lib/api";
@@ -15,18 +15,6 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Bell,
-  Utensils,
-  Car,
-  Home as HomeIcon,
-  Gamepad2,
-  ShoppingBag,
-  Plane,
-  Heart,
-  Zap,
-  Coffee,
-  Gift,
-  Briefcase,
-  Wifi,
   AlertTriangle,
 } from "lucide-react-native";
 import { CategoryIcon } from "@/components/ui/category-icon";
@@ -99,21 +87,6 @@ function formatRemindedAgo(timestamp: number): string {
   return `Reminded ${diffDays} days ago`;
 }
 
-// Airbnb-style category data
-const CATEGORIES = [
-  { key: "all", label: "All", icon: Zap },
-  { key: "food", label: "Food", icon: Utensils },
-  { key: "transport", label: "Transport", icon: Car },
-  { key: "travel", label: "Travel", icon: Plane },
-  { key: "home", label: "Home", icon: HomeIcon },
-  { key: "entertainment", label: "Fun", icon: Gamepad2 },
-  { key: "shopping", label: "Shopping", icon: ShoppingBag },
-  { key: "coffee", label: "Coffee", icon: Coffee },
-  { key: "gifts", label: "Gifts", icon: Gift },
-  { key: "health", label: "Health", icon: Heart },
-  { key: "work", label: "Work", icon: Briefcase },
-  { key: "utilities", label: "Utilities", icon: Wifi },
-] as const;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -125,7 +98,6 @@ export default function HomeScreen() {
   const { getToken } = useAuth();
   const { pendingCount } = useNetwork();
   const toast = useToast();
-  const [selectedCategory, setSelectedCategory] = useState("all");
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [nudging, setNudging] = useState(false);
   const [nudgeRemindedAt, setNudgeRemindedAt] = useState<number | null>(null);
@@ -470,48 +442,6 @@ export default function HomeScreen() {
             )
           )}
 
-          {/* Airbnb-style Category Bar */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 4, paddingRight: 8 }}
-          >
-            {CATEGORIES.map((cat) => {
-              const isActive = selectedCategory === cat.key;
-              const Icon = cat.icon;
-              return (
-                <Pressable
-                  key={cat.key}
-                  onPress={() => { hapticSelection(); setSelectedCategory(cat.key); }}
-                  className="items-center py-2 px-3 rounded-xl"
-                  style={{
-                    minWidth: 64,
-                    backgroundColor: isActive
-                      ? c.foreground
-                      : c.muted,
-                  }}
-                >
-                  <Icon
-                    size={20}
-                    color={isActive ? c.background : c.mutedForeground}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 10,
-                      fontFamily: ff.medium,
-                      marginTop: 4,
-                      color: isActive
-                        ? c.background
-                        : c.mutedForeground,
-                    }}
-                  >
-                    {cat.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
           {/* Recent Activity */}
           <View>
             <Text className="text-lg font-sans-semibold text-foreground mb-3">
@@ -528,45 +458,18 @@ export default function HomeScreen() {
                 actionLabel="Retry"
                 onAction={() => { refetchActivity(); refetchBalance(); }}
               />
-            ) : (() => {
-              // Filter activity by selected category
-              const filtered = selectedCategory === "all"
-                ? activity
-                : activity.filter((item) => {
-                    const catName = (
-                      (item.details?.categoryName as string) ??
-                      (item.details?.category as string) ??
-                      ""
-                    ).toLowerCase();
-                    const desc = (
-                      (item.details?.description as string) ?? ""
-                    ).toLowerCase();
-                    // Match by category name or keyword in description
-                    return catName === selectedCategory ||
-                      catName.includes(selectedCategory) ||
-                      desc.includes(selectedCategory);
-                  });
-              return filtered.length === 0 ? (
-                selectedCategory === "all" ? (
-                  <EmptyState
-                    icon={Users}
-                    iconColor={c.primary}
-                    title="No activity yet"
-                    subtitle="Start by creating a group and adding expenses with friends"
-                    actionLabel="Create a Group"
-                    onAction={() => router.push("/create-group")}
-                  />
-                ) : (
-                  <EmptyState
-                    icon={CATEGORIES.find(c => c.key === selectedCategory)?.icon ?? Zap}
-                    iconColor={c.mutedForeground}
-                    title={`No ${selectedCategory} activity`}
-                    subtitle="Try a different category or add an expense"
-                  />
-                )
-              ) : (
+            ) : activity.length === 0 ? (
+              <EmptyState
+                icon={Users}
+                iconColor={c.primary}
+                title="No activity yet"
+                subtitle="Start by creating a group and adding expenses with friends"
+                actionLabel="Create a Group"
+                onAction={() => router.push("/create-group")}
+              />
+            ) : (
               <View className="gap-2">
-                {filtered.map((item, idx) => {
+                {activity.map((item, idx) => {
                   const actorName = item.actorUserName ?? item.actorGuestName ?? "?";
                   const title = formatActivityTitle(item, backendUser?.id);
                   const groupName = resolveActivityGroupName(item) ?? (item.groupId ? groupNameMap.get(item.groupId) : null) ?? null;
@@ -663,8 +566,7 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
-            );
-            })()}
+            )}
           </View>
         </View>
       </ScrollView>

@@ -44,7 +44,7 @@ import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/
 import { colors, fontSize as fs, fontFamily as ff, palette } from "@/lib/tokens";
 import { initSplitValues as computeSplitValues, dedupeMembers, inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { CategoryIcon } from "@/components/ui/category-icon";
-import { pickImage, validateImage, buildImageFormDataAsync } from "@/lib/image-utils";
+import { pickImage, validateImage, buildImageFormDataAsync, compressImage } from "@/lib/image-utils";
 import { useNetwork } from "@/components/NetworkProvider";
 import { addToQueue, generateClientId } from "@/lib/offline";
 import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, SplitRequest } from "@/lib/types";
@@ -278,8 +278,10 @@ export default function AddExpenseScreen() {
     }
     const error = validateImage(asset);
     if (error) { toast.error(error); return; }
-    receiptMimeRef.current = asset.mimeType ?? undefined;
-    setReceiptUri(asset.uri);
+    const compressed = await compressImage(asset.uri, asset.fileSize ?? undefined);
+    // If compression produced a new file it's JPEG; if it fell back, preserve original MIME
+    receiptMimeRef.current = compressed.uri !== asset.uri ? "image/jpeg" : (asset.mimeType ?? "image/jpeg");
+    setReceiptUri(compressed.uri);
     hapticSuccess();
   };
 

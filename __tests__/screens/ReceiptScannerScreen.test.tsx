@@ -96,7 +96,7 @@ describe("ReceiptScannerScreen", () => {
     fireEvent.press(screen.getByText("Choose from Gallery"));
 
     await waitFor(() => {
-      expect(mockScanReceipt).toHaveBeenCalledWith("def456", "test-token");
+      expect(mockScanReceipt).toHaveBeenCalledWith("abc123", "test-token");
     });
   });
 
