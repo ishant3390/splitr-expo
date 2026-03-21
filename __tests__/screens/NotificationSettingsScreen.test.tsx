@@ -1,18 +1,31 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 
+const mockToast = { success: jest.fn(), error: jest.fn(), info: jest.fn() };
 jest.mock("@/components/ui/toast", () => ({
-  useToast: () => ({
-    success: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-  }),
+  useToast: () => mockToast,
 }));
 
 jest.mock("@/lib/api", () => ({
   usersApi: {
     updateMe: jest.fn(() => Promise.resolve({})),
   },
+}));
+
+const mockUpdateProfileMutate = jest.fn();
+jest.mock("@/lib/hooks", () => ({
+  useUserProfile: () => ({
+    data: {
+      preferences: { emailDigest: "weekly" },
+    },
+    isLoading: false,
+    error: null,
+    refetch: jest.fn(),
+  }),
+  useUpdateProfile: () => ({
+    mutate: mockUpdateProfileMutate,
+    isLoading: false,
+  }),
 }));
 
 jest.mock("@/components/ui/themed-switch", () => {
@@ -37,6 +50,7 @@ const mockSavePrefs = saveNotificationPreferences as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUpdateProfileMutate.mockReset();
   mockGetPermission.mockResolvedValue(true);
   mockGetPrefs.mockResolvedValue({
     enabled: true,
@@ -243,5 +257,70 @@ describe("NotificationSettingsScreen", () => {
       );
     });
     // Should not crash despite backend error
+  });
+
+  // --- Email Digest section ---
+  it("renders email digest section with 3 options", async () => {
+    render(<NotificationSettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("EMAIL DIGEST")).toBeTruthy();
+      expect(screen.getByText("Digest Frequency")).toBeTruthy();
+      expect(screen.getByText("Weekly")).toBeTruthy();
+      expect(screen.getByText("Daily")).toBeTruthy();
+      expect(screen.getByText("Off")).toBeTruthy();
+    });
+  });
+
+  it("shows Weekly selected by default", async () => {
+    render(<NotificationSettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Summary email every Monday morning")).toBeTruthy();
+    });
+  });
+
+  it("triggers mutation with daily when Daily is pressed", async () => {
+    render(<NotificationSettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Daily")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("email-digest-daily"));
+    await waitFor(() => {
+      expect(mockUpdateProfileMutate).toHaveBeenCalledWith(
+        { preferences: { emailDigest: "daily" } },
+        expect.objectContaining({ onError: expect.any(Function) }),
+      );
+    });
+  });
+
+  it("triggers mutation with off when Off is pressed", async () => {
+    render(<NotificationSettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Off")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("email-digest-off"));
+    await waitFor(() => {
+      expect(mockUpdateProfileMutate).toHaveBeenCalledWith(
+        { preferences: { emailDigest: "off" } },
+        expect.objectContaining({ onError: expect.any(Function) }),
+      );
+    });
+  });
+
+  it("reverts digest and shows toast on mutation failure", async () => {
+    // Make mutate call the onError callback
+    mockUpdateProfileMutate.mockImplementation((_data: any, opts: any) => {
+      if (opts?.onError) opts.onError(new Error("Network error"));
+    });
+
+    render(<NotificationSettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Daily")).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId("email-digest-daily"));
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith("Failed to update digest preference.");
+    });
   });
 });

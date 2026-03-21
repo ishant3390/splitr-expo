@@ -8,6 +8,7 @@ import {
   Platform,
   ActivityIndicator,
   ActionSheetIOS,
+  Alert,
 } from "react-native";
 import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,7 +24,7 @@ import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useToast } from "@/components/ui/toast";
 import { getInitials } from "@/lib/utils";
 import { colors, palette } from "@/lib/tokens";
-import { pickImage, validateImage, buildImageFormDataAsync, compressImage } from "@/lib/image-utils";
+import { pickImage, validateImage, buildImageFormDataAsync, compressImage, sanitizeImageUrl } from "@/lib/image-utils";
 import { useUploadProfileImage, useDeleteProfileImage } from "@/lib/hooks";
 import { invalidateAfterProfileUpdate } from "@/lib/query";
 import type { UserDto, UpdateUserRequest } from "@/lib/types";
@@ -60,7 +61,7 @@ export default function EditProfileScreen() {
         setName(me.name ?? "");
         setPhone(me.phone ?? "");
         setCurrency(me.defaultCurrency ?? "USD");
-        setProfileImageUrl(me.profileImageUrl ?? null);
+        setProfileImageUrl(sanitizeImageUrl(me.profileImageUrl ?? me.avatarUrl) ?? null);
       } catch {
         // use clerk defaults
         setName(clerkUser?.fullName ?? "");
@@ -167,6 +168,23 @@ export default function EditProfileScreen() {
     }
   };
 
+  const confirmRemoveImage = () => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && window.confirm("Remove your profile photo? Your avatar will be cleared.")) {
+        handleRemoveImage();
+      }
+    } else {
+      Alert.alert(
+        "Remove Photo",
+        "Remove your profile photo? Your avatar will be cleared.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Remove", style: "destructive", onPress: handleRemoveImage },
+        ]
+      );
+    }
+  };
+
   const showImageOptions = () => {
     const options: string[] = [];
     if (Platform.OS !== "web") options.push("Take Photo");
@@ -183,11 +201,12 @@ export default function EditProfileScreen() {
           const selected = options[index];
           if (selected === "Take Photo") handlePickImage("camera");
           else if (selected === "Choose from Library") handlePickImage("gallery");
-          else if (selected === "Remove Photo") handleRemoveImage();
+          else if (selected === "Remove Photo") confirmRemoveImage();
         }
       );
     } else {
-      // Web + Android: use gallery directly (no native ActionSheet)
+      // Web + Android: pick from gallery directly
+      // Remove is handled via a separate "Remove Photo" button below the avatar
       handlePickImage("gallery");
     }
   };
@@ -231,7 +250,7 @@ export default function EditProfileScreen() {
           <Pressable onPress={showImageOptions} disabled={uploadingImage} accessibilityRole="button" accessibilityLabel={profileImageUrl ? "Change profile photo" : "Add profile photo"} className="items-center py-4">
             <View className="relative">
               <Avatar
-                src={profileImageUrl || clerkUser?.imageUrl}
+                src={profileImageUrl}
                 fallback={getInitials(name || "?")}
                 size="lg"
               />

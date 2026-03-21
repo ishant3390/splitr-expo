@@ -44,6 +44,10 @@ jest.mock("@/components/ui/toast", () => ({
   useToast: () => mockToast,
 }));
 
+jest.mock("@/lib/image-utils", () => ({
+  sanitizeImageUrl: jest.fn((url: string | null | undefined) => url ?? undefined),
+}));
+
 jest.mock("@/lib/hooks", () => ({
   useUserProfile: () => ({
     data: {
@@ -294,5 +298,50 @@ describe("ProfileScreen", () => {
     expect(screen.getByText("USD")).toBeTruthy();
     // Premium should be "No"
     expect(screen.getByText("No")).toBeTruthy();
+  });
+
+  // --- FE-5: Avatar uses backend avatarUrl, not Clerk ---
+  it("shows initials when both profileImageUrl and avatarUrl are null (after deletion)", () => {
+    jest.spyOn(require("@/lib/hooks"), "useUserProfile").mockReturnValue({
+      data: {
+        id: "u1",
+        name: "Test User",
+        email: "test@example.com",
+        defaultCurrency: "USD",
+        isPremium: false,
+        profileImageUrl: null,
+        avatarUrl: null,
+        createdAt: "2025-01-01T00:00:00Z",
+        updatedAt: "2025-01-01T00:00:00Z",
+      },
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    render(<ProfileScreen />);
+    // Clerk imageUrl should NOT be used — initials "TU" should render
+    expect(screen.getByText("TU")).toBeTruthy();
+  });
+
+  it("uses avatarUrl as fallback when profileImageUrl is null", () => {
+    jest.spyOn(require("@/lib/hooks"), "useUserProfile").mockReturnValue({
+      data: {
+        id: "u1",
+        name: "Test User",
+        email: "test@example.com",
+        defaultCurrency: "USD",
+        isPremium: false,
+        profileImageUrl: null,
+        avatarUrl: "https://cdn.splitr.ai/avatar.jpg",
+        createdAt: "2025-01-01T00:00:00Z",
+        updatedAt: "2025-01-01T00:00:00Z",
+      },
+      isLoading: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    render(<ProfileScreen />);
+    // Should NOT show initials — avatarUrl should be used as src
+    expect(screen.queryByText("TU")).toBeNull();
   });
 });

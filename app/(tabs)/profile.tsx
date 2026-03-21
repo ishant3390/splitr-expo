@@ -25,6 +25,7 @@ import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { useUserProfile } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { getInitials, formatMemberSince } from "@/lib/utils";
+import { sanitizeImageUrl } from "@/lib/image-utils";
 import { colors, radius, palette } from "@/lib/tokens";
 
 const menuItems = [
@@ -130,7 +131,7 @@ export default function ProfileScreen() {
               }}
             >
               <Avatar
-                src={apiUser?.profileImageUrl || user?.imageUrl}
+                src={sanitizeImageUrl(apiUser?.profileImageUrl ?? apiUser?.avatarUrl)}
                 fallback={getInitials(apiUser?.name || user?.fullName || "?")}
                 size="lg"
                 className="w-full h-full"

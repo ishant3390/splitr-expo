@@ -14,6 +14,7 @@ import {
   Clock,
   Shield,
   ChevronRight,
+  Mail,
 } from "lucide-react-native";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { useToast } from "@/components/ui/toast";
 import { hapticSelection } from "@/lib/haptics";
 import { colors, palette } from "@/lib/tokens";
 import { usersApi } from "@/lib/api";
+import { useUserProfile, useUpdateProfile } from "@/lib/hooks";
 import {
   getNotificationPermissionStatus,
   requestNotificationPermission,
@@ -38,9 +40,12 @@ export default function NotificationSettingsScreen() {
   const c = colors(isDark);
   const toast = useToast();
   const { getToken } = useAuth();
+  const { data: userProfile } = useUserProfile();
+  const updateProfile = useUpdateProfile();
 
   const [systemPermission, setSystemPermission] = useState<boolean | null>(null);
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFS);
+  const [emailDigest, setEmailDigest] = useState<string>("weekly");
 
   useEffect(() => {
     const load = async () => {
@@ -53,6 +58,12 @@ export default function NotificationSettingsScreen() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (userProfile?.preferences?.emailDigest) {
+      setEmailDigest(userProfile.preferences.emailDigest);
+    }
+  }, [userProfile]);
 
   const updatePref = useCallback(
     async (key: keyof NotificationPreferences, value: boolean | string) => {
@@ -117,6 +128,27 @@ export default function NotificationSettingsScreen() {
       description: "Balance reminders and payment nudges",
     },
   ];
+
+  const digestOptions = [
+    { value: "weekly", label: "Weekly", description: "Summary email every Monday morning" },
+    { value: "daily", label: "Daily", description: "Summary email every morning" },
+    { value: "off", label: "Off", description: "No digest emails" },
+  ];
+
+  const handleDigestChange = (value: string) => {
+    hapticSelection();
+    const previous = emailDigest;
+    setEmailDigest(value);
+    updateProfile.mutate(
+      { preferences: { emailDigest: value } },
+      {
+        onError: () => {
+          setEmailDigest(previous);
+          toast.error("Failed to update digest preference.");
+        },
+      }
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
@@ -316,6 +348,69 @@ export default function NotificationSettingsScreen() {
               </View>
             );
           })}
+        </Card>
+
+        {/* Email digest */}
+        <Card className="overflow-hidden">
+          <View className="p-4">
+            <Text className="text-xs font-sans-semibold text-muted-foreground mb-3">
+              EMAIL DIGEST
+            </Text>
+
+            <View className="flex-row items-center gap-3 mb-3">
+              <View className="w-9 h-9 rounded-lg bg-primary/10 items-center justify-center">
+                <Mail size={18} color={c.primary} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-sans-medium text-foreground">
+                  Digest Frequency
+                </Text>
+                <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                  Receive a summary of your group activity
+                </Text>
+              </View>
+            </View>
+
+            {digestOptions.map((opt, index) => (
+              <Pressable
+                key={opt.value}
+                testID={`email-digest-${opt.value}`}
+                onPress={() => handleDigestChange(opt.value)}
+                className={`flex-row items-center gap-3 ${index < digestOptions.length - 1 ? "mb-3" : ""}`}
+              >
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: emailDigest === opt.value ? c.primary : palette.slate400,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {emailDigest === opt.value && (
+                    <View
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: c.primary,
+                      }}
+                    />
+                  )}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-sans-medium text-foreground">
+                    {opt.label}
+                  </Text>
+                  <Text className="text-xs text-muted-foreground font-sans mt-0.5">
+                    {opt.description}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
         </Card>
       </ScrollView>
     </SafeAreaView>
