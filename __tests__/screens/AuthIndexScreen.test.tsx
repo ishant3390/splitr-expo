@@ -3,8 +3,6 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react-nativ
 
 const mockStartGoogleOAuth = jest.fn(() => Promise.resolve({ createdSessionId: null }));
 const mockStartAppleOAuth = jest.fn(() => Promise.resolve({ createdSessionId: null }));
-const mockStartFacebookOAuth = jest.fn(() => Promise.resolve({ createdSessionId: null }));
-const mockStartInstagramOAuth = jest.fn(() => Promise.resolve({ createdSessionId: null }));
 
 jest.mock("@clerk/clerk-expo", () => ({
   useAuth: () => ({
@@ -19,8 +17,6 @@ jest.mock("@clerk/clerk-expo", () => ({
     const map: Record<string, any> = {
       oauth_google: { startOAuthFlow: mockStartGoogleOAuth },
       oauth_apple: { startOAuthFlow: mockStartAppleOAuth },
-      oauth_facebook: { startOAuthFlow: mockStartFacebookOAuth },
-      oauth_instagram: { startOAuthFlow: mockStartInstagramOAuth },
     };
     return map[strategy] ?? { startOAuthFlow: jest.fn() };
   },
@@ -56,8 +52,6 @@ jest.mock("@/components/icons/social-icons", () => {
   return {
     GoogleIcon: () => MockReact.createElement(Text, null, "GoogleIcon"),
     AppleIcon: () => MockReact.createElement(Text, null, "AppleIcon"),
-    FacebookIcon: () => MockReact.createElement(Text, null, "FacebookIcon"),
-    InstagramIcon: () => MockReact.createElement(Text, null, "InstagramIcon"),
   };
 });
 
@@ -71,7 +65,7 @@ describe("AuthScreen", () => {
   it("renders app name and tagline", () => {
     render(<AuthScreen />);
     expect(screen.getByText("Splitr")).toBeTruthy();
-    expect(screen.getByText("Split expenses effortlessly")).toBeTruthy();
+    expect(screen.getByText("Split expenses with friends, effortlessly")).toBeTruthy();
   });
 
   it("renders Sign Up and Sign In tabs", () => {
@@ -80,12 +74,10 @@ describe("AuthScreen", () => {
     expect(screen.getAllByText("Sign In").length).toBeGreaterThan(0);
   });
 
-  it("renders OAuth buttons in signup mode", () => {
+  it("renders Google and Apple OAuth buttons in signup mode", () => {
     render(<AuthScreen />);
     expect(screen.getByText(/Sign up with Google/)).toBeTruthy();
     expect(screen.getByText(/Sign up with Apple/)).toBeTruthy();
-    expect(screen.getByText(/Sign up with Facebook/)).toBeTruthy();
-    expect(screen.getByText(/Sign up with Instagram/)).toBeTruthy();
   });
 
   it("renders email/phone signup button in signup mode", () => {
@@ -112,12 +104,19 @@ describe("AuthScreen", () => {
     render(<AuthScreen />);
     fireEvent.press(screen.getByText(/Already have an account/));
     expect(screen.getByText(/Sign in with Google/)).toBeTruthy();
-    expect(screen.getByText("Send verification code")).toBeTruthy();
+    expect(screen.getByText(/Sign in with Apple/)).toBeTruthy();
   });
 
-  it("shows email input in sign-in mode", () => {
+  it("shows email/phone sign-in button initially in sign-in mode", () => {
     render(<AuthScreen />);
     fireEvent.press(screen.getByText(/Already have an account/));
+    expect(screen.getByText("Sign in with email or phone")).toBeTruthy();
+  });
+
+  it("shows email input after tapping email/phone sign-in", () => {
+    render(<AuthScreen />);
+    fireEvent.press(screen.getByText(/Already have an account/));
+    fireEvent.press(screen.getByText("Sign in with email or phone"));
     expect(screen.getByPlaceholderText("Email address or phone number")).toBeTruthy();
   });
 
@@ -143,22 +142,6 @@ describe("AuthScreen", () => {
     });
   });
 
-  it("calls Facebook OAuth flow when Facebook button is pressed", async () => {
-    render(<AuthScreen />);
-    fireEvent.press(screen.getByText(/Sign up with Facebook/));
-    await waitFor(() => {
-      expect(mockStartFacebookOAuth).toHaveBeenCalled();
-    });
-  });
-
-  it("calls Instagram OAuth flow when Instagram button is pressed", async () => {
-    render(<AuthScreen />);
-    fireEvent.press(screen.getByText(/Sign up with Instagram/));
-    await waitFor(() => {
-      expect(mockStartInstagramOAuth).toHaveBeenCalled();
-    });
-  });
-
   it("handles OAuth success with createdSessionId", async () => {
     const mockSetActive = jest.fn();
     mockStartGoogleOAuth.mockResolvedValueOnce({
@@ -176,7 +159,6 @@ describe("AuthScreen", () => {
     mockStartGoogleOAuth.mockRejectedValueOnce(new Error("OAuth error"));
     render(<AuthScreen />);
     fireEvent.press(screen.getByText(/Sign up with Google/));
-    // Should not throw; toast.error is called internally
     await waitFor(() => {
       expect(mockStartGoogleOAuth).toHaveBeenCalled();
     });
@@ -187,23 +169,18 @@ describe("AuthScreen", () => {
     fireEvent.press(screen.getByText(/Already have an account/));
     expect(screen.getByText(/Sign in with Google/)).toBeTruthy();
     expect(screen.getByText(/Sign in with Apple/)).toBeTruthy();
-    expect(screen.getByText(/Sign in with Facebook/)).toBeTruthy();
-    expect(screen.getByText(/Sign in with Instagram/)).toBeTruthy();
   });
 
   it("sends verification code for email sign-in", async () => {
     render(<AuthScreen />);
-    // Switch to sign-in mode
     fireEvent.press(screen.getByText(/Already have an account/));
-    // Enter email and submit
+    fireEvent.press(screen.getByText("Sign in with email or phone"));
     fireEvent.changeText(
       screen.getByPlaceholderText("Email address or phone number"),
       "test@example.com"
     );
     fireEvent.press(screen.getByText("Send verification code"));
-    // signIn.create is called
     await waitFor(() => {
-      // No crash, the flow is initiated
       expect(screen.getByText("Send verification code")).toBeTruthy();
     });
   });
@@ -211,8 +188,8 @@ describe("AuthScreen", () => {
   it("shows error toast when submitting empty sign-in field", async () => {
     render(<AuthScreen />);
     fireEvent.press(screen.getByText(/Already have an account/));
+    fireEvent.press(screen.getByText("Sign in with email or phone"));
     fireEvent.press(screen.getByText("Send verification code"));
-    // toast.error called for empty field; no crash
     await waitFor(() => {
       expect(screen.getByText("Send verification code")).toBeTruthy();
     });
@@ -221,6 +198,7 @@ describe("AuthScreen", () => {
   it("sends verification code for phone sign-in", async () => {
     render(<AuthScreen />);
     fireEvent.press(screen.getByText(/Already have an account/));
+    fireEvent.press(screen.getByText("Sign in with email or phone"));
     fireEvent.changeText(
       screen.getByPlaceholderText("Email address or phone number"),
       "+15551234567"
@@ -232,30 +210,23 @@ describe("AuthScreen", () => {
   });
 
   it("navigates to signup-form when email/phone signup button is pressed", () => {
-    const mockPush = jest.fn();
-    const { useRouter } = require("expo-router");
-    // The mock returns push, so it's already set up
     render(<AuthScreen />);
     fireEvent.press(screen.getByText("Sign up with email or phone"));
-    // No crash — router.push is called
   });
 
   it("switches back from sign-in to sign-up mode", () => {
     render(<AuthScreen />);
-    // Go to sign-in
     fireEvent.press(screen.getByText(/Already have an account/));
     expect(screen.getByText(/Don't have an account/)).toBeTruthy();
-    // Go back to sign-up
     fireEvent.press(screen.getByText(/Don't have an account/));
     expect(screen.getByText(/Already have an account/)).toBeTruthy();
     expect(screen.getByText("Sign up with email or phone")).toBeTruthy();
   });
 
-  it("can switch tabs via Tabs component", () => {
+  it("can switch tabs via tab buttons", () => {
     render(<AuthScreen />);
-    // Tab switching via the Tabs component
     const signInTab = screen.getAllByText("Sign In");
     fireEvent.press(signInTab[0]);
-    // Should now be in sign-in mode (the Tabs component calls setActiveTab)
+    expect(screen.getByText(/Sign in with Google/)).toBeTruthy();
   });
 });

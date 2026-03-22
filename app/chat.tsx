@@ -2257,7 +2257,7 @@ export default function ChatScreen() {
               justifyContent: "center",
               backgroundColor: !loading && !isQuotaExceeded && isConnected
                 ? c.muted
-                : (isDark ? "rgba(51,65,85,0.5)" : "rgba(241,245,249,0.5)"),
+                : (isDark ? "rgba(26,26,26,0.5)" : "rgba(241,245,249,0.5)"),
             }}
           >
             <Camera
@@ -2282,7 +2282,7 @@ export default function ChatScreen() {
                 ? c.destructive
                 : !loading && !isQuotaExceeded && isConnected
                   ? c.muted
-                  : (isDark ? "rgba(51,65,85,0.5)" : "rgba(241,245,249,0.5)"),
+                  : (isDark ? "rgba(26,26,26,0.5)" : "rgba(241,245,249,0.5)"),
             }}
           >
             {isRecording ? (

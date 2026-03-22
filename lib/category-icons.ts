@@ -165,9 +165,9 @@ export const CATEGORY_ICON_MAP: Record<string, CategoryIconConfig> = {
   insurance:        { icon: ShieldCheck,  color: "#059669", bg: "#d1fae5", darkBg: "#022c22", label: "Insurance" },
 
   // Work (slate)
-  work:             { icon: Briefcase,    color: "#475569", bg: "#f1f5f9", darkBg: "#1e293b", label: "Work" },
-  business:         { icon: Briefcase,    color: "#475569", bg: "#f1f5f9", darkBg: "#1e293b", label: "Business" },
-  office:           { icon: Laptop,       color: "#475569", bg: "#f1f5f9", darkBg: "#1e293b", label: "Office" },
+  work:             { icon: Briefcase,    color: "#475569", bg: "#f1f5f9", darkBg: "#1a1a1a", label: "Work" },
+  business:         { icon: Briefcase,    color: "#475569", bg: "#f1f5f9", darkBg: "#1a1a1a", label: "Business" },
+  office:           { icon: Laptop,       color: "#475569", bg: "#f1f5f9", darkBg: "#1a1a1a", label: "Office" },
 
   // Gifts (fuchsia)
   card_giftcard:    { icon: Gift,         color: "#c026d3", bg: "#fae8ff", darkBg: "#4a044e", label: "Gift Card" },
@@ -193,15 +193,15 @@ export const CATEGORY_ICON_MAP: Record<string, CategoryIconConfig> = {
   education:        { icon: BookOpen,     color: "#0891b2", bg: "#cffafe", darkBg: "#083344", label: "Education" },
 
   // Default (slate)
-  other:            { icon: MoreHorizontal, color: "#64748b", bg: "#f1f5f9", darkBg: "#1e293b", label: "Other" },
-  more_horiz:       { icon: MoreHorizontal, color: "#64748b", bg: "#f1f5f9", darkBg: "#1e293b", label: "Other" },
+  other:            { icon: MoreHorizontal, color: "#64748b", bg: "#f1f5f9", darkBg: "#1a1a1a", label: "Other" },
+  more_horiz:       { icon: MoreHorizontal, color: "#64748b", bg: "#f1f5f9", darkBg: "#1a1a1a", label: "Other" },
 };
 
 const DEFAULT_ICON: CategoryIconConfig = {
   icon: Coins,
   color: "#64748b",
   bg: "#f1f5f9",
-  darkBg: "#1e293b",
+  darkBg: "#1a1a1a",
   label: "Other",
 };
 

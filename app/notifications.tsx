@@ -276,7 +276,7 @@ export default function NotificationsScreen() {
           alignItems: "center",
           paddingTop: 8,
           paddingBottom: insets.bottom || 16,
-          backgroundColor: isDark ? "rgba(15,23,42,0.95)" : "rgba(255,255,255,0.95)",
+          backgroundColor: isDark ? "rgba(0,0,0,0.95)" : "rgba(255,255,255,0.95)",
           borderTopWidth: 0,
         }}
       >

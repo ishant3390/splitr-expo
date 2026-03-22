@@ -1,45 +1,42 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { View, Text, ScrollView, Pressable, useWindowDimensions } from "react-native";
+import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useOAuth, useSignIn } from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import {
   GoogleIcon,
   AppleIcon,
-  FacebookIcon,
-  InstagramIcon,
 } from "@/components/icons/social-icons";
-import { Mail, Phone } from "lucide-react-native";
-import { palette } from "@/lib/tokens";
+import { Mail, Phone, ArrowRight, ChevronRight } from "lucide-react-native";
+import { colors, palette, radius } from "@/lib/tokens";
+import { GRADIENTS } from "@/lib/gradients";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const authTabs = [
-  { id: "signup", label: "Sign Up" },
-  { id: "signin", label: "Sign In" },
-];
-
 export default function AuthScreen() {
-  const [activeTab, setActiveTab] = useState("signup");
+  const [activeTab, setActiveTab] = useState<"signup" | "signin">("signup");
+  const [signInEmail, setSignInEmail] = useState("");
+  const [showEmailSignIn, setShowEmailSignIn] = useState(false);
   const router = useRouter();
   const toast = useToast();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const c = colors(isDark);
+  const { height: screenHeight } = useWindowDimensions();
 
   // Clerk OAuth hooks
   const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: "oauth_google" });
   const { startOAuthFlow: startAppleOAuth } = useOAuth({ strategy: "oauth_apple" });
-  const { startOAuthFlow: startFacebookOAuth } = useOAuth({ strategy: "oauth_facebook" });
-  const { startOAuthFlow: startInstagramOAuth } = useOAuth({ strategy: "oauth_instagram" });
 
   // Clerk sign-in for email/phone
   const { signIn, setActive } = useSignIn();
-
-  const [signInEmail, setSignInEmail] = useState("");
 
   const handleOAuth = useCallback(
     async (startFlow: typeof startGoogleOAuth) => {
@@ -64,7 +61,6 @@ export default function AuthScreen() {
       return;
     }
     try {
-      // Determine if email or phone
       const isPhone = /^\+?\d{10,}$/.test(signInEmail.replace(/[\s\-()]/g, ""));
       if (isPhone) {
         await signIn?.create({ identifier: signInEmail });
@@ -92,114 +88,273 @@ export default function AuthScreen() {
     }
   };
 
-  const socialProviders = [
-    { name: "Google", icon: <GoogleIcon size={22} />, onPress: () => handleOAuth(startGoogleOAuth) },
-    { name: "Apple", icon: <AppleIcon size={22} />, onPress: () => handleOAuth(startAppleOAuth) },
-    { name: "Facebook", icon: <FacebookIcon size={22} />, onPress: () => handleOAuth(startFacebookOAuth) },
-    { name: "Instagram", icon: <InstagramIcon size={22} />, onPress: () => handleOAuth(startInstagramOAuth) },
-  ];
+  const isSignUp = activeTab === "signup";
+  const actionLabel = isSignUp ? "Sign up" : "Sign in";
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-6 pt-12 pb-10"
+        contentContainerStyle={{ minHeight: screenHeight }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        bounces={false}
       >
-        {/* Header */}
-        <View className="items-center mb-8">
-          <View className="w-16 h-16 rounded-2xl bg-primary items-center justify-center mb-4">
-            <Text className="text-3xl font-sans-bold text-primary-foreground">S</Text>
-          </View>
-          <Text className="text-3xl font-sans-bold text-foreground">Splitr</Text>
-          <Text className="text-base text-muted-foreground font-sans mt-1">
-            Split expenses effortlessly
-          </Text>
-        </View>
+        {/* Hero section with gradient */}
+        <LinearGradient
+          colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ paddingTop: 60, paddingBottom: 40, paddingHorizontal: 24, overflow: "hidden" }}
+        >
+          {/* Decorative orbs */}
+          <View
+            style={{
+              position: "absolute", top: -40, right: -40,
+              width: 160, height: 160, borderRadius: radius.full,
+              backgroundColor: "rgba(255,255,255,0.06)",
+            }}
+            pointerEvents="none"
+          />
+          <View
+            style={{
+              position: "absolute", bottom: -20, left: -20,
+              width: 100, height: 100, borderRadius: radius.full,
+              backgroundColor: "rgba(255,255,255,0.04)",
+            }}
+            pointerEvents="none"
+          />
 
-        {/* Tabs */}
-        <Tabs
-          tabs={authTabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          className="mb-8"
-        />
-
-        {/* Social OAuth buttons */}
-        <View className="gap-3 mb-6">
-          {socialProviders.map((provider) => (
-            <Button
-              key={provider.name}
-              variant="outline"
-              onPress={provider.onPress}
-              className="flex-row items-center justify-center gap-3 py-3.5"
+          {/* Logo */}
+          <View className="items-center">
+            <View
+              style={{
+                width: 64, height: 64, borderRadius: 20,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                alignItems: "center", justifyContent: "center",
+                marginBottom: 16,
+                borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+              }}
             >
-              {provider.icon}
-              <Text className="text-base font-sans-medium text-foreground">
-                {activeTab === "signup" ? "Sign up" : "Sign in"} with {provider.name}
-              </Text>
-            </Button>
-          ))}
-        </View>
-
-        {/* Divider */}
-        <View className="flex-row items-center my-4">
-          <View className="flex-1 h-px bg-border" />
-          <Text className="mx-4 text-sm text-muted-foreground font-sans">or</Text>
-          <View className="flex-1 h-px bg-border" />
-        </View>
-
-        {/* Sign Up form vs Sign In form */}
-        {activeTab === "signup" ? (
-          <View className="gap-4">
-            <Button
-              variant="default"
-              onPress={() => router.push("/(auth)/signup-form")}
-              className="flex-row items-center justify-center gap-3"
-            >
-              <Mail size={20} color={palette.white} />
-              <Text className="text-base font-sans-semibold text-primary-foreground">
-                Sign up with email or phone
-              </Text>
-            </Button>
-
-            <Text className="text-xs text-center text-muted-foreground font-sans leading-5">
-              {"By signing up, you agree to our Terms of Service and Privacy Policy."}
+              <Text style={{ fontSize: 32, fontWeight: "700", color: palette.white }}>S</Text>
+            </View>
+            <Text style={{ fontSize: 28, fontWeight: "700", color: palette.white, letterSpacing: -0.5 }}>
+              Splitr
+            </Text>
+            <Text style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", marginTop: 6 }}>
+              Split expenses with friends, effortlessly
             </Text>
           </View>
-        ) : (
-          <View className="gap-4">
-            <Input
-              placeholder="Email address or phone number"
-              value={signInEmail}
-              onChangeText={setSignInEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <Button variant="default" onPress={handleSignInWithOtp}>
-              <View className="flex-row items-center justify-center gap-2">
-                <Phone size={18} color={palette.white} />
-                <Text className="text-base font-sans-semibold text-primary-foreground">
-                  Send verification code
+        </LinearGradient>
+
+        {/* Content area */}
+        <View style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 40, flex: 1 }}>
+
+          {/* Tab switcher */}
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: c.muted,
+              borderRadius: radius.DEFAULT,
+              padding: 4,
+              marginBottom: 28,
+            }}
+          >
+            {(["signup", "signin"] as const).map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <Pressable
+                  key={tab}
+                  onPress={() => { setActiveTab(tab); setShowEmailSignIn(false); }}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingVertical: 10,
+                    borderRadius: radius.md,
+                    backgroundColor: isActive ? c.card : "transparent",
+                    ...(isActive && !isDark ? {
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 3,
+                      elevation: 1,
+                    } : {}),
+                    ...(isActive && isDark ? {
+                      borderWidth: 1,
+                      borderColor: c.border,
+                    } : {}),
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: isActive ? "600" : "500",
+                      color: isActive ? c.foreground : c.mutedForeground,
+                    }}
+                  >
+                    {tab === "signup" ? "Sign Up" : "Sign In"}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Primary OAuth buttons — Google & Apple */}
+          <View style={{ gap: 12, marginBottom: 20 }}>
+            {/* Google */}
+            <Pressable
+              onPress={() => handleOAuth(startGoogleOAuth)}
+              accessibilityRole="button"
+              accessibilityLabel={`${actionLabel} with Google`}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+                paddingVertical: 14,
+                borderRadius: radius.DEFAULT,
+                backgroundColor: isDark ? "#1a1a1a" : palette.white,
+                borderWidth: 1,
+                borderColor: isDark ? c.border : "#e2e8f0",
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <GoogleIcon size={20} />
+              <Text style={{ fontSize: 15, fontWeight: "600", color: c.foreground }}>
+                {actionLabel} with Google
+              </Text>
+            </Pressable>
+
+            {/* Apple */}
+            <Pressable
+              onPress={() => handleOAuth(startAppleOAuth)}
+              accessibilityRole="button"
+              accessibilityLabel={`${actionLabel} with Apple`}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+                paddingVertical: 14,
+                borderRadius: radius.DEFAULT,
+                backgroundColor: isDark ? palette.white : palette.black,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <AppleIcon size={20} color={isDark ? palette.black : palette.white} />
+              <Text style={{ fontSize: 15, fontWeight: "600", color: isDark ? palette.black : palette.white }}>
+                {actionLabel} with Apple
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Divider */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 8 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+            <Text style={{ marginHorizontal: 16, fontSize: 13, color: c.mutedForeground }}>
+              or
+            </Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: c.border }} />
+          </View>
+
+          {/* Email/Phone section */}
+          {isSignUp ? (
+            <View style={{ marginTop: 8 }}>
+              <Pressable
+                onPress={() => router.push("/(auth)/signup-form")}
+                accessibilityRole="button"
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  paddingVertical: 14,
+                  borderRadius: radius.DEFAULT,
+                  backgroundColor: c.primary,
+                  opacity: pressed ? 0.9 : 1,
+                })}
+              >
+                <Mail size={18} color={palette.white} />
+                <Text style={{ fontSize: 15, fontWeight: "600", color: palette.white }}>
+                  Sign up with email or phone
                 </Text>
-              </View>
-            </Button>
-          </View>
-        )}
+              </Pressable>
+            </View>
+          ) : showEmailSignIn ? (
+            <View style={{ gap: 12, marginTop: 8 }}>
+              <Input
+                placeholder="Email address or phone number"
+                value={signInEmail}
+                onChangeText={setSignInEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <Button variant="default" onPress={handleSignInWithOtp}>
+                <View className="flex-row items-center justify-center gap-2">
+                  <ArrowRight size={18} color={palette.white} />
+                  <Text className="text-base font-sans-semibold text-primary-foreground">
+                    Send verification code
+                  </Text>
+                </View>
+              </Button>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setShowEmailSignIn(true)}
+              accessibilityRole="button"
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                paddingVertical: 14,
+                marginTop: 8,
+                borderRadius: radius.DEFAULT,
+                borderWidth: 1,
+                borderColor: c.border,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Mail size={18} color={c.mutedForeground} />
+              <Text style={{ fontSize: 15, fontWeight: "500", color: c.foreground }}>
+                Sign in with email or phone
+              </Text>
+            </Pressable>
+          )}
 
-        {/* Footer toggle */}
-        <Pressable onPress={() => setActiveTab(activeTab === "signup" ? "signin" : "signup")} className="mt-8">
-          <Text className="text-center text-sm text-muted-foreground font-sans">
-            {activeTab === "signup"
-              ? "Already have an account? "
-              : "Don't have an account? "}
-            <Text className="text-primary font-sans-semibold">
-              {activeTab === "signup" ? "Sign In" : "Sign Up"}
-            </Text>
+          {/* Terms */}
+          <Text
+            style={{
+              fontSize: 12,
+              color: c.mutedForeground,
+              textAlign: "center",
+              lineHeight: 18,
+              marginTop: 24,
+            }}
+          >
+            By continuing, you agree to our{" "}
+            <Text style={{ color: c.primary, fontWeight: "500" }}>Terms of Service</Text>
+            {" "}and{" "}
+            <Text style={{ color: c.primary, fontWeight: "500" }}>Privacy Policy</Text>
           </Text>
-        </Pressable>
+
+          {/* Footer toggle */}
+          <Pressable
+            onPress={() => { setActiveTab(isSignUp ? "signin" : "signup"); setShowEmailSignIn(false); }}
+            style={{ marginTop: 24 }}
+          >
+            <Text style={{ textAlign: "center", fontSize: 14, color: c.mutedForeground }}>
+              {isSignUp ? "Already have an account? " : "Don't have an account? "}
+              <Text style={{ color: c.primary, fontWeight: "600" }}>
+                {isSignUp ? "Sign In" : "Sign Up"}
+              </Text>
+            </Text>
+          </Pressable>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

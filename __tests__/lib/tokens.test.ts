@@ -77,40 +77,40 @@ describe("colors(false) — light mode matches global.css :root", () => {
 describe("colors(true) — dark mode matches global.css .dark", () => {
   const dark = colors(true);
 
-  it("background === '#0f172a'", () => {
-    expect(dark.background).toBe("#0f172a");
+  it("background === '#000000'", () => {
+    expect(dark.background).toBe("#000000");
   });
 
   it("foreground === '#f1f5f9'", () => {
     expect(dark.foreground).toBe("#f1f5f9");
   });
 
-  it("card === '#1e293b'", () => {
-    expect(dark.card).toBe("#1e293b");
+  it("card === '#0d0d0d'", () => {
+    expect(dark.card).toBe("#0d0d0d");
   });
 
   it("cardForeground === '#f1f5f9'", () => {
     expect(dark.cardForeground).toBe("#f1f5f9");
   });
 
-  it("muted === '#334155'", () => {
-    expect(dark.muted).toBe("#334155");
+  it("muted === '#1a1a1a'", () => {
+    expect(dark.muted).toBe("#1a1a1a");
   });
 
-  it("mutedForeground === '#94a3b8'", () => {
-    expect(dark.mutedForeground).toBe("#94a3b8");
+  it("mutedForeground === '#a1a1aa'", () => {
+    expect(dark.mutedForeground).toBe("#a1a1aa");
   });
 
-  it("border === '#334155'", () => {
-    expect(dark.border).toBe("#334155");
+  it("border === '#262626'", () => {
+    expect(dark.border).toBe("#262626");
   });
 
-  it("input === '#334155'", () => {
-    expect(dark.input).toBe("#334155");
+  it("input === '#262626'", () => {
+    expect(dark.input).toBe("#262626");
   });
 
-  it("secondary === '#1e293b'", () => {
-    expect(dark.secondary).toBe("#1e293b");
+  it("secondary === '#0d0d0d'", () => {
+    expect(dark.secondary).toBe("#0d0d0d");
   });
 
   it("secondaryForeground === '#e2e8f0'", () => {
@@ -135,9 +135,9 @@ describe("colors() — brand colors are consistent between light and dark", () =
     expect(dark.primary).toBe("#0d9488");
   });
 
-  it("destructive === '#ef4444' in both modes", () => {
+  it("destructive is red in both modes", () => {
     expect(light.destructive).toBe("#ef4444");
-    expect(dark.destructive).toBe("#ef4444");
+    expect(dark.destructive).toBe("#f87171"); // brighter red on OLED black
   });
 
   it("success === '#10b981' in both modes", () => {

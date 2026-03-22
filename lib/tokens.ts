@@ -127,26 +127,26 @@ const lightColors: SemanticColors = {
 };
 
 const darkColors: SemanticColors = {
-  background: palette.slate900,      // #0f172a
+  background: palette.black,         // #000000 — OLED pure black
   foreground: palette.slate100,      // #f1f5f9
-  card: palette.slate800,            // #1e293b
+  card: "#0d0d0d",                   // near-black — subtle lift from background
   cardForeground: palette.slate100,  // #f1f5f9
-  muted: palette.slate700,           // #334155
-  mutedForeground: palette.slate400, // #94a3b8
-  placeholder: palette.slate500,     // #64748b — subtler than mutedForeground in dark mode
-  border: palette.slate700,          // #334155
-  input: palette.slate700,           // #334155
-  secondary: palette.slate800,       // #1e293b
+  muted: "#1a1a1a",                  // neutral gray — replaces slate-700
+  mutedForeground: "#a1a1aa",        // zinc-400 — neutral gray text
+  placeholder: "#71717a",            // zinc-500 — subtler than mutedForeground
+  border: "#262626",                 // neutral-800 — visible on black
+  input: "#262626",                  // neutral-800
+  secondary: "#0d0d0d",             // matches card
   secondaryForeground: palette.slate200, // #e2e8f0
   surfaceTint: palette.teal950,      // #042f2e
   borderSubtle: "rgba(255,255,255,0.06)",
   primary: palette.teal600,          // #0d9488
   primaryForeground: palette.white,
-  accent: palette.teal500,           // #14b8a6
+  accent: palette.teal400,           // #2dd4bf — brighter on pure black
   accentForeground: palette.white,
   success: palette.emerald500,       // #10b981
   successForeground: palette.white,
-  destructive: palette.red500,       // #ef4444
+  destructive: "#f87171",            // red-400 — brighter on pure black
   destructiveForeground: palette.white,
   warning: palette.amber500,         // #f59e0b
   warningForeground: palette.white,  // #ffffff — light text on amber badge in dark mode

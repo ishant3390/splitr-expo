@@ -21,7 +21,7 @@ export function Card({ className, style, children, variant = "default", ...props
     <View
       className={clsx(
         "bg-card rounded-2xl",
-        isDark && "border border-white/[0.06]",
+        isDark && "border border-border",
         className
       )}
       style={[
