@@ -50,7 +50,7 @@ import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useArchiveGroup, useDeleteGroup, useCategories, useUploadGroupBanner, useDeleteGroupBanner } from "@/lib/hooks";
 import { pickImage, validateImage, buildImageFormDataAsync, compressImage, sanitizeImageUrl } from "@/lib/image-utils";
 import { invalidateAfterGroupChange, invalidateAfterMemberChange } from "@/lib/query";
-import { formatCents, getInitials, cn } from "@/lib/utils";
+import { formatCents, getInitials, cn, getMemberAvatarUrl } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticLight, hapticSuccess, hapticWarning, hapticError } from "@/lib/haptics";
 import {
@@ -638,6 +638,8 @@ export default function GroupSettingsScreen() {
               </Pressable>
               <Pressable
                 onPress={() => setShowAddMember(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Open add member modal"
                 className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10"
               >
                 <UserPlus size={14} color={c.primary} />
@@ -662,7 +664,7 @@ export default function GroupSettingsScreen() {
                 )}
               >
                 <Avatar
-                  src={member.user?.avatarUrl}
+                  src={getMemberAvatarUrl(member.user)}
                   fallback={getInitials(memberName)}
                   size="md"
                 />
@@ -943,7 +945,12 @@ export default function GroupSettingsScreen() {
       />
 
       {/* Add Member Modal */}
-      <BottomSheetModal visible={showAddMember} onClose={() => { setShowAddMember(false); setAddMemberEmail(""); }} keyboardAvoiding>
+      <BottomSheetModal
+        visible={showAddMember}
+        onClose={() => { setShowAddMember(false); setAddMemberEmail(""); }}
+        keyboardAvoiding
+        modalTestID="group-settings-add-member-modal"
+      >
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: c.foreground }}>
             Add Member
@@ -1039,6 +1046,7 @@ export default function GroupSettingsScreen() {
           variant="default"
           onPress={handleAddMember}
           disabled={addingMember || !addMemberName.trim()}
+          testID="add-member-submit-button"
         >
           {addingMember ? (
             <ActivityIndicator size="small" color={palette.white} />
@@ -1069,7 +1077,11 @@ export default function GroupSettingsScreen() {
       </BottomSheetModal>
 
       {/* Share / QR Modal */}
-      <BottomSheetModal visible={showShareModal} onClose={() => { setShowShareModal(false); setShowQR(false); }}>
+      <BottomSheetModal
+        visible={showShareModal}
+        onClose={() => { setShowShareModal(false); setShowQR(false); }}
+        modalTestID="group-settings-share-modal"
+      >
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
           <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: c.foreground }}>
             Invite to {group.name}

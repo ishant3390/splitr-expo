@@ -15,6 +15,28 @@ export function amountToCents(amount: number): number {
   return Math.round(amount * 100);
 }
 
+/**
+ * Sanitize raw text input into a valid monetary amount string.
+ * - Strips non-numeric characters (except decimal point)
+ * - Allows only one decimal point
+ * - Limits to 2 decimal places
+ * - Returns the sanitized string (may equal previous value when rejecting input)
+ */
+export function sanitizeAmountInput(raw: string): string {
+  // Strip non-numeric chars
+  let cleaned = raw.replace(/[^0-9.]/g, "");
+  // Only allow one decimal point — keep the first, remove the rest
+  const dotIdx = cleaned.indexOf(".");
+  if (dotIdx !== -1) {
+    cleaned = cleaned.slice(0, dotIdx + 1) + cleaned.slice(dotIdx + 1).replace(/\./g, "");
+  }
+  // Truncate to 2 decimal places
+  if (dotIdx !== -1 && cleaned.length - dotIdx - 1 > 2) {
+    cleaned = cleaned.slice(0, dotIdx + 3);
+  }
+  return cleaned;
+}
+
 export function formatCurrency(amount: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -29,13 +51,29 @@ export function formatCents(cents: number, currency = "USD"): string {
 }
 
 /** Extract the currency symbol (e.g. "$", "€", "£") for a given ISO currency code. */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$", EUR: "€", GBP: "£", JPY: "¥", CNY: "¥", KRW: "₩",
+  INR: "₹", RUB: "₽", TRY: "₺", BRL: "R$", ZAR: "R", SEK: "kr",
+  NOK: "kr", DKK: "kr", PLN: "zł", CZK: "Kč", HUF: "Ft", CHF: "CHF",
+  CAD: "CA$", AUD: "A$", NZD: "NZ$", SGD: "S$", HKD: "HK$",
+  MXN: "MX$", THB: "฿", MYR: "RM", PHP: "₱", IDR: "Rp", VND: "₫",
+  AED: "د.إ", SAR: "﷼", ILS: "₪", EGP: "E£", NGN: "₦", KES: "KSh",
+  COP: "COL$", ARS: "AR$", CLP: "CLP$", PEN: "S/.", TWD: "NT$",
+  PKR: "₨", BDT: "৳", LKR: "Rs", NPR: "Rs", MMK: "K",
+};
+
 export function getCurrencySymbol(currency = "USD"): string {
+  // Static map first — Hermes (React Native) has incomplete Intl.formatToParts support
+  if (CURRENCY_SYMBOLS[currency]) return CURRENCY_SYMBOLS[currency];
   try {
     const parts = new Intl.NumberFormat("en-US", { style: "currency", currency }).formatToParts(0);
-    return parts.find((p) => p.type === "currency")?.value ?? currency;
+    const symbol = parts.find((p) => p.type === "currency")?.value;
+    // Intl may return the ISO code itself (e.g. "GBP") — only use if it's actually a symbol
+    if (symbol && symbol !== currency) return symbol;
   } catch {
-    return currency;
+    // fall through
   }
+  return currency;
 }
 
 export function formatDate(dateString: string): string {
@@ -95,6 +133,16 @@ export function getInitials(name: string): string {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+}
+
+/**
+ * Resolve a member's avatar URL, preferring profileImageUrl over avatarUrl.
+ * Sanitizes double-https prefix from backend responses.
+ */
+export function getMemberAvatarUrl(user?: { avatarUrl?: string; profileImageUrl?: string }): string | undefined {
+  const url = user?.profileImageUrl ?? user?.avatarUrl;
+  if (!url) return undefined;
+  return url.replace(/^(https?:\/\/)\1+/, "$1");
 }
 
 /** Extract invite code from a raw code string or full invite/join URL. */

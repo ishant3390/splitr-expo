@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useColorScheme } from "nativewind";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -41,6 +41,7 @@ const ALL_PROVIDERS: PaymentProvider[] = [
 
 export default function PaymentMethodsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { getToken } = useAuth();
   const toast = useToast();
   const { colorScheme } = useColorScheme();
@@ -166,7 +167,7 @@ export default function PaymentMethodsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         contentContainerClassName="pb-8"
@@ -179,7 +180,7 @@ export default function PaymentMethodsScreen() {
           }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ overflow: "hidden" }}
+          style={{ overflow: "hidden", paddingTop: insets.top }}
         >
           {/* Watermark */}
           <View
@@ -304,6 +305,6 @@ export default function PaymentMethodsScreen() {
           </Button>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

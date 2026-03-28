@@ -9,6 +9,7 @@ export default function TabsLayout() {
     <ExpoTabs
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{ headerShown: false }}
+      sceneContainerStyle={{ backgroundColor: "transparent" }}
     >
       <ExpoTabs.Screen name="index" />
       <ExpoTabs.Screen name="groups" />

@@ -39,7 +39,7 @@ import { groupsApi, categoriesApi, expensesApi } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { invalidateAfterGroupChange, invalidateAfterExpenseChange } from "@/lib/query";
 import { useToast } from "@/components/ui/toast";
-import { getInitials, cn, amountToCents, getCurrencySymbol } from "@/lib/utils";
+import { getInitials, cn, amountToCents, getCurrencySymbol, sanitizeAmountInput, getMemberAvatarUrl } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
 import { colors, fontSize as fs, fontFamily as ff, palette } from "@/lib/tokens";
 import { initSplitValues as computeSplitValues, dedupeMembers, inferCategoryFromDescription } from "@/lib/screen-helpers";
@@ -504,33 +504,45 @@ export default function AddExpenseScreen() {
           contentInsetAdjustmentBehavior="automatic"
         >
           {/* Amount — hero section */}
-          <Animated.View entering={FadeInDown.duration(500).springify()}>
+          <Animated.View entering={FadeInDown.duration(500)}>
             <View className="items-center py-6 mx-[-20] px-5 bg-primary/[0.03] dark:bg-primary/[0.08] rounded-3xl">
               <Text className="text-xs font-sans-medium text-muted-foreground mb-2 uppercase tracking-wider">
                 Amount
               </Text>
-              <TextInput
-                ref={amountInputRef}
-                value={amount ? `${currencySymbol}${amount}` : ""}
-                onChangeText={(val) => {
-                  const raw = val.startsWith(currencySymbol) ? val.slice(currencySymbol.length) : val;
-                  if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) {
-                    setAmount(raw);
-                  }
-                }}
-                keyboardType="decimal-pad"
-                placeholder={`${currencySymbol}0`}
-                placeholderTextColor={c.placeholder}
-                className="text-foreground"
-                inputAccessoryViewID="amount-done"
-                style={{
-                  fontSize: 56,
-                  fontWeight: "700",
-                  padding: 0,
-                  textAlign: "center",
-                  fontVariant: ["tabular-nums"],
-                }}
-              />
+              <Pressable
+                onPress={() => amountInputRef.current?.focus()}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}
+              >
+                <Text
+                  style={{
+                    fontSize: 48,
+                    fontWeight: "700",
+                    fontVariant: ["tabular-nums"],
+                    color: amount ? c.foreground : c.placeholder,
+                  }}
+                >
+                  {currencySymbol}
+                </Text>
+                <TextInput
+                  ref={amountInputRef}
+                  value={amount}
+                  onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                  testID="amount-input"
+                  maxLength={12}
+                  placeholderTextColor={c.placeholder}
+                  className="text-foreground"
+                  inputAccessoryViewID="amount-done"
+                  style={{
+                    fontSize: 48,
+                    fontWeight: "700",
+                    padding: 0,
+                    fontVariant: ["tabular-nums"],
+                    minWidth: 36,
+                  }}
+                />
+              </Pressable>
               {selectedGroup && (
                 <Text className="text-xs font-sans text-muted-foreground mt-2">
                   in {selectedGroup.name}
@@ -540,7 +552,7 @@ export default function AddExpenseScreen() {
           </Animated.View>
 
           {/* Description */}
-          <Animated.View entering={FadeInDown.delay(100).duration(300).springify()}>
+          <Animated.View entering={FadeInDown.delay(100).duration(300)}>
           <Input
             label="Description"
             placeholder="What was this for?"
@@ -583,7 +595,7 @@ export default function AddExpenseScreen() {
           </Animated.View>
 
           {/* Date */}
-          {!isQuickMode && <Animated.View entering={FadeInDown.delay(150).duration(300).springify()}>
+          {!isQuickMode && <Animated.View entering={FadeInDown.delay(150).duration(300)}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Date</Text>
             <Pressable
               onPress={() => {
@@ -621,17 +633,31 @@ export default function AddExpenseScreen() {
               <DateTimePicker
                 value={expenseDate}
                 mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
                 maximumDate={new Date()}
-                onChange={(_, date) => {
-                  setShowDatePicker(Platform.OS === "ios");
-                  if (date) setExpenseDate(date);
+                onChange={(event, date) => {
+                  // Android always dismisses on set/dismiss; iOS spinner stays open until dismissed
+                  if (Platform.OS === "android") {
+                    setShowDatePicker(false);
+                  }
+                  if (date && event.type !== "dismissed") setExpenseDate(date);
                 }}
               />
+            )}
+            {Platform.OS === "ios" && showDatePicker && (
+              <View className="flex-row justify-end mt-2">
+                <Pressable
+                  onPress={() => setShowDatePicker(false)}
+                  className="px-4 py-2"
+                >
+                  <Text className="text-sm font-sans-semibold text-primary">Done</Text>
+                </Pressable>
+              </View>
             )}
           </Animated.View>}
 
           {/* Category */}
-          {!isQuickMode && <Animated.View entering={FadeInDown.delay(200).duration(300).springify()}>
+          {!isQuickMode && <Animated.View entering={FadeInDown.delay(200).duration(300)}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Category</Text>
             {categories.length === 0 ? (
               <ActivityIndicator color={c.primary} />
@@ -665,7 +691,7 @@ export default function AddExpenseScreen() {
           </Animated.View>}
 
           {/* Group selector — compact chip style, auto-selects first group */}
-          <Animated.View entering={FadeInDown.delay(300).duration(300).springify()}>
+          <Animated.View entering={FadeInDown.delay(300).duration(300)}>
             <Text className="text-sm font-sans-medium text-foreground mb-2">Group</Text>
             <Pressable onPress={() => setShowGroupPicker(!showGroupPicker)}>
               <Card className="p-3.5 flex-row items-center justify-between">
@@ -717,7 +743,7 @@ export default function AddExpenseScreen() {
 
           {/* Quick mode submit button */}
           {isQuickMode && (
-            <Animated.View entering={FadeInDown.delay(200).duration(300).springify()}>
+            <Animated.View entering={FadeInDown.delay(200).duration(300)}>
               <Button variant="default" onPress={handleSubmit} disabled={submitting || !amount || !description.trim()}>
                 {submitting ? (
                   <ActivityIndicator size="small" color={palette.white} />
@@ -765,7 +791,7 @@ export default function AddExpenseScreen() {
                             {isSelected && <Check size={12} color={palette.white} />}
                           </View>
                           <Avatar
-                            src={member.user?.avatarUrl}
+                            src={getMemberAvatarUrl(member.user)}
                             fallback={getInitials(memberName)}
                             size="sm"
                           />
@@ -869,7 +895,7 @@ export default function AddExpenseScreen() {
                             onCheckedChange={() => handleToggleMember(member.id)}
                           />
                           <Avatar
-                            src={member.user?.avatarUrl}
+                            src={getMemberAvatarUrl(member.user)}
                             fallback={getInitials(memberName)}
                             size="sm"
                           />
@@ -966,7 +992,7 @@ export default function AddExpenseScreen() {
             justifyContent: "center",
           }}
         >
-          <Animated.View entering={FadeInDown.duration(300).springify()}>
+          <Animated.View entering={FadeInDown.duration(300)}>
             <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center mb-4">
               <Check size={40} color={palette.white} />
             </View>

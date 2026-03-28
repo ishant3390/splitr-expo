@@ -154,7 +154,7 @@ describe("EditExpenseScreen", () => {
   it("loads expense amount", async () => {
     render(<EditExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByDisplayValue("$50.00")).toBeTruthy();
+      expect(screen.getByDisplayValue("50.00")).toBeTruthy();
     });
   });
 
@@ -240,9 +240,9 @@ describe("EditExpenseScreen", () => {
   it("validates empty amount on save", async () => {
     render(<EditExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByDisplayValue("$50.00")).toBeTruthy();
+      expect(screen.getByDisplayValue("50.00")).toBeTruthy();
     });
-    const amountInput = screen.getByDisplayValue("$50.00");
+    const amountInput = screen.getByDisplayValue("50.00");
     fireEvent.changeText(amountInput, "");
     fireEvent.press(screen.getByText("Save"));
     expect(mockToast.error).toHaveBeenCalledWith("Please enter a valid amount.");
@@ -251,10 +251,10 @@ describe("EditExpenseScreen", () => {
   it("validates zero amount on save", async () => {
     render(<EditExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByDisplayValue("$50.00")).toBeTruthy();
+      expect(screen.getByDisplayValue("50.00")).toBeTruthy();
     });
-    const amountInput = screen.getByDisplayValue("$50.00");
-    fireEvent.changeText(amountInput, "$0");
+    const amountInput = screen.getByDisplayValue("50.00");
+    fireEvent.changeText(amountInput, "0");
     fireEvent.press(screen.getByText("Save"));
     expect(mockToast.error).toHaveBeenCalledWith("Please enter a valid amount.");
   });
@@ -418,13 +418,13 @@ describe("EditExpenseScreen", () => {
   it("shows amount format validation for dollar sign input", async () => {
     render(<EditExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByDisplayValue("$50.00")).toBeTruthy();
+      expect(screen.getByDisplayValue("50.00")).toBeTruthy();
     });
-    const amountInput = screen.getByDisplayValue("$50.00");
+    const amountInput = screen.getByDisplayValue("50.00");
     // Type in amount with dollar sign prefix
-    fireEvent.changeText(amountInput, "$75.50");
+    fireEvent.changeText(amountInput, "75.50");
     await waitFor(() => {
-      expect(screen.getByDisplayValue("$75.50")).toBeTruthy();
+      expect(screen.getByDisplayValue("75.50")).toBeTruthy();
     });
   });
 
@@ -519,9 +519,9 @@ describe("EditExpenseScreen", () => {
   it("validates empty amount on save", async () => {
     render(<EditExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByDisplayValue("$50.00")).toBeTruthy();
+      expect(screen.getByDisplayValue("50.00")).toBeTruthy();
     });
-    const amountInput = screen.getByDisplayValue("$50.00");
+    const amountInput = screen.getByDisplayValue("50.00");
     // Clear the amount field — component strips $ prefix, "" passes regex check, setAmount("")
     fireEvent.changeText(amountInput, "");
     fireEvent.press(screen.getByText("Save"));
@@ -615,8 +615,11 @@ describe("EditExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText(/\/ 100%/)).toBeTruthy();
     });
-    // Find a percentage input and change it to break the 100% total
-    const percentInputs = screen.getAllByPlaceholderText("0");
+    // Find percentage inputs (exclude the amount input which also has placeholder "0")
+    const allZeroInputs = screen.getAllByPlaceholderText("0");
+    const percentInputs = allZeroInputs.filter(
+      (el) => el.props.testID !== "amount-input"
+    );
     if (percentInputs.length > 0) {
       fireEvent.changeText(percentInputs[0], "10");
     }

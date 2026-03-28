@@ -44,15 +44,7 @@ Subtle scale (0.97) on press for tactile feedback.
 
 ### Bottom sheet enter/exit
 
-```ts
-// Enter: SlideInDown.springify()
-{ damping: 18, stiffness: 180 }
-
-// Exit: SlideOutDown.springify()
-{ damping: 22, stiffness: 220 }
-```
-
-Heavier damping on exit for a snappy dismiss.
+Bottom sheets now prioritize reliability on iOS and use native `Modal` fade presentation rather than custom spring slide transitions.
 
 ### FAB bounce
 

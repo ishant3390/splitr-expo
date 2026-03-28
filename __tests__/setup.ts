@@ -1,5 +1,13 @@
 // Global test setup
 
+// Mock portal — render children inline during tests (no PortalProvider needed)
+jest.mock("@/lib/portal", () => ({
+  Portal: ({ children }: { children: React.ReactNode }) => children,
+  PortalProvider: ({ children }: { children: React.ReactNode }) => children,
+  PortalContext: require("react").createContext(null),
+}));
+import React from "react";
+
 // Mock expo-haptics
 jest.mock("expo-haptics", () => ({
   impactAsync: jest.fn(),

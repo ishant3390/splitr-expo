@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { Avatar } from "@/components/ui/avatar";
-import { getInitials } from "@/lib/utils";
+import { getInitials, getMemberAvatarUrl } from "@/lib/utils";
 import type { GroupMemberDto } from "@/lib/types";
 import { palette } from "@/lib/tokens";
 
@@ -39,7 +39,7 @@ export function AvatarStrip({ members, maxVisible = 5, onPress, size = "md" }: A
             }}
           >
             <Avatar
-              src={member.user?.avatarUrl}
+              src={getMemberAvatarUrl(member.user)}
               fallback={getInitials(name)}
               size={s.avatar}
             />

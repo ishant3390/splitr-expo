@@ -39,7 +39,7 @@ import { invalidateAfterExpenseChange } from "@/lib/query";
 import { ImagePreviewModal } from "@/components/ui/image-preview-modal";
 import { inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { useToast } from "@/components/ui/toast";
-import { getInitials, cn, amountToCents, centsToAmount } from "@/lib/utils";
+import { getInitials, cn, amountToCents, centsToAmount, getCurrencySymbol, sanitizeAmountInput, getMemberAvatarUrl } from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticLight } from "@/lib/haptics";
 import { colors, fontSize as fs, fontFamily as ff, palette } from "@/lib/tokens";
 import type {
@@ -518,27 +518,38 @@ export default function EditExpenseScreen() {
         >
           {/* Amount */}
           <View className="items-center py-8">
-            <TextInput
-              ref={amountInputRef}
-              value={amount ? `$${amount}` : ""}
-              onChangeText={(val) => {
-                const raw = val.startsWith("$") ? val.slice(1) : val;
-                if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) {
-                  setAmount(raw);
-                }
-              }}
-              keyboardType="decimal-pad"
-              placeholder="$0"
-              placeholderTextColor={c.placeholder}
-              className="text-foreground"
-              style={{
-                fontSize: 56,
-                fontWeight: "700",
-                padding: 0,
-                textAlign: "center",
-                fontVariant: ["tabular-nums"],
-              }}
-            />
+            <Pressable
+              onPress={() => amountInputRef.current?.focus()}
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}
+            >
+              <Text
+                style={{
+                  fontSize: 48,
+                  fontWeight: "700",
+                  fontVariant: ["tabular-nums"],
+                  color: amount ? c.foreground : c.placeholder,
+                }}
+              >
+                {getCurrencySymbol(expense?.currency ?? "USD")}
+              </Text>
+              <TextInput
+                ref={amountInputRef}
+                value={amount}
+                onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                testID="amount-input"
+                placeholderTextColor={c.placeholder}
+                className="text-foreground"
+                style={{
+                  fontSize: 48,
+                  fontWeight: "700",
+                  padding: 0,
+                  fontVariant: ["tabular-nums"],
+                  minWidth: 36,
+                }}
+              />
+            </Pressable>
           </View>
 
           {/* Description */}
@@ -588,11 +599,23 @@ export default function EditExpenseScreen() {
                 mode="date"
                 display={Platform.OS === "ios" ? "spinner" : "default"}
                 maximumDate={new Date()}
-                onChange={(_, date) => {
-                  setShowDatePicker(Platform.OS === "ios");
-                  if (date) setExpenseDate(date);
+                onChange={(event, date) => {
+                  if (Platform.OS === "android") {
+                    setShowDatePicker(false);
+                  }
+                  if (date && event.type !== "dismissed") setExpenseDate(date);
                 }}
               />
+            )}
+            {Platform.OS === "ios" && showDatePicker && (
+              <View className="flex-row justify-end mt-2">
+                <Pressable
+                  onPress={() => setShowDatePicker(false)}
+                  className="px-4 py-2"
+                >
+                  <Text className="text-sm font-sans-semibold text-primary">Done</Text>
+                </Pressable>
+              </View>
             )}
           </View>
 
@@ -655,7 +678,7 @@ export default function EditExpenseScreen() {
                         {isSelected && <Check size={12} color={palette.white} />}
                       </View>
                       <Avatar
-                        src={member.user?.avatarUrl}
+                        src={getMemberAvatarUrl(member.user)}
                         fallback={getInitials(memberName)}
                         size="sm"
                       />
@@ -751,7 +774,7 @@ export default function EditExpenseScreen() {
                         onCheckedChange={() => handleToggleMember(member.id)}
                       />
                       <Avatar
-                        src={member.user?.avatarUrl}
+                        src={getMemberAvatarUrl(member.user)}
                         fallback={getInitials(memberName)}
                         size="sm"
                       />

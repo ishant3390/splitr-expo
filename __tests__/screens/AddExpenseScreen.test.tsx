@@ -187,8 +187,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getByText("Save")).toBeTruthy();
     });
     // Enter amount of 0
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$0");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "0");
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => {
       expect(mockToast.error).toHaveBeenCalledWith("Please enter a valid amount.");
@@ -201,8 +201,8 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Save")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$10");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "10");
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => {
       expect(mockToast.error).toHaveBeenCalledWith("Please enter a description or select a category.");
@@ -325,29 +325,29 @@ describe("AddExpenseScreen", () => {
   it("handles amount input correctly", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("$0")).toBeTruthy();
+      expect(screen.getByPlaceholderText("0")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$25.50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "25.50");
     // Amount should be set
   });
 
   it("strips $ prefix from amount input", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("$0")).toBeTruthy();
+      expect(screen.getByPlaceholderText("0")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$15");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "15");
     // The display value should include $
   });
 
   it("rejects invalid amount input", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("$0")).toBeTruthy();
+      expect(screen.getByPlaceholderText("0")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
+    const amountInput = screen.getByPlaceholderText("0");
     fireEvent.changeText(amountInput, "abc");
     // Invalid input should be rejected — amount stays empty
   });
@@ -438,8 +438,8 @@ describe("AddExpenseScreen", () => {
     });
 
     // Fill form
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "50");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Team lunch");
 
@@ -457,8 +457,8 @@ describe("AddExpenseScreen", () => {
     });
 
     // Fill amount and description
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Dinner");
 
@@ -480,8 +480,8 @@ describe("AddExpenseScreen", () => {
     });
 
     // Fill amount first
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
 
     fireEvent.press(screen.getByText("Fixed"));
     // Fixed amounts inputs should appear
@@ -495,8 +495,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "50");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Team lunch");
 
@@ -520,8 +520,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "50");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Team lunch");
 
@@ -542,8 +542,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getByText("Save")).toBeTruthy();
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "50");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Test");
 
@@ -567,8 +567,8 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     await waitFor(() => {
       expect(screen.getByText("$50.00/person")).toBeTruthy();
     });
@@ -628,8 +628,8 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Save")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "50");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "A".repeat(256));
     fireEvent.press(screen.getByText("Save"));
@@ -648,9 +648,9 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Save")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
+    const amountInput = screen.getByPlaceholderText("0");
     // "0" passes parseFloat but fails parsedAmount <= 0
-    fireEvent.changeText(amountInput, "$0");
+    fireEvent.changeText(amountInput, "0");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Test");
     fireEvent.press(screen.getByText("Save"));
@@ -667,8 +667,8 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Save")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "50");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Test");
     fireEvent.press(screen.getByText("Save"));
@@ -747,8 +747,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
     // Don't enter description — category name should be used
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "50");
     // Category is auto-selected (Food)
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => {
@@ -764,8 +764,8 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Percentage")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     fireEvent.press(screen.getByText("Percentage"));
     // Should show percentage total
     await waitFor(() => {
@@ -779,8 +779,8 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Fixed")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     fireEvent.press(screen.getByText("Fixed"));
     // Should show fixed total
     await waitFor(() => {
@@ -815,8 +815,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Dinner");
 
@@ -849,8 +849,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Dinner");
 
@@ -881,8 +881,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Dinner");
 
@@ -916,8 +916,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getByText("Quick Save")).toBeTruthy();
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "50");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Quick dinner");
 
@@ -940,8 +940,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$50");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "50");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Team lunch");
 
@@ -1023,7 +1023,7 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Save")).toBeTruthy();
     });
-    const amountInput = screen.getByPlaceholderText("$0");
+    const amountInput = screen.getByPlaceholderText("0");
     fireEvent.changeText(amountInput, "0.004");
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => {
@@ -1065,8 +1065,8 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     fireEvent.press(screen.getByText("Percentage"));
     // Percentage inputs should appear for each member — verify members still visible
     await waitFor(() => {
@@ -1140,8 +1140,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getAllByText("Bob").length).toBeGreaterThan(0);
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Dinner");
 
@@ -1174,8 +1174,8 @@ describe("AddExpenseScreen", () => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
     });
 
-    const amountInput = screen.getByPlaceholderText("$0");
-    fireEvent.changeText(amountInput, "$100");
+    const amountInput = screen.getByPlaceholderText("0");
+    fireEvent.changeText(amountInput, "100");
     const descInput = screen.getByPlaceholderText("What was this for?");
     fireEvent.changeText(descInput, "Dinner");
 

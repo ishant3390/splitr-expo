@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
-import { Modal, Pressable, Platform, useWindowDimensions } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, Platform, useWindowDimensions, Modal, StyleSheet, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { X } from "lucide-react-native";
 import { palette, radius } from "@/lib/tokens";
@@ -8,7 +8,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
@@ -87,6 +86,7 @@ export function handleDoubleTap(
 
 /**
  * Full-screen image preview modal with pinch-to-zoom, pan, and double-tap.
+ * Rendered via native RN Modal for reliable iOS layering.
  * On web, renders a simpler CSS-based preview (no gesture handler).
  */
 export function ImagePreviewModal({
@@ -95,6 +95,7 @@ export function ImagePreviewModal({
   onClose,
 }: ImagePreviewModalProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -160,58 +161,64 @@ export function ImagePreviewModal({
     ],
   }));
 
-  if (!imageUri) return null;
+  if (!visible || !imageUri) return null;
+
+  const closeButton = (
+    <Pressable
+      onPress={handleClose}
+      accessibilityLabel="Close image preview"
+      accessibilityRole="button"
+      style={{
+        position: "absolute",
+        top: Math.max(48, insets.top + 12),
+        right: 16,
+        zIndex: 10,
+        width: 40,
+        height: 40,
+        borderRadius: radius.xl,
+        backgroundColor: "rgba(255,255,255,0.15)",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <X size={24} color={palette.white} />
+    </Pressable>
+  );
 
   // Web: simpler implementation without gesture handler
   if (Platform.OS === "web") {
     return (
       <Modal
-        transparent
         visible={visible}
+        transparent
         animationType="fade"
+        statusBarTranslucent
+        presentationStyle="overFullScreen"
         onRequestClose={handleClose}
       >
-        <Pressable
-          onPress={handleClose}
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.95)",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          {/* Close button */}
+        <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
           <Pressable
             onPress={handleClose}
-            accessibilityLabel="Close image preview"
-            accessibilityRole="button"
             style={{
-              position: "absolute",
-              top: 48,
-              right: 16,
-              zIndex: 10,
-              width: 40,
-              height: 40,
-              borderRadius: radius.xl,
-              backgroundColor: "rgba(255,255,255,0.15)",
-              alignItems: "center",
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.95)",
               justifyContent: "center",
+              alignItems: "center",
             }}
           >
-            <X size={24} color={palette.white} />
+            {closeButton}
+            <Pressable onPress={(e) => e.stopPropagation()}>
+              <Image
+                source={{ uri: imageUri }}
+                style={{
+                  width: screenWidth * 0.9,
+                  height: screenHeight * 0.75,
+                }}
+                contentFit="contain"
+              />
+            </Pressable>
           </Pressable>
-
-          <Pressable onPress={(e) => e.stopPropagation()}>
-            <Image
-              source={{ uri: imageUri }}
-              style={{
-                width: screenWidth * 0.9,
-                height: screenHeight * 0.75,
-              }}
-              contentFit="contain"
-            />
-          </Pressable>
-        </Pressable>
+        </View>
       </Modal>
     );
   }
@@ -219,61 +226,47 @@ export function ImagePreviewModal({
   // Native: gesture-enabled implementation
   return (
     <Modal
-      transparent
       visible={visible}
+      transparent
       animationType="fade"
+      statusBarTranslucent
+      presentationStyle="overFullScreen"
       onRequestClose={handleClose}
     >
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.95)",
-        }}
-      >
-        {/* Close button */}
-        <Pressable
-          onPress={handleClose}
-          accessibilityLabel="Close image preview"
-          accessibilityRole="button"
+      <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
+        <SafeAreaView
+          edges={["left", "right", "bottom"]}
           style={{
-            position: "absolute",
-            top: 48,
-            right: 16,
-            zIndex: 10,
-            width: 40,
-            height: 40,
-            borderRadius: radius.xl,
-            backgroundColor: "rgba(255,255,255,0.15)",
-            alignItems: "center",
-            justifyContent: "center",
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.95)",
           }}
         >
-          <X size={24} color={palette.white} />
-        </Pressable>
+          {closeButton}
 
-        {/* Zoomable image */}
-        <GestureDetector gesture={composedGesture}>
-          <Animated.View
-            style={[
-              {
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-              },
-              animatedStyle,
-            ]}
-          >
-            <Image
-              source={{ uri: imageUri }}
-              style={{
-                width: screenWidth,
-                height: screenHeight * 0.8,
-              }}
-              contentFit="contain"
-            />
-          </Animated.View>
-        </GestureDetector>
-      </SafeAreaView>
+          {/* Zoomable image */}
+          <GestureDetector gesture={composedGesture}>
+            <Animated.View
+              style={[
+                {
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                },
+                animatedStyle,
+              ]}
+            >
+              <Image
+                source={{ uri: imageUri }}
+                style={{
+                  width: screenWidth,
+                  height: screenHeight * 0.8,
+                }}
+                contentFit="contain"
+              />
+            </Animated.View>
+          </GestureDetector>
+        </SafeAreaView>
+      </View>
     </Modal>
   );
 }

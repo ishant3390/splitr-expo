@@ -19,7 +19,7 @@ describe("Confetti", () => {
     // Should have children (the particles)
     if (tree && !Array.isArray(tree)) {
       expect(tree.children).not.toBeNull();
-      expect(tree.children!.length).toBe(40); // PARTICLE_COUNT
+      expect(tree.children!.length).toBe(28); // PARTICLE_COUNT
     }
   });
 
@@ -27,7 +27,7 @@ describe("Confetti", () => {
     const { toJSON } = render(<Confetti visible={true} />);
     const tree = toJSON();
     if (tree && !Array.isArray(tree)) {
-      expect(tree.children!.length).toBe(40);
+      expect(tree.children!.length).toBe(28);
     }
   });
 });

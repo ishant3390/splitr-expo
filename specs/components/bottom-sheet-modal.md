@@ -6,7 +6,7 @@
 
 ## Overview
 
-Bottom sheet overlay with spring-based slide animation and backdrop dismiss. Used for forms, selection lists, and detail views.
+Bottom sheet overlay built on native `Modal` with a stable, reliability-first layout. Used for forms, selection lists, and detail views.
 
 **When to use:** Secondary flows (add member, share group, select category), detail views that don't warrant a full screen.
 **When not to use:** Simple yes/no confirmations (use ConfirmModal), full-screen workflows.
@@ -16,7 +16,7 @@ Bottom sheet overlay with spring-based slide animation and backdrop dismiss. Use
 1. **Modal** -- Native `Modal` with `transparent` and `animationType="fade"` for backdrop
 2. **Dark mode wrapper** -- View with `dark` class for NativeWind CSS variable resolution
 3. **Backdrop** -- Pressable with `rgba(0,0,0,0.4)` background, dismisses on tap
-4. **Content container** -- `Animated.View` with spring enter/exit, card background, top radius
+4. **Content container** -- bounded `View` container with min/max height, card background, top radius
 5. **Drag handle** -- Decorative pill (40x5px) at top
 6. **Children** -- Consumer-provided content
 
@@ -41,9 +41,7 @@ Bottom sheet overlay with spring-based slide animation and backdrop dismiss. Use
 
 | Phase | Config |
 |---|---|
-| Enter | `SlideInDown.springify()` -- damping: 18, stiffness: 180 |
-| Exit | `SlideOutDown.springify()` -- damping: 22, stiffness: 220 |
-| Backdrop | Native Modal `fade` animation |
+| Backdrop + sheet | Native Modal `fade` animation |
 
 ## Layout
 
@@ -56,8 +54,8 @@ Bottom sheet overlay with spring-based slide animation and backdrop dismiss. Use
 
 | State | Behavior |
 |---|---|
-| Visible | Springs in from bottom |
-| Backdrop tap | Calls `onClose`, springs out |
+| Visible | Appears with native fade, anchored to bottom |
+| Backdrop tap | Calls `onClose` |
 | Android back | Calls `onClose` via `onRequestClose` |
 | Keyboard open | If `keyboardAvoiding`, content pushes up with keyboard |
 

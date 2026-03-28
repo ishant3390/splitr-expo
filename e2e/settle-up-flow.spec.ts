@@ -1,38 +1,11 @@
 import { test, expect } from "./auth.setup";
+import { openSettleUp } from "./helpers/modal-regression";
 
 test.describe("Settle Up Flow", () => {
-  /**
-   * Helper: navigate to a group's settle-up screen.
-   * Returns true if a group was found and navigation succeeded, false otherwise.
-   */
-  async function navigateToSettleUp(page: any): Promise<boolean> {
-    await page.getByRole("button", { name: "Groups" }).click();
-    await page.waitForTimeout(2000);
-
-    const hasGroups = await page
-      .getByText("members")
-      .first()
-      .isVisible()
-      .catch(() => false);
-
-    if (!hasGroups) return false;
-
-    // Open the first group
-    await page.getByText("members").first().click();
-    await page.waitForTimeout(1000);
-
-    // Click "Settle Up" button on group detail
-    await expect(page.getByText("Settle Up", { exact: true }).first()).toBeVisible({ timeout: 5000 });
-    await page.getByText("Settle Up", { exact: true }).first().click();
-    await page.waitForTimeout(1000);
-
-    return true;
-  }
-
   test("renders settlement suggestions or all-settled state", async ({
     page,
   }) => {
-    const navigated = await navigateToSettleUp(page);
+    const navigated = await openSettleUp(page);
     if (!navigated) return;
 
     // Should show "Suggested" tab as active by default
@@ -55,7 +28,7 @@ test.describe("Settle Up Flow", () => {
   });
 
   test("opens Record Payment modal from suggestion", async ({ page }) => {
-    const navigated = await navigateToSettleUp(page);
+    const navigated = await openSettleUp(page);
     if (!navigated) return;
 
     await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
@@ -70,7 +43,6 @@ test.describe("Settle Up Flow", () => {
 
     // Click the first suggestion card to open the modal
     await page.getByText(/Record .+ payment/).first().click();
-    await page.waitForTimeout(500);
 
     // Modal should show "Record Payment" header
     await expect(
@@ -90,10 +62,11 @@ test.describe("Settle Up Flow", () => {
     await expect(page.getByText("Cash")).toBeVisible();
     await expect(page.getByText("Venmo")).toBeVisible();
     await expect(page.getByText("Zelle")).toBeVisible();
+    await expect(page.getByTestId("settle-up-record-payment-modal-scroll")).toBeVisible();
   });
 
   test("Record Payment modal shows optional fields", async ({ page }) => {
-    const navigated = await navigateToSettleUp(page);
+    const navigated = await openSettleUp(page);
     if (!navigated) return;
 
     await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
@@ -107,15 +80,15 @@ test.describe("Settle Up Flow", () => {
     if (!hasSuggestions) return;
 
     await page.getByText(/Record .+ payment/).first().click();
-    await page.waitForTimeout(500);
 
     await expect(
       page.getByText("Record Payment", { exact: true }).first()
     ).toBeVisible({ timeout: 5000 });
 
     // Optional fields should be visible
-    await expect(page.getByText("Reference (optional)")).toBeVisible();
-    await expect(page.getByText("Notes (optional)")).toBeVisible();
+    await page.getByText("Add reference or note").click();
+    await expect(page.getByText("Reference")).toBeVisible();
+    await expect(page.getByText("Notes")).toBeVisible();
 
     // Placeholders
     await expect(
@@ -127,7 +100,7 @@ test.describe("Settle Up Flow", () => {
   test("Record Payment modal has all payment method options", async ({
     page,
   }) => {
-    const navigated = await navigateToSettleUp(page);
+    const navigated = await openSettleUp(page);
     if (!navigated) return;
 
     await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
@@ -141,7 +114,6 @@ test.describe("Settle Up Flow", () => {
     if (!hasSuggestions) return;
 
     await page.getByText(/Record .+ payment/).first().click();
-    await page.waitForTimeout(500);
 
     await expect(
       page.getByText("Record Payment", { exact: true }).first()
@@ -159,14 +131,13 @@ test.describe("Settle Up Flow", () => {
   test("History tab shows settlement history or empty state", async ({
     page,
   }) => {
-    const navigated = await navigateToSettleUp(page);
+    const navigated = await openSettleUp(page);
     if (!navigated) return;
 
     await expect(page.getByText("Suggested")).toBeVisible({ timeout: 5000 });
 
     // Switch to History tab
     await page.getByText(/History/).click();
-    await page.waitForTimeout(1000);
 
     // Should show either settlement records or empty state
     const hasHistory = await page
@@ -187,7 +158,7 @@ test.describe("Settle Up Flow", () => {
   });
 
   test("shows group name on settle up screen", async ({ page }) => {
-    const navigated = await navigateToSettleUp(page);
+    const navigated = await openSettleUp(page);
     if (!navigated) return;
 
     // Confirm we're on the settle-up screen by checking the tabs (not the header which may have DOM overlap)

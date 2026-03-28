@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl, TextInput } from "react-native";
+import { View, Text, SectionList, ActivityIndicator, Pressable, RefreshControl, TextInput, Platform } from "react-native";
 import { useColorScheme } from "nativewind";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useUser } from "@clerk/clerk-expo";
@@ -37,6 +37,7 @@ const FILTER_CHIPS: { key: ActivityFilter; label: string }[] = [
 export default function ActivityScreen() {
   const router = useRouter();
   const { user } = useUser();
+  const insets = useSafeAreaInsets();
   const { data: backendUser } = useUserProfile();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -96,25 +97,25 @@ export default function ActivityScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+      <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
         <View className="px-5 pt-3 pb-4">
           <Text className="text-2xl font-sans-bold text-foreground">Activity</Text>
         </View>
         <View className="px-5 pt-3">
           <SkeletonList count={6} type="activity" />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background">
       {/* Hero Section */}
       <LinearGradient
         colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ overflow: "hidden" }}
+        style={{ overflow: "hidden", paddingTop: insets.top }}
       >
         {/* Watermark */}
         <View
@@ -249,7 +250,7 @@ export default function ActivityScreen() {
           testID="activity-section-list"
           sections={sections}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 96 }}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
@@ -385,6 +386,6 @@ export default function ActivityScreen() {
           }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }

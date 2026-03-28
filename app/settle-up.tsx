@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useColorScheme } from "nativewind";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -42,7 +42,7 @@ import { settlementsApi, groupsApi } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useUserProfile, useCrossGroupSuggestions } from "@/lib/hooks";
 import { invalidateAfterSettlementChange } from "@/lib/query";
-import { formatCents, getInitials, cn, getCurrencySymbol } from "@/lib/utils";
+import { formatCents, getInitials, cn, getCurrencySymbol, getMemberAvatarUrl } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
 import { CategoryIcon } from "@/components/ui/category-icon";
@@ -79,6 +79,7 @@ const DISMISS_KEY = "@splitr/payment_handles_nudge_dismissed";
 
 export default function SettleUpScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { groupId } = useLocalSearchParams<{ groupId?: string }>();
   const isCrossGroup = !groupId;
   const { getToken } = useAuth();
@@ -413,7 +414,7 @@ export default function SettleUpScreen() {
           <Card className="p-4" style={{ borderLeftWidth: 3, borderLeftColor: c.primary }}>
             <View className="flex-row items-center gap-3">
               <Avatar
-                src={s.fromUser?.avatarUrl}
+                src={getMemberAvatarUrl(s.fromUser)}
                 fallback={getInitials(fromName)}
                 size="md"
               />
@@ -438,7 +439,7 @@ export default function SettleUpScreen() {
                 </Text>
               </View>
               <Avatar
-                src={s.toUser?.avatarUrl}
+                src={getMemberAvatarUrl(s.toUser)}
                 fallback={getInitials(toName)}
                 size="md"
               />
@@ -497,7 +498,7 @@ export default function SettleUpScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+      <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
         <View className="flex-row items-center px-4 py-3 border-b border-border">
           <Pressable
             onPress={goBack}
@@ -510,7 +511,7 @@ export default function SettleUpScreen() {
         <View className="px-5 pt-6">
           <SkeletonList count={4} type="activity" />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -527,7 +528,7 @@ export default function SettleUpScreen() {
     : myGroupSuggestions.length === 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         contentContainerClassName="pb-8"
@@ -554,7 +555,7 @@ export default function SettleUpScreen() {
           colors={(isDark ? GRADIENTS.heroEmeraldDark : GRADIENTS.heroEmerald) as unknown as string[]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ overflow: "hidden" }}
+          style={{ overflow: "hidden", paddingTop: insets.top }}
         >
           {/* Watermark HandCoins icon */}
           <View
@@ -868,7 +869,12 @@ export default function SettleUpScreen() {
       </ScrollView>
 
       {/* Create Settlement Modal */}
-      <BottomSheetModal visible={showCreate} onClose={() => setShowCreate(false)} keyboardAvoiding>
+      <BottomSheetModal
+        visible={showCreate}
+        onClose={() => setShowCreate(false)}
+        keyboardAvoiding
+        modalTestID="settle-up-record-payment-modal"
+      >
         {/* Drag handle */}
         <View className="items-center -mt-2 mb-2">
           <View
@@ -898,7 +904,7 @@ export default function SettleUpScreen() {
                 >
                   <View style={{ width: 46, height: 46, borderRadius: radius.full, overflow: "hidden" }}>
                     <Avatar
-                      src={createFrom.fromUser?.avatarUrl}
+                      src={getMemberAvatarUrl(createFrom.fromUser)}
                       fallback={getInitials(
                         createFrom.fromUser?.name ??
                           createFrom.fromGuest?.name ??
@@ -942,7 +948,7 @@ export default function SettleUpScreen() {
                 >
                   <View style={{ width: 46, height: 46, borderRadius: radius.full, overflow: "hidden" }}>
                     <Avatar
-                      src={createFrom.toUser?.avatarUrl}
+                      src={getMemberAvatarUrl(createFrom.toUser)}
                       fallback={getInitials(
                         createFrom.toUser?.name ??
                           createFrom.toGuest?.name ??
@@ -1255,6 +1261,6 @@ export default function SettleUpScreen() {
             </Animated.View>
           </View>
         )}
-    </SafeAreaView>
+    </View>
   );
 }

@@ -111,4 +111,13 @@ describe("ConfirmModal", () => {
     // The stopPropagation should have been called at least once (from the inner wrapper)
     expect(mockEvent.stopPropagation).toHaveBeenCalled();
   });
+
+  it("renders modal contract testIDs", () => {
+    render(<ConfirmModal {...defaultProps} />);
+    expect(screen.getByTestId("confirm-modal-root")).toBeTruthy();
+    expect(screen.getByTestId("confirm-modal-backdrop")).toBeTruthy();
+    expect(screen.getByTestId("confirm-modal-sheet")).toBeTruthy();
+    expect(screen.getByTestId("confirm-modal-cancel")).toBeTruthy();
+    expect(screen.getByTestId("confirm-modal-confirm")).toBeTruthy();
+  });
 });

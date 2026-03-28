@@ -15,6 +15,7 @@ import { queryClient } from "@/lib/query";
 import { ToastProvider } from "@/components/ui/toast";
 import { NetworkProvider } from "@/components/NetworkProvider";
 import { NotificationProvider } from "@/components/NotificationProvider";
+import { SETTLE_UP_SCREEN_OPTIONS } from "@/lib/navigation-options";
 import {
   authenticateAppUnlock,
   getBiometricLabel,
@@ -126,12 +127,7 @@ function AuthGate() {
       <Stack.Screen name="notification-settings" options={{ animation: "slide_from_right" }} />
       <Stack.Screen
         name="settle-up"
-        options={{
-          animation: "slide_from_right",
-          presentation: "formSheet",
-          sheetGrabberVisible: true,
-          sheetAllowedDetents: [0.75, 1.0],
-        }}
+        options={SETTLE_UP_SCREEN_OPTIONS}
       />
     </Stack>
   );
@@ -283,7 +279,7 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView className="flex-1 bg-background">
       <QueryClientProvider client={queryClient}>
         <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
           <ClerkLoaded>

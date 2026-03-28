@@ -44,7 +44,7 @@ export function AccordionItem({ title, children, expanded = false, onToggle }: A
   }));
 
   const contentStyle = useAnimatedStyle(() => ({
-    maxHeight: height.value * 200,
+    maxHeight: height.value * 500,
     opacity: opacity.value,
     overflow: "hidden" as const,
   }));

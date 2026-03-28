@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { useColorScheme } from "nativewind";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { applyTheme, getStoredTheme, type ThemePreference } from "@/lib/theme";
@@ -39,6 +39,7 @@ const menuItems = [
 export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { user } = useUser();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colorScheme, setColorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -83,10 +84,10 @@ export default function ProfileScreen() {
 
   return (
     <>
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pb-8"
+        contentContainerClassName="pb-24"
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Section */}
@@ -94,7 +95,7 @@ export default function ProfileScreen() {
           colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ overflow: "hidden" }}
+          style={{ overflow: "hidden", paddingTop: insets.top }}
         >
           {/* Watermark */}
           <View
@@ -308,7 +309,7 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
 
     <ConfirmModal
       visible={showSignOutModal}

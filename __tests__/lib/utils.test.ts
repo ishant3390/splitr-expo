@@ -10,6 +10,8 @@ import {
   getInitials,
   extractInviteCode,
   getCurrencySymbol,
+  sanitizeAmountInput,
+  getMemberAvatarUrl,
 } from "@/lib/utils";
 
 describe("centsToAmount", () => {
@@ -280,5 +282,162 @@ describe("getCurrencySymbol", () => {
     const result = getCurrencySymbol("XYZ");
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
+  });
+});
+
+describe("sanitizeAmountInput", () => {
+  // Basic numeric input
+  it("passes through simple integers", () => {
+    expect(sanitizeAmountInput("5")).toBe("5");
+    expect(sanitizeAmountInput("123")).toBe("123");
+    expect(sanitizeAmountInput("0")).toBe("0");
+  });
+
+  it("passes through valid decimal amounts", () => {
+    expect(sanitizeAmountInput("1.50")).toBe("1.50");
+    expect(sanitizeAmountInput("25.99")).toBe("25.99");
+    expect(sanitizeAmountInput("0.01")).toBe("0.01");
+  });
+
+  it("allows partial decimal input (typing in progress)", () => {
+    expect(sanitizeAmountInput("1.")).toBe("1.");
+    expect(sanitizeAmountInput("1.5")).toBe("1.5");
+    expect(sanitizeAmountInput(".5")).toBe(".5");
+    expect(sanitizeAmountInput(".")).toBe(".");
+  });
+
+  // THE BUG: typing a 3rd decimal digit must preserve the existing value
+  it("truncates to 2 decimal places without losing integer part", () => {
+    expect(sanitizeAmountInput("1.777")).toBe("1.77");
+    expect(sanitizeAmountInput("1.999")).toBe("1.99");
+    expect(sanitizeAmountInput("25.123")).toBe("25.12");
+    expect(sanitizeAmountInput("0.001")).toBe("0.00");
+  });
+
+  it("handles rapid typing beyond 2 decimals", () => {
+    // Simulates: user has "1.77" and types "7" → TextInput sends "1.777"
+    expect(sanitizeAmountInput("1.777")).toBe("1.77");
+    // Simulates: user has "99.99" and types "9" → TextInput sends "99.999"
+    expect(sanitizeAmountInput("99.999")).toBe("99.99");
+  });
+
+  it("handles many decimal digits", () => {
+    expect(sanitizeAmountInput("1.123456789")).toBe("1.12");
+  });
+
+  // Non-numeric character stripping
+  it("strips alphabetic characters", () => {
+    expect(sanitizeAmountInput("abc")).toBe("");
+    expect(sanitizeAmountInput("12abc34")).toBe("1234");
+    expect(sanitizeAmountInput("$50")).toBe("50");
+    expect(sanitizeAmountInput("£25.50")).toBe("25.50");
+    expect(sanitizeAmountInput("GBP100")).toBe("100");
+  });
+
+  it("strips currency symbols and special characters", () => {
+    expect(sanitizeAmountInput("$1,234.56")).toBe("1234.56");
+    expect(sanitizeAmountInput("€99.99")).toBe("99.99");
+    expect(sanitizeAmountInput("¥1000")).toBe("1000");
+  });
+
+  // Multiple decimal points
+  it("allows only one decimal point", () => {
+    expect(sanitizeAmountInput("1.2.3")).toBe("1.23");
+    expect(sanitizeAmountInput("1..5")).toBe("1.5");
+    expect(sanitizeAmountInput("...")).toBe(".");
+    expect(sanitizeAmountInput("1.2.3.4")).toBe("1.23");
+  });
+
+  // Empty and edge cases
+  it("returns empty string for empty input", () => {
+    expect(sanitizeAmountInput("")).toBe("");
+  });
+
+  it("returns empty string for all non-numeric input", () => {
+    expect(sanitizeAmountInput("abc")).toBe("");
+    expect(sanitizeAmountInput("---")).toBe("");
+    expect(sanitizeAmountInput("   ")).toBe("");
+  });
+
+  it("handles leading zeros", () => {
+    expect(sanitizeAmountInput("007")).toBe("007");
+    expect(sanitizeAmountInput("00.50")).toBe("00.50");
+  });
+
+  // Sequential typing simulation (the key regression scenario)
+  it("simulates sequential typing: 1 → 1. → 1.7 → 1.77 → 1.77 (3rd digit rejected)", () => {
+    let amount = "";
+    amount = sanitizeAmountInput("1"); // type "1"
+    expect(amount).toBe("1");
+    amount = sanitizeAmountInput("1."); // type "."
+    expect(amount).toBe("1.");
+    amount = sanitizeAmountInput("1.7"); // type "7"
+    expect(amount).toBe("1.7");
+    amount = sanitizeAmountInput("1.77"); // type "7"
+    expect(amount).toBe("1.77");
+    // User types another "7" — TextInput would send "1.777"
+    amount = sanitizeAmountInput("1.777");
+    expect(amount).toBe("1.77"); // Must stay "1.77", NOT become "7"
+  });
+
+  it("simulates sequential typing with backspace and retype", () => {
+    let amount = sanitizeAmountInput("25.50");
+    expect(amount).toBe("25.50");
+    // User backspaces the "0" → "25.5"
+    amount = sanitizeAmountInput("25.5");
+    expect(amount).toBe("25.5");
+    // User types "3" → "25.53"
+    amount = sanitizeAmountInput("25.53");
+    expect(amount).toBe("25.53");
+  });
+});
+
+describe("getMemberAvatarUrl", () => {
+  it("returns undefined when user is undefined", () => {
+    expect(getMemberAvatarUrl(undefined)).toBeUndefined();
+  });
+
+  it("returns undefined when user has no image fields", () => {
+    expect(getMemberAvatarUrl({})).toBeUndefined();
+  });
+
+  it("prefers profileImageUrl over avatarUrl", () => {
+    expect(
+      getMemberAvatarUrl({
+        avatarUrl: "https://clerk.com/avatar.jpg",
+        profileImageUrl: "https://s3.aws.com/profile.jpg",
+      })
+    ).toBe("https://s3.aws.com/profile.jpg");
+  });
+
+  it("falls back to avatarUrl when profileImageUrl is missing", () => {
+    expect(
+      getMemberAvatarUrl({ avatarUrl: "https://clerk.com/avatar.jpg" })
+    ).toBe("https://clerk.com/avatar.jpg");
+  });
+
+  it("falls back to avatarUrl when profileImageUrl is undefined", () => {
+    expect(
+      getMemberAvatarUrl({
+        avatarUrl: "https://clerk.com/avatar.jpg",
+        profileImageUrl: undefined,
+      })
+    ).toBe("https://clerk.com/avatar.jpg");
+  });
+
+  it("sanitizes double-https prefix", () => {
+    expect(
+      getMemberAvatarUrl({
+        profileImageUrl: "https://https://s3.aws.com/profile.jpg",
+      })
+    ).toBe("https://s3.aws.com/profile.jpg");
+  });
+
+  it("sanitizes double-https on avatarUrl fallback", () => {
+    expect(
+      getMemberAvatarUrl({
+        avatarUrl: "https://https://clerk.com/avatar.jpg",
+      })
+    ).toBe("https://clerk.com/avatar.jpg");
   });
 });

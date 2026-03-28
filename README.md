@@ -96,6 +96,22 @@ e2e/integration/
 
 **50 integration tests** across 11 spec files.
 
+### Modal Regression Suite (Run on every UI change)
+
+Use this to guard against bottom-sheet/modal regressions (like iOS partial sheet render or blank settle-up states).
+
+```bash
+npm run test:regression:modal        # Unit + web smoke modal regressions
+npm run test:regression:modal:all    # Unit + smoke + integration modal regressions
+```
+
+Includes:
+- Unit/screen tests for `BottomSheetModal`, `ConfirmModal`, `ImagePreviewModal`, Groups, Group Settings, Settle Up, and root layout settle-up route config.
+- Playwright smoke tests for Join modal, Add Member modal, and Settle Up / Record Payment modal.
+- Integration suite coverage for invite flow, member management modal flows, settlement flow.
+- Deterministic modal data helper (`e2e/helpers/modal-regression.ts`) that ensures at least one group context before modal assertions.
+- Shared modal automation contract via stable `testID` hooks (backdrop/sheet/scroll/handle) in `BottomSheetModal`.
+
 **Key design decisions:**
 - Backend health check runs `beforeAll` — skips suite with clear error if backend is down
 - Uses `page.waitForResponse()` instead of `waitForTimeout()` for API-dependent waits
@@ -107,6 +123,7 @@ e2e/integration/
 - `api-client.ts` tracks all created resources and deletes them in `cleanup()` called via `afterEach`
 - `fixtures.ts` generates unique payloads with `[E2E]` prefix + base36 timestamp
 - `cleanup.ts` extends the Playwright test fixture to inject `apiClient` and auto-cleanup
+- `modal-regression.ts` creates a temporary `[E2E][Modal]` group from UI when needed to avoid empty-state flakes in modal smoke tests
 
 ## Project Structure
 

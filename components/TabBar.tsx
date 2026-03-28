@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, Pressable, StyleSheet, useWindowDimensions } from "react-native";
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, Platform } from "react-native";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import Animated, {
   useSharedValue,
@@ -10,6 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "nativewind";
+import { BlurView } from "expo-blur";
 import { Plus } from "lucide-react-native";
 import { hapticSelection, hapticMedium } from "@/lib/haptics";
 import { useRouter } from "expo-router";
@@ -22,6 +23,10 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
 import { fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
+
+// Tab bar height: paddingTop(8) + icon(24) + gap(4) + label(10) + paddingVertical(4) ≈ 50 + insets.bottom
+// Screens should use this + insets.bottom for bottom padding
+export const TAB_BAR_HEIGHT = 56;
 
 const ICON_MAP: Record<string, typeof HomeIcon> = {
   index: HomeIcon,
@@ -203,23 +208,49 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     width: indicatorWidth.value,
   }));
 
+  const blurTint = isDark ? "dark" : "light";
+
   return (
-    <View>
-      {/* Gradient fade above tab bar */}
-      <LinearGradient
-        colors={(isDark ? GRADIENTS.tabBarDark : GRADIENTS.tabBarLight) as unknown as string[]}
-        style={{ position: "absolute", top: -24, left: 0, right: 0, height: 24 }}
-        pointerEvents="none"
-      />
-      <View
+    <View style={styles.wrapper}>
+      {/* Frosted glass tab bar */}
+      <BlurView
+        intensity={Platform.OS === "ios" ? 80 : 0}
+        tint={blurTint}
         style={[
-          styles.container,
+          styles.blurContainer,
           {
             paddingBottom: insets.bottom || 16,
-            backgroundColor: isDark ? "rgba(0,0,0,0.95)" : "rgba(255,255,255,0.95)",
+            // Fallback for Android (BlurView doesn't work on Android)
+            ...(Platform.OS !== "ios" && {
+              backgroundColor: isDark ? "rgba(0,0,0,0.92)" : "rgba(255,255,255,0.92)",
+            }),
           },
         ]}
       >
+        {/* Semi-transparent overlay for better contrast */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)",
+            },
+          ]}
+          pointerEvents="none"
+        />
+
+        {/* Subtle top border */}
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+          }}
+          pointerEvents="none"
+        />
+
         {/* Active indicator pill */}
         <Animated.View style={[styles.indicator, indicatorStyle]}>
           <View style={[styles.indicatorPill, { backgroundColor: ACTIVE_COLOR, width: 28 }]} />
@@ -243,9 +274,6 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             });
 
             if (!event.defaultPrevented) {
-              // Always reset nested stacks to their root screen
-              // - Switching tabs: shows the tab's root, not a stale detail screen
-              // - Tapping active tab: pops back to root (standard iOS/Android pattern)
               navigation.navigate(route.name, { screen: "index" });
             }
           };
@@ -265,14 +293,21 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           );
         })}
       </View>
-      </View>
+      </BlurView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  blurContainer: {
     paddingTop: 8,
+    overflow: "hidden",
   },
   tabRow: {
     flexDirection: "row",

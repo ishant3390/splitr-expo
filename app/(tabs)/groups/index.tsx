@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Platform, TextInput } from "react-native";
 import { useColorScheme } from "nativewind";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { GRADIENTS } from "@/lib/gradients";
@@ -32,6 +32,7 @@ export default function GroupsScreen() {
   const router = useRouter();
   const toast = useToast();
   const { getToken } = useAuth();
+  const insets = useSafeAreaInsets();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const c = colors(isDark);
@@ -156,13 +157,13 @@ export default function GroupsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background">
       {/* Hero Section */}
       <LinearGradient
         colors={(isDark ? GRADIENTS.heroDark : GRADIENTS.heroTeal) as unknown as string[]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ overflow: "hidden" }}
+        style={{ overflow: "hidden", paddingTop: insets.top }}
       >
         {/* Watermark */}
         <View
@@ -648,6 +649,7 @@ export default function GroupsScreen() {
         visible={showJoinModal}
         onClose={() => setShowJoinModal(false)}
         keyboardAvoiding
+        modalTestID="groups-join-modal"
       >
         <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: c.foreground, marginBottom: 4 }}>
           Join a Group
@@ -699,6 +701,6 @@ export default function GroupsScreen() {
           </View>
         </Button>
       </BottomSheetModal>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -124,6 +124,31 @@ describe("BottomSheetModal", () => {
     expect(mockEvent.stopPropagation).toHaveBeenCalled();
   });
 
+  it("ScrollView is rendered for bounded scrolling content", () => {
+    render(
+      <BottomSheetModal {...defaultProps}>
+        <Text>Scroll Test</Text>
+      </BottomSheetModal>
+    );
+
+    const scrollView = screen.getByTestId("bottom-sheet-modal-scroll");
+    expect(scrollView).toBeTruthy();
+  });
+
+  it("renders modal contract testIDs", () => {
+    render(
+      <BottomSheetModal {...defaultProps}>
+        <Text>Contract Test</Text>
+      </BottomSheetModal>
+    );
+
+    expect(screen.getByTestId("bottom-sheet-modal-root")).toBeTruthy();
+    expect(screen.getByTestId("bottom-sheet-modal-backdrop")).toBeTruthy();
+    expect(screen.getByTestId("bottom-sheet-modal-sheet")).toBeTruthy();
+    expect(screen.getByTestId("bottom-sheet-modal-scroll")).toBeTruthy();
+    expect(screen.getByTestId("bottom-sheet-modal-handle")).toBeTruthy();
+  });
+
   it("inner pressable stops event propagation (with keyboard avoiding)", () => {
     const { UNSAFE_root } = render(
       <BottomSheetModal {...defaultProps} keyboardAvoiding={true}>
