@@ -22,7 +22,7 @@ test.describe("Search & Filter", () => {
 
     // Navigate to Groups
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
 
     // Look for search input on groups screen
     const searchInput = page.getByPlaceholder(/Search/i).first();
@@ -45,13 +45,13 @@ test.describe("Search & Filter", () => {
       expect(hasGroup).toBeTruthy();
     } else {
       // If no search on groups page, verify groups list works
-      await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 5000 });
     }
   });
 
   test("no-match search → empty state", async ({ page, apiClient }) => {
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
 
     const searchInput = page.getByPlaceholder(/Search/i).first();
     const hasSearch = await searchInput
@@ -78,7 +78,7 @@ test.describe("Search & Filter", () => {
     await apiClient.createGroup(fixtures.group({ name: "SearchClear" }));
 
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
 
     const searchInput = page.getByPlaceholder(/Search/i).first();
     const hasSearch = await searchInput
@@ -100,11 +100,11 @@ test.describe("Search & Filter", () => {
         .first()
         .isVisible({ timeout: 5000 })
         .catch(() => false);
-      const hasActive = await page.getByText("Active").isVisible();
+      const hasActive = await page.getByText("Active", { exact: true }).isVisible();
 
       expect(hasGroups || hasActive).toBeTruthy();
     } else {
-      await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 5000 });
     }
   });
 });

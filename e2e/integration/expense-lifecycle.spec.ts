@@ -70,7 +70,7 @@ test.describe("Expense Lifecycle", () => {
 
       // Navigate to the group to verify
       await page.getByRole("button", { name: "Groups" }).click();
-      await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
       await scrollToGroupAndClick(page, group.name);
       await expect(page.getByText("[E2E] Test Lunch").first()).toBeVisible({
         timeout: 10000,
@@ -97,7 +97,7 @@ test.describe("Expense Lifecycle", () => {
 
     // Navigate to group detail
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
 
     // Verify expense is shown
@@ -125,7 +125,7 @@ test.describe("Expense Lifecycle", () => {
 
     // Navigate to group detail
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await expect(
       page.getByText(expense.description).first()
@@ -139,7 +139,7 @@ test.describe("Expense Lifecycle", () => {
     await skipOnboardingIfPresent(page);
     await page.waitForTimeout(3000);
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
 
     // Expense should no longer be visible

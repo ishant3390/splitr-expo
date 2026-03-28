@@ -29,7 +29,7 @@ async function navigateToGroupsTab(page: any) {
   ]).catch(() => {
     // If no API call fires (cache hit), just wait for UI
   });
-  await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
   // Allow Reanimated entering animations to complete
   await page.waitForTimeout(1000);
 }

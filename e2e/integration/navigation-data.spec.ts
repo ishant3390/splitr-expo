@@ -30,7 +30,7 @@ test.describe("Navigation with Data", () => {
     );
 
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
 
     await scrollToGroupAndClick(page, group.name);
 
@@ -61,7 +61,7 @@ test.describe("Navigation with Data", () => {
 
     // Navigate to group detail
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
 
     // Click on the expense
@@ -95,7 +95,7 @@ test.describe("Navigation with Data", () => {
 
     // Navigate to Groups → Group Detail → Back
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await expect(page.getByText(group.name).first()).toBeVisible({ timeout: 10000 });
 
@@ -104,7 +104,7 @@ test.describe("Navigation with Data", () => {
     await page.waitForTimeout(1000);
 
     // Groups list should still be visible
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
 
     const groupLocator = page.getByText(group.name).first();
     await groupLocator.scrollIntoViewIfNeeded().catch(() => {});
@@ -121,7 +121,7 @@ test.describe("Navigation with Data", () => {
 
     // Go to Groups
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
 
     const groupLocator = page.getByText(group.name).first();
     await groupLocator.scrollIntoViewIfNeeded().catch(() => {});
@@ -136,7 +136,7 @@ test.describe("Navigation with Data", () => {
     await page.waitForTimeout(1000);
 
     // Groups should still be there
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 5000 });
   });
 
   test("Home View All → navigates to Groups or Activity", async ({
@@ -160,7 +160,7 @@ test.describe("Navigation with Data", () => {
         .isVisible({ timeout: 3000 })
         .catch(() => false);
       const hasGroups = await page
-        .getByText("Active")
+        .getByText("Active", { exact: true })
         .first()
         .isVisible({ timeout: 3000 })
         .catch(() => false);

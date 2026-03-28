@@ -54,7 +54,7 @@ test.describe("Settlement Flow", () => {
 
     // Navigate to group → Settle Up
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await expect(page.getByText("Settle Up").first()).toBeVisible({
       timeout: 10000,
@@ -87,7 +87,7 @@ test.describe("Settlement Flow", () => {
 
     // Navigate to Settle Up
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await page.getByText("Settle Up").first().click();
     await expect(page.getByText("Suggested").first()).toBeVisible({ timeout: 10000 });
@@ -156,7 +156,7 @@ test.describe("Settlement Flow", () => {
 
     // Navigate to Settle Up
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await page.getByText("Settle Up").first().click();
     await expect(page.getByText("Suggested").first()).toBeVisible({ timeout: 10000 });
@@ -188,7 +188,7 @@ test.describe("Settlement Flow", () => {
 
     // Navigate to group detail first to see initial balance
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await expect(page.getByText(group.name).first()).toBeVisible({ timeout: 10000 });
 
@@ -207,7 +207,7 @@ test.describe("Settlement Flow", () => {
     await skipOnboardingIfPresent(page);
     await page.waitForTimeout(3000);
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
 
     // Balances should reflect settlement (could be $0.00 or "settled")
@@ -278,7 +278,7 @@ test.describe("Settlement Flow", () => {
 
     // Verify in UI: navigate to group settle up
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await page.getByText("Settle Up").first().click();
     await expect(page.getByText("Suggested").first()).toBeVisible({ timeout: 10000 });

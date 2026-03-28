@@ -31,7 +31,7 @@ test.describe("Member Management", () => {
 
     // Navigate to group detail
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await expect(page.getByText(group.name).first()).toBeVisible({ timeout: 10000 });
 
@@ -89,7 +89,7 @@ test.describe("Member Management", () => {
 
     // Navigate to group detail
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
 
     // Member should be visible
@@ -106,7 +106,7 @@ test.describe("Member Management", () => {
 
     // Initially 1 member (the creator)
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("1 member").first()).toBeVisible({ timeout: 10000 });
 
     // Add a guest member via API
@@ -117,7 +117,7 @@ test.describe("Member Management", () => {
     await skipOnboardingIfPresent(page);
     await page.waitForTimeout(3000);
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
 
     // Should now show 2 members
     await expect(page.getByText("2 members").first()).toBeVisible({ timeout: 10000 });
@@ -137,7 +137,7 @@ test.describe("Member Management", () => {
 
     // Verify member appears
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await expect(page.getByText(guestName).first()).toBeVisible({ timeout: 10000 });
 
@@ -149,7 +149,7 @@ test.describe("Member Management", () => {
     await skipOnboardingIfPresent(page);
     await page.waitForTimeout(3000);
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
 
     const stillVisible = await page
@@ -175,7 +175,7 @@ test.describe("Member Management", () => {
 
     // Navigate to group detail
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
 
     await expect(page.getByText(guestName).first()).toBeVisible({ timeout: 10000 });

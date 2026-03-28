@@ -28,7 +28,7 @@ test.describe("Invite Flow", () => {
 
     // Navigate to group detail
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await expect(page.getByText(group.name).first()).toBeVisible({ timeout: 10000 });
 

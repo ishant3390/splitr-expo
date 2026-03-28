@@ -7,7 +7,7 @@ test.describe("Groups Screen", () => {
   });
 
   test("shows groups header and tabs", async ({ page }) => {
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Archived")).toBeVisible();
   });
 
@@ -29,7 +29,7 @@ test.describe("Groups Screen", () => {
   });
 
   test("can switch to Archived tab", async ({ page }) => {
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await page.getByText("Archived").click();
 
     await page.waitForTimeout(1000);

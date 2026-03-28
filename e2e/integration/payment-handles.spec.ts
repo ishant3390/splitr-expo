@@ -254,7 +254,7 @@ test.describe("Payment Handles — UI Integration", () => {
 
     // Navigate to group → Settle Up
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     const groupCard = page.getByText(group.name).first();
     await groupCard.waitFor({ state: "attached", timeout: 15000 });
     await groupCard.scrollIntoViewIfNeeded().catch(() => {});
@@ -317,7 +317,7 @@ test.describe("Payment Handles — UI Integration", () => {
 
     // Navigate to Settle Up
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     const groupCard = page.getByText(group.name).first();
     await groupCard.waitFor({ state: "attached", timeout: 15000 });
     await groupCard.scrollIntoViewIfNeeded().catch(() => {});

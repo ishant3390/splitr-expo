@@ -7,7 +7,7 @@ test.describe("Cross-Screen Navigation", () => {
 
     // Navigate to Groups
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 5000 });
 
     // Navigate to Activity
     await page.getByRole("button", { name: "Activity" }).click();
@@ -48,7 +48,7 @@ test.describe("Cross-Screen Navigation", () => {
 
     // group/[id] is a push screen (no tab bar) — go back
     await page.goBack();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 5000 });
   });
 
   test("FAB / Add tab navigates to Add Expense", async ({ page }) => {
@@ -99,7 +99,7 @@ test.describe("Cross-Screen Navigation", () => {
 
     // create-group is a push screen (no tab bar) — use back navigation
     await page.goBack();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 5000 });
   });
 
   test("Group detail to Settle Up and back", async ({ page }) => {
@@ -128,7 +128,7 @@ test.describe("Cross-Screen Navigation", () => {
     // settle-up is a push screen (no tab bar) — go back to group detail, then back to groups
     await page.goBack();
     await page.goBack();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 5000 });
   });
 
   test("navigating to invalid group URL shows error or redirects", async ({
@@ -145,7 +145,7 @@ test.describe("Cross-Screen Navigation", () => {
       .isVisible()
       .catch(() => false);
     const hasGroups = await page
-      .getByText("Active")
+      .getByText("Active", { exact: true })
       .isVisible()
       .catch(() => false);
     const hasHome = await page
@@ -172,7 +172,7 @@ test.describe("Cross-Screen Navigation", () => {
 
     // Go to Groups and verify content
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 5000 });
 
     // Switch to Activity
     await page.getByRole("button", { name: "Activity" }).click();
@@ -182,7 +182,7 @@ test.describe("Cross-Screen Navigation", () => {
 
     // Switch back to Groups — should still show group content
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("Archived")).toBeVisible();
   });
 });

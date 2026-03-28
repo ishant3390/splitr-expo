@@ -233,7 +233,7 @@ test.describe("Simplify Debts", () => {
 
     // Navigate to group → Settle Up
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await page.getByText("Settle Up", { exact: true }).click();
     await expect(page.getByText("Suggested").first()).toBeVisible({
@@ -266,7 +266,7 @@ test.describe("Simplify Debts", () => {
 
     // Navigate to Settle Up
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await page.getByText("Settle Up", { exact: true }).click();
     await expect(page.getByText("Suggested").first()).toBeVisible({
@@ -316,7 +316,7 @@ test.describe("Simplify Debts", () => {
 
     // Verify in UI: navigate to Settle Up, should show "All settled up!"
     await page.getByRole("button", { name: "Groups" }).click();
-    await expect(page.getByText("Active")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
     await page.getByText("Settle Up", { exact: true }).click();
     await expect(page.getByText("Suggested").first()).toBeVisible({
