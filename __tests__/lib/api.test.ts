@@ -12,6 +12,8 @@ import {
   isVersionConflict,
   SplitError,
 } from "@/lib/api";
+import * as financeAudit from "@/lib/finance-audit";
+import * as idempotency from "@/lib/idempotency";
 
 // Mock global fetch
 const mockFetch = jest.fn();
@@ -40,6 +42,17 @@ function mockErrorResponse(body: string, status: number) {
 
 beforeEach(() => {
   mockFetch.mockReset();
+  jest.spyOn(financeAudit, "startFinanceAudit").mockImplementation(async (action) => ({
+    operationId: `op-${action}`,
+    correlationId: `corr-${action}`,
+    action,
+    details: {},
+  }));
+  jest.spyOn(financeAudit, "markFinanceAuditSuccess").mockResolvedValue(undefined);
+  jest.spyOn(financeAudit, "markFinanceAuditFailure").mockResolvedValue(undefined);
+  jest
+    .spyOn(idempotency, "withIdempotency")
+    .mockImplementation(async (_operationId, fn) => fn("idem-test-key"));
 });
 
 describe("usersApi", () => {
@@ -349,8 +362,17 @@ describe("groupsApi", () => {
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify(expenseData),
+          headers: expect.objectContaining({
+            "X-Correlation-ID": "corr-expense_create",
+          }),
         })
       );
+      expect(financeAudit.startFinanceAudit).toHaveBeenCalledWith(
+        "expense_create",
+        expect.objectContaining({ groupId: "g1" }),
+        expect.any(String)
+      );
+      expect(financeAudit.markFinanceAuditSuccess).toHaveBeenCalled();
     });
   });
 
@@ -540,8 +562,19 @@ describe("settlementsApi", () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/v1/groups/g1/settlements"),
-      expect.objectContaining({ method: "POST" })
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "X-Correlation-ID": "corr-settlement_create",
+        }),
+      })
     );
+    expect(financeAudit.startFinanceAudit).toHaveBeenCalledWith(
+      "settlement_create",
+      expect.objectContaining({ groupId: "g1" }),
+      expect.any(String)
+    );
+    expect(financeAudit.markFinanceAuditSuccess).toHaveBeenCalled();
   });
 
   it("deletes a settlement", async () => {
@@ -551,7 +584,13 @@ describe("settlementsApi", () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/v1/settlements/s1"),
-      expect.objectContaining({ method: "DELETE" })
+      expect.objectContaining({
+        method: "DELETE",
+        headers: expect.objectContaining({
+          "Idempotency-Key": expect.any(String),
+          "X-Correlation-ID": "corr-settlement_delete",
+        }),
+      })
     );
   });
 
@@ -579,6 +618,10 @@ describe("settlementsApi", () => {
       expect.objectContaining({
         method: "PUT",
         body: JSON.stringify(updateData),
+        headers: expect.objectContaining({
+          "Idempotency-Key": expect.any(String),
+          "X-Correlation-ID": "corr-settlement_update",
+        }),
       })
     );
   });
@@ -603,7 +646,13 @@ describe("expensesApi", () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/v1/expenses/e1"),
-      expect.objectContaining({ method: "DELETE" })
+      expect.objectContaining({
+        method: "DELETE",
+        headers: expect.objectContaining({
+          "Idempotency-Key": expect.any(String),
+          "X-Correlation-ID": "corr-expense_delete",
+        }),
+      })
     );
   });
 
@@ -617,6 +666,10 @@ describe("expensesApi", () => {
       expect.objectContaining({
         method: "PUT",
         body: JSON.stringify({ description: "Updated" }),
+        headers: expect.objectContaining({
+          "Idempotency-Key": expect.any(String),
+          "X-Correlation-ID": "corr-expense_update",
+        }),
       })
     );
   });

@@ -11,6 +11,7 @@ import {
   extractInviteCode,
   getCurrencySymbol,
   sanitizeAmountInput,
+  parseAmountInputToCents,
   getMemberAvatarUrl,
 } from "@/lib/utils";
 
@@ -389,6 +390,32 @@ describe("sanitizeAmountInput", () => {
     // User types "3" → "25.53"
     amount = sanitizeAmountInput("25.53");
     expect(amount).toBe("25.53");
+  });
+});
+
+describe("parseAmountInputToCents", () => {
+  it("parses integer and decimal inputs", () => {
+    expect(parseAmountInputToCents("1")).toBe(100);
+    expect(parseAmountInputToCents("1.23")).toBe(123);
+    expect(parseAmountInputToCents("0.01")).toBe(1);
+    expect(parseAmountInputToCents("0")).toBe(0);
+    expect(parseAmountInputToCents(".5")).toBe(50);
+    expect(parseAmountInputToCents("12.")).toBe(1200);
+  });
+
+  it("handles leading/trailing whitespace", () => {
+    expect(parseAmountInputToCents(" 10.50 ")).toBe(1050);
+  });
+
+  it("returns null for invalid precision or malformed values", () => {
+    expect(parseAmountInputToCents("1.234")).toBeNull();
+    expect(parseAmountInputToCents("1..2")).toBeNull();
+    expect(parseAmountInputToCents("1.2.3")).toBeNull();
+    expect(parseAmountInputToCents("-5")).toBeNull();
+    expect(parseAmountInputToCents("+3.50")).toBeNull();
+    expect(parseAmountInputToCents("1e5")).toBeNull();
+    expect(parseAmountInputToCents("abc")).toBeNull();
+    expect(parseAmountInputToCents("")).toBeNull();
   });
 });
 

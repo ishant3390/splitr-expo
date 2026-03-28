@@ -42,7 +42,15 @@ import { settlementsApi, groupsApi } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useUserProfile, useCrossGroupSuggestions } from "@/lib/hooks";
 import { invalidateAfterSettlementChange } from "@/lib/query";
-import { formatCents, getInitials, cn, getCurrencySymbol, getMemberAvatarUrl } from "@/lib/utils";
+import { validateSettlementInvariants } from "@/lib/finance-invariants";
+import {
+  formatCents,
+  getInitials,
+  cn,
+  getCurrencySymbol,
+  getMemberAvatarUrl,
+  parseAmountInputToCents,
+} from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticHeavy } from "@/lib/haptics";
 import { CategoryIcon } from "@/components/ui/category-icon";
@@ -288,7 +296,7 @@ export default function SettleUpScreen() {
     if (!createFrom) return;
     const targetGroupId = createGroupId ?? groupId;
     if (!targetGroupId) return;
-    const parsedAmount = Math.round(parseFloat(amount) * 100);
+    const parsedAmount = parseAmountInputToCents(amount);
     if (!parsedAmount || parsedAmount < 1) {
       hapticError();
       toast.error("Please enter a valid amount.");
@@ -296,6 +304,19 @@ export default function SettleUpScreen() {
     }
 
     const resolvedMethod = paymentMethodOverride ?? paymentMethod;
+    const settlementInvariant = validateSettlementInvariants({
+      payerUserId: createFrom.fromUser?.id,
+      payerGuestUserId: createFrom.fromGuest?.id,
+      payeeUserId: createFrom.toUser?.id,
+      payeeGuestUserId: createFrom.toGuest?.id,
+      amount: parsedAmount,
+      currency: createCurrency,
+    });
+    if (!settlementInvariant.ok) {
+      hapticError();
+      toast.error(settlementInvariant.message);
+      return;
+    }
 
     setSubmitting(true);
     try {

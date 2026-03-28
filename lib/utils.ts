@@ -16,6 +16,27 @@ export function amountToCents(amount: number): number {
 }
 
 /**
+ * Parses a decimal money input string into integer cents without float math.
+ * Returns null for invalid values.
+ */
+export function parseAmountInputToCents(input: string): number | null {
+  const value = input.trim();
+  if (!value) return null;
+  if (!/^(?:\d+|\d+\.\d{0,2}|\.\d{1,2})$/.test(value)) return null;
+
+  const [wholeRaw, fractionalRaw = ""] = value.split(".");
+  const wholePart = wholeRaw.length > 0 ? wholeRaw : "0";
+  const fractionalPart = fractionalRaw.padEnd(2, "0").slice(0, 2);
+
+  const whole = BigInt(wholePart);
+  const fractional = BigInt(fractionalPart || "0");
+  const cents = whole * 100n + fractional;
+  if (cents > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+
+  return Number(cents);
+}
+
+/**
  * Sanitize raw text input into a valid monetary amount string.
  * - Strips non-numeric characters (except decimal point)
  * - Allows only one decimal point

@@ -13,23 +13,53 @@ import { randomUUID } from "expo-crypto";
 import { parseApiError } from "./errors";
 
 const KEY_PREFIX = "@splitr/idem:";
+const KEY_TS_PREFIX = "@splitr/idem_ts:";
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 200;
+const KEY_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+
+function createIdempotencyKey(): string {
+  try {
+    const generated = randomUUID?.();
+    if (typeof generated === "string" && generated.length > 0) return generated;
+  } catch {
+    // Fall through to deterministic local fallback.
+  }
+  return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 /**
  * Generate a new idempotency key or retrieve an existing one for crash recovery.
  */
 export async function getIdempotencyKey(operationId: string): Promise<string> {
   const storageKey = `${KEY_PREFIX}${operationId}`;
+  const tsKey = `${KEY_TS_PREFIX}${operationId}`;
   try {
-    const existing = await AsyncStorage.getItem(storageKey);
-    if (existing) return existing;
+    const [existing, existingTs] = await Promise.all([
+      AsyncStorage.getItem(storageKey),
+      AsyncStorage.getItem(tsKey),
+    ]);
+    if (existing) {
+      const ts = existingTs ? Number(existingTs) : NaN;
+      const isExpired = Number.isNaN(ts) || ts <= 0 || Date.now() - ts > KEY_TTL_MS;
+      if (isExpired) {
+        await Promise.all([
+          AsyncStorage.removeItem(storageKey),
+          AsyncStorage.removeItem(tsKey),
+        ]);
+      } else {
+        return existing;
+      }
+    }
   } catch {
     // Storage read failed — generate fresh
   }
-  const key = randomUUID();
+  const key = createIdempotencyKey();
   try {
-    await AsyncStorage.setItem(storageKey, key);
+    await Promise.all([
+      AsyncStorage.setItem(storageKey, key),
+      AsyncStorage.setItem(tsKey, String(Date.now())),
+    ]);
   } catch {
     // Persist failed — key still works for this request
   }
@@ -41,7 +71,10 @@ export async function getIdempotencyKey(operationId: string): Promise<string> {
  */
 export async function clearIdempotencyKey(operationId: string): Promise<void> {
   try {
-    await AsyncStorage.removeItem(`${KEY_PREFIX}${operationId}`);
+    await Promise.all([
+      AsyncStorage.removeItem(`${KEY_PREFIX}${operationId}`),
+      AsyncStorage.removeItem(`${KEY_TS_PREFIX}${operationId}`),
+    ]);
   } catch {
     // Non-critical
   }
@@ -95,8 +128,12 @@ export async function withIdempotency<T>(
         throw err;
       }
 
-      if (!isRetryable || attempt >= MAX_RETRIES) {
+      if (!isRetryable) {
         await clearIdempotencyKey(operationId);
+        throw err;
+      }
+      if (attempt >= MAX_RETRIES) {
+        // Keep the same key persisted for manual retry on ambiguous outcomes.
         throw err;
       }
 

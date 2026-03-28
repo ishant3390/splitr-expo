@@ -36,10 +36,23 @@ import { expensesApi, groupsApi, categoriesApi, isVersionConflict } from "@/lib/
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { pickImage, validateImage, buildImageFormDataAsync } from "@/lib/image-utils";
 import { invalidateAfterExpenseChange } from "@/lib/query";
+import {
+  allocatePercentageSplitCents,
+  normalizeFixedSplitCents,
+  validateExpenseInvariants,
+} from "@/lib/finance-invariants";
 import { ImagePreviewModal } from "@/components/ui/image-preview-modal";
 import { inferCategoryFromDescription } from "@/lib/screen-helpers";
 import { useToast } from "@/components/ui/toast";
-import { getInitials, cn, amountToCents, centsToAmount, getCurrencySymbol, sanitizeAmountInput, getMemberAvatarUrl } from "@/lib/utils";
+import {
+  getInitials,
+  cn,
+  centsToAmount,
+  getCurrencySymbol,
+  sanitizeAmountInput,
+  getMemberAvatarUrl,
+  parseAmountInputToCents,
+} from "@/lib/utils";
 import { hapticSelection, hapticSuccess, hapticError, hapticWarning, hapticLight } from "@/lib/haptics";
 import { colors, fontSize as fs, fontFamily as ff, palette } from "@/lib/tokens";
 import type {
@@ -307,15 +320,15 @@ export default function EditExpenseScreen() {
   };
 
   const handleSave = async () => {
-    const parsed = parseFloat(amount);
-    if (!amount || isNaN(parsed) || parsed <= 0) {
+    const parsedAmountCents = parseAmountInputToCents(amount);
+    if (parsedAmountCents == null || parsedAmountCents <= 0) {
       hapticError();
       toast.error("Please enter a valid amount.");
       return;
     }
-    if (amountToCents(parsed) < 1) {
+    if (parsedAmountCents < 1) {
       hapticError();
-      toast.error("Amount must be at least $0.01.");
+      toast.error("Amount must be at least 0.01.");
       return;
     }
 
@@ -347,7 +360,9 @@ export default function EditExpenseScreen() {
     setSubmitting(true);
     try {
       const token = await getToken();
-      const totalCents = amountToCents(parsed);
+      const totalCents = parsedAmountCents;
+      const amountValue = centsToAmount(totalCents);
+      const submitCurrencySymbol = getCurrencySymbol(expense?.currency ?? "USD");
       const payerMember = members.find((m) => m.id === selectedPayerMemberId);
 
       // Deduplicate splits
@@ -374,32 +389,40 @@ export default function EditExpenseScreen() {
           setSubmitting(false);
           return;
         }
-        // Compute cents for all but the last member, then assign the remainder to the last
-        // to avoid rounding drift that fails backend sum validation
-        const rawCents = uniqueSplitMembers.map((member) =>
-          Math.round(totalCents * (parseFloat(splitPercentages[member.id] ?? "0") / 100))
+        const percentageValues = uniqueSplitMembers.map((member) =>
+          parseFloat(splitPercentages[member.id] ?? "0")
         );
-        const sumExceptLast = rawCents.slice(0, -1).reduce((a, b) => a + b, 0);
-        rawCents[rawCents.length - 1] = totalCents - sumExceptLast;
-        splits = uniqueSplitMembers.map((member, idx) => ({
-          userId: member.user?.id,
-          guestUserId: member.guestUser?.id,
-          percentage: parseFloat(splitPercentages[member.id] ?? "0"),
-          splitAmount: rawCents[idx],
-        }));
-      } else if (splitType === "fixed") {
-        const fixedCents = uniqueSplitMembers.map((member) =>
-          amountToCents(parseFloat(splitFixedAmounts[member.id] ?? "0") || 0)
-        );
-        const totalFixedCents = fixedCents.reduce((a, b) => a + b, 0);
-        if (Math.abs(totalFixedCents - totalCents) > 1) {
+        const allocatedCents = allocatePercentageSplitCents(totalCents, percentageValues);
+        if (!allocatedCents) {
           hapticError();
-          toast.error(`Fixed amounts must add up to $${parsed.toFixed(2)}`);
+          toast.error("Unable to allocate split amounts. Please adjust percentages.");
           setSubmitting(false);
           return;
         }
-        // Absorb any 1-cent rounding difference into the last member
-        fixedCents[fixedCents.length - 1] += totalCents - totalFixedCents;
+        splits = uniqueSplitMembers.map((member, idx) => ({
+          userId: member.user?.id,
+          guestUserId: member.guestUser?.id,
+          percentage: percentageValues[idx],
+          splitAmount: allocatedCents[idx],
+        }));
+      } else if (splitType === "fixed") {
+        const rawFixedCents = uniqueSplitMembers.map((member) =>
+          parseAmountInputToCents(splitFixedAmounts[member.id] ?? "0") ?? 0
+        );
+        const totalFixedCents = rawFixedCents.reduce((a, b) => a + b, 0);
+        if (Math.abs(totalFixedCents - totalCents) > 1) {
+          hapticError();
+          toast.error(`Fixed amounts must add up to ${submitCurrencySymbol}${amountValue.toFixed(2)}`);
+          setSubmitting(false);
+          return;
+        }
+        const fixedCents = normalizeFixedSplitCents(totalCents, rawFixedCents);
+        if (!fixedCents) {
+          hapticError();
+          toast.error("Unable to normalize fixed split amounts. Please adjust values.");
+          setSubmitting(false);
+          return;
+        }
         splits = uniqueSplitMembers.map((member, idx) => ({
           userId: member.user?.id,
           guestUserId: member.guestUser?.id,
@@ -413,6 +436,17 @@ export default function EditExpenseScreen() {
           guestUserId: member.guestUser?.id,
           splitAmount: idx === uniqueSplitMembers.length - 1 ? perPersonCents + remainder : perPersonCents,
         }));
+      }
+
+      const expenseInvariant = validateExpenseInvariants({
+        totalAmount: totalCents,
+        payers: [{ amountPaid: totalCents }],
+        splits: splits.map((split) => ({ splitAmount: split.splitAmount })),
+      });
+      if (!expenseInvariant.ok) {
+        hapticError();
+        toast.error(expenseInvariant.message);
+        return;
       }
 
       const updateRequest: UpdateExpenseRequest = {
@@ -473,11 +507,16 @@ export default function EditExpenseScreen() {
   };
 
   const perPerson =
-    amount && splitWith.length > 0 && !isNaN(parseFloat(amount))
-      ? (parseFloat(amount) / splitWith.length).toFixed(2)
+    splitWith.length > 0
+      ? (centsToAmount(parseAmountInputToCents(amount) ?? 0) / splitWith.length).toFixed(2)
       : "0.00";
   const totalPct = splitWith.reduce((s, mid) => s + (parseFloat(splitPercentages[mid] ?? "0") || 0), 0);
-  const totalFixed = splitWith.reduce((s, mid) => s + (parseFloat(splitFixedAmounts[mid] ?? "0") || 0), 0);
+  const totalAmountCents = parseAmountInputToCents(amount) ?? 0;
+  const totalFixedCents = splitWith.reduce(
+    (sum, mid) => sum + (parseAmountInputToCents(splitFixedAmounts[mid] ?? "0") ?? 0),
+    0
+  );
+  const totalFixed = centsToAmount(totalFixedCents);
 
   if (loading) {
     return (
@@ -715,9 +754,9 @@ export default function EditExpenseScreen() {
               {splitType === "fixed" && (
                 <Text className={cn(
                   "text-sm font-sans-semibold",
-                  Math.abs(totalFixed - (parseFloat(amount) || 0)) < 0.01 ? "text-primary" : "text-destructive"
+                  Math.abs(totalFixedCents - totalAmountCents) <= 1 ? "text-primary" : "text-destructive"
                 )}>
-                  {`$${totalFixed.toFixed(2)} / $${amount || "0.00"}`}
+                  {`$${totalFixed.toFixed(2)} / $${centsToAmount(totalAmountCents).toFixed(2)}`}
                 </Text>
               )}
             </View>
@@ -727,11 +766,11 @@ export default function EditExpenseScreen() {
                 {totalPct < 100 ? `${(100 - totalPct).toFixed(1)}% remaining` : `${(totalPct - 100).toFixed(1)}% over — reduce to 100%`}
               </Text>
             )}
-            {splitType === "fixed" && splitWith.length > 0 && Math.abs(totalFixed - (parseFloat(amount) || 0)) >= 0.01 && (
+            {splitType === "fixed" && splitWith.length > 0 && Math.abs(totalFixedCents - totalAmountCents) > 1 && (
               <Text className="text-xs text-destructive font-sans mb-1">
-                {totalFixed < (parseFloat(amount) || 0)
-                  ? `$${((parseFloat(amount) || 0) - totalFixed).toFixed(2)} remaining`
-                  : `$${(totalFixed - (parseFloat(amount) || 0)).toFixed(2)} over — reduce to match total`}
+                {totalFixedCents < totalAmountCents
+                  ? `$${centsToAmount(totalAmountCents - totalFixedCents).toFixed(2)} remaining`
+                  : `$${centsToAmount(totalFixedCents - totalAmountCents).toFixed(2)} over — reduce to match total`}
               </Text>
             )}
 
@@ -810,7 +849,7 @@ export default function EditExpenseScreen() {
                             <TextInput
                               value={splitFixedAmounts[member.id] ?? ""}
                               onChangeText={(val) =>
-                                setSplitFixedAmounts((prev) => ({ ...prev, [member.id]: val }))
+                                setSplitFixedAmounts((prev) => ({ ...prev, [member.id]: sanitizeAmountInput(val) }))
                               }
                               keyboardType="decimal-pad"
                               placeholder="0.00"

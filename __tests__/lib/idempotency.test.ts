@@ -24,10 +24,23 @@ describe("getIdempotencyKey", () => {
   });
 
   it("returns existing key from storage (crash recovery)", async () => {
-    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce("existing-key");
+    (AsyncStorage.getItem as jest.Mock)
+      .mockResolvedValueOnce("existing-key")
+      .mockResolvedValueOnce(String(Date.now()));
     const key = await getIdempotencyKey("op-2");
     expect(key).toBe("existing-key");
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it("rotates existing key when timestamp metadata is missing", async () => {
+    (AsyncStorage.getItem as jest.Mock)
+      .mockResolvedValueOnce("legacy-key")
+      .mockResolvedValueOnce(null);
+
+    const key = await getIdempotencyKey("op-legacy");
+    expect(key).toBe("test-uuid-1234");
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith("@splitr/idem:op-legacy");
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith("@splitr/idem_ts:op-legacy");
   });
 
   it("generates fresh key when storage read fails", async () => {
@@ -35,12 +48,27 @@ describe("getIdempotencyKey", () => {
     const key = await getIdempotencyKey("op-3");
     expect(key).toBe("test-uuid-1234");
   });
+
+  it("rotates expired keys based on TTL", async () => {
+    const oldTs = Date.now() - (1000 * 60 * 60 * 25);
+    (AsyncStorage.getItem as jest.Mock)
+      .mockResolvedValueOnce("expired-key")
+      .mockResolvedValueOnce(String(oldTs));
+
+    const key = await getIdempotencyKey("op-expired");
+    expect(key).toBe("test-uuid-1234");
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith("@splitr/idem:op-expired");
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith("@splitr/idem_ts:op-expired");
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith("@splitr/idem:op-expired", "test-uuid-1234");
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith("@splitr/idem_ts:op-expired", expect.any(String));
+  });
 });
 
 describe("clearIdempotencyKey", () => {
   it("removes key from storage", async () => {
     await clearIdempotencyKey("op-1");
     expect(AsyncStorage.removeItem).toHaveBeenCalledWith("@splitr/idem:op-1");
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith("@splitr/idem_ts:op-1");
   });
 
   it("does not throw when storage fails", async () => {
@@ -104,5 +132,13 @@ describe("withIdempotency", () => {
     const fn = jest.fn().mockRejectedValue(err);
     await expect(withIdempotency("op-max", fn)).rejects.toThrow(SplitError);
     expect(fn).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
+    expect(AsyncStorage.removeItem).not.toHaveBeenCalledWith("@splitr/idem:op-max");
+  });
+
+  it("preserves key after retry exhaustion on network error", async () => {
+    const fn = jest.fn().mockRejectedValue(new Error("Network down"));
+    await expect(withIdempotency("op-network", fn)).rejects.toThrow("Network down");
+    expect(fn).toHaveBeenCalledTimes(4);
+    expect(AsyncStorage.removeItem).not.toHaveBeenCalledWith("@splitr/idem:op-network");
   });
 });

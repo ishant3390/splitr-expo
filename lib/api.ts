@@ -9,6 +9,7 @@ import { Platform } from "react-native";
 import { SplitError, isSplitError, parseApiError } from "./errors";
 import type { ApiErrorBody } from "./errors";
 import { withIdempotency } from "./idempotency";
+import { startFinanceAudit, markFinanceAuditSuccess, markFinanceAuditFailure } from "./finance-audit";
 import type {
   UserDto,
   UpdateUserRequest,
@@ -40,6 +41,21 @@ import type {
 } from "./types";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8085/api";
+
+function hashOperationPayload(payload: unknown): string {
+  const json = JSON.stringify(payload ?? null);
+  let hash = 2166136261; // FNV-1a 32-bit offset basis
+  for (let i = 0; i < json.length; i++) {
+    hash ^= json.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function stableOperationId(action: string, entityId: string, payload?: unknown): string {
+  const payloadHash = payload === undefined ? "nopayload" : hashOperationPayload(payload);
+  return `${action}-${entityId}-${payloadHash}`;
+}
 
 async function request<T>(
   path: string,
@@ -276,13 +292,35 @@ export const groupsApi = {
   },
 
   createExpense: (groupId: string, data: CreateExpenseRequest, token: string) =>
-    withIdempotency(`create-expense-${Date.now()}`, (idempotencyKey) =>
-      request<ExpenseDto>(
-        `/v1/groups/${groupId}/expenses`,
-        { method: "POST", body: JSON.stringify(data), headers: { "Idempotency-Key": idempotencyKey } },
-        token
-      )
-    ),
+    (async () => {
+      const operationId = stableOperationId("expense-create", groupId, data);
+      const audit = await startFinanceAudit("expense_create", {
+        groupId,
+        amount: data.totalAmount,
+        currency: data.currency,
+      }, operationId);
+      try {
+        const result = await withIdempotency(operationId, (idempotencyKey) =>
+          request<ExpenseDto>(
+            `/v1/groups/${groupId}/expenses`,
+            {
+              method: "POST",
+              body: JSON.stringify(data),
+              headers: {
+                "Idempotency-Key": idempotencyKey,
+                "X-Correlation-ID": audit.correlationId,
+              },
+            },
+            token
+          )
+        );
+        await markFinanceAuditSuccess(audit, { entityId: result.id });
+        return result;
+      } catch (err: unknown) {
+        await markFinanceAuditFailure(audit, err);
+        throw err;
+      }
+    })(),
 
   // Activity
   activity: async (groupId: string, token: string, params?: { page?: number; limit?: number }): Promise<ActivityLogDto[]> => {
@@ -353,14 +391,66 @@ export const expensesApi = {
     ),
 
   update: (expenseId: string, data: UpdateExpenseRequest, token: string) =>
-    request<ExpenseDto>(
-      `/v1/expenses/${expenseId}`,
-      { method: "PUT", body: JSON.stringify(data) },
-      token
-    ),
+    (async () => {
+      const operationId = stableOperationId("expense-update", expenseId, data);
+      const audit = await startFinanceAudit("expense_update", {
+        entityId: expenseId,
+        amount: data.totalAmount,
+        currency: data.currency,
+      }, operationId);
+      try {
+        const result = await withIdempotency(operationId, (idempotencyKey) =>
+          request<ExpenseDto>(
+            `/v1/expenses/${expenseId}`,
+            {
+              method: "PUT",
+              body: JSON.stringify(data),
+              headers: {
+                "Idempotency-Key": idempotencyKey,
+                "X-Correlation-ID": audit.correlationId,
+              },
+            },
+            token
+          )
+        );
+        await markFinanceAuditSuccess(audit, {
+          entityId: result.id,
+          groupId: result.groupId,
+          amount: result.amountCents,
+          currency: result.currency,
+        });
+        return result;
+      } catch (err: unknown) {
+        await markFinanceAuditFailure(audit, err);
+        throw err;
+      }
+    })(),
 
   delete: (expenseId: string, token: string) =>
-    request<void>(`/v1/expenses/${expenseId}`, { method: "DELETE" }, token),
+    (async () => {
+      const operationId = stableOperationId("expense-delete", expenseId);
+      const audit = await startFinanceAudit("expense_delete", { entityId: expenseId }, operationId);
+      try {
+        const result = await withIdempotency(operationId, (idempotencyKey) =>
+          request<void>(
+            `/v1/expenses/${expenseId}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Idempotency-Key": idempotencyKey,
+                "X-Correlation-ID": audit.correlationId,
+              },
+            },
+            token
+          )
+        );
+        await markFinanceAuditSuccess(audit);
+        return result;
+      } catch (err: unknown) {
+        await markFinanceAuditFailure(audit, err);
+        throw err;
+      }
+    })(),
 
   getReceiptUrl: (expenseId: string, token: string) =>
     request<{ url: string }>(`/v1/expenses/${expenseId}/receipt`, undefined, token),
@@ -425,26 +515,100 @@ export const settlementsApi = {
     ),
 
   create: (groupId: string, data: CreateSettlementRequest, token: string) =>
-    withIdempotency(`create-settlement-${Date.now()}`, (idempotencyKey) =>
-      request<SettlementDto>(
-        `/v1/groups/${groupId}/settlements`,
-        { method: "POST", body: JSON.stringify(data), headers: { "Idempotency-Key": idempotencyKey } },
-        token
-      )
-    ),
+    (async () => {
+      const operationId = stableOperationId("settlement-create", groupId, data);
+      const audit = await startFinanceAudit("settlement_create", {
+        groupId,
+        amount: data.amount,
+        currency: data.currency,
+      }, operationId);
+      try {
+        const result = await withIdempotency(operationId, (idempotencyKey) =>
+          request<SettlementDto>(
+            `/v1/groups/${groupId}/settlements`,
+            {
+              method: "POST",
+              body: JSON.stringify(data),
+              headers: {
+                "Idempotency-Key": idempotencyKey,
+                "X-Correlation-ID": audit.correlationId,
+              },
+            },
+            token
+          )
+        );
+        await markFinanceAuditSuccess(audit, { entityId: result.id });
+        return result;
+      } catch (err: unknown) {
+        await markFinanceAuditFailure(audit, err);
+        throw err;
+      }
+    })(),
 
   get: (settlementId: string, token: string) =>
     request<SettlementDto>(`/v1/settlements/${settlementId}`, undefined, token),
 
   update: (settlementId: string, data: UpdateSettlementRequest, token: string) =>
-    request<SettlementDto>(
-      `/v1/settlements/${settlementId}`,
-      { method: "PUT", body: JSON.stringify(data) },
-      token
-    ),
+    (async () => {
+      const operationId = stableOperationId("settlement-update", settlementId, data);
+      const audit = await startFinanceAudit("settlement_update", {
+        entityId: settlementId,
+        amount: data.amount,
+        currency: data.currency,
+      }, operationId);
+      try {
+        const result = await withIdempotency(operationId, (idempotencyKey) =>
+          request<SettlementDto>(
+            `/v1/settlements/${settlementId}`,
+            {
+              method: "PUT",
+              body: JSON.stringify(data),
+              headers: {
+                "Idempotency-Key": idempotencyKey,
+                "X-Correlation-ID": audit.correlationId,
+              },
+            },
+            token
+          )
+        );
+        await markFinanceAuditSuccess(audit, {
+          entityId: result.id,
+          groupId: result.groupId,
+          amount: result.amount,
+          currency: result.currency,
+        });
+        return result;
+      } catch (err: unknown) {
+        await markFinanceAuditFailure(audit, err);
+        throw err;
+      }
+    })(),
 
   delete: (settlementId: string, token: string) =>
-    request<void>(`/v1/settlements/${settlementId}`, { method: "DELETE" }, token),
+    (async () => {
+      const operationId = stableOperationId("settlement-delete", settlementId);
+      const audit = await startFinanceAudit("settlement_delete", { entityId: settlementId }, operationId);
+      try {
+        const result = await withIdempotency(operationId, (idempotencyKey) =>
+          request<void>(
+            `/v1/settlements/${settlementId}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Idempotency-Key": idempotencyKey,
+                "X-Correlation-ID": audit.correlationId,
+              },
+            },
+            token
+          )
+        );
+        await markFinanceAuditSuccess(audit);
+        return result;
+      } catch (err: unknown) {
+        await markFinanceAuditFailure(audit, err);
+        throw err;
+      }
+    })(),
 };
 
 // ---- Re-exports from errors ----
