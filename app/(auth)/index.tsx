@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, ScrollView, Pressable, useWindowDimensions } from "react-native";
+import { View, Text, ScrollView, Pressable, Platform, useWindowDimensions } from "react-native";
 import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useOAuth, useSignIn } from "@clerk/clerk-expo";
+import { useOAuth, useSignIn, useSignUp } from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,6 +17,7 @@ import {
 import { Mail, Phone, ArrowRight, ChevronRight } from "lucide-react-native";
 import { colors, palette, radius } from "@/lib/tokens";
 import { GRADIENTS } from "@/lib/gradients";
+import type { OAuthStrategy } from "@clerk/types";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -31,28 +32,48 @@ export default function AuthScreen() {
   const c = colors(isDark);
   const { height: screenHeight } = useWindowDimensions();
 
-  // Clerk OAuth hooks
+  // Clerk OAuth hooks (native only — web uses redirect flow below)
   const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: "oauth_google" });
   const { startOAuthFlow: startAppleOAuth } = useOAuth({ strategy: "oauth_apple" });
 
-  // Clerk sign-in for email/phone
+  // Clerk sign-in/sign-up for email/phone and web OAuth redirect
   const { signIn, setActive } = useSignIn();
+  const { signUp } = useSignUp();
 
+  /**
+   * Web: full-page redirect to OAuth provider (no popup — avoids browser popup blockers).
+   * Native: popup via expo-web-browser (works natively).
+   */
   const handleOAuth = useCallback(
-    async (startFlow: typeof startGoogleOAuth) => {
+    async (strategy: OAuthStrategy) => {
       try {
-        const { createdSessionId, setActive: setActiveSession } =
-          await startFlow({
-            redirectUrl: Linking.createURL("/(tabs)"),
+        if (Platform.OS === "web") {
+          // Web: use Clerk's authenticateWithRedirect — does a full-page redirect.
+          // Use signUp for new users, signIn for existing users.
+          const resource = activeTab === "signup" ? signUp : signIn;
+          if (!resource) return;
+          await resource.authenticateWithRedirect({
+            strategy,
+            redirectUrl: "/sso-callback",
+            redirectUrlComplete: "/",
           });
-        if (createdSessionId && setActiveSession) {
-          await setActiveSession({ session: createdSessionId });
+          // Browser will navigate away — no further code runs
+        } else {
+          // Native: popup-based OAuth via expo-web-browser
+          const startFlow = strategy === "oauth_google" ? startGoogleOAuth : startAppleOAuth;
+          const { createdSessionId, setActive: setActiveSession } =
+            await startFlow({
+              redirectUrl: Linking.createURL("/(tabs)"),
+            });
+          if (createdSessionId && setActiveSession) {
+            await setActiveSession({ session: createdSessionId });
+          }
         }
       } catch (err: any) {
         toast.error("Something went wrong. Try again later.");
       }
     },
-    []
+    [signIn, signUp, activeTab, startGoogleOAuth, startAppleOAuth]
   );
 
   const handleSignInWithOtp = async () => {
@@ -206,7 +227,7 @@ export default function AuthScreen() {
           <View style={{ gap: 12, marginBottom: 20 }}>
             {/* Google */}
             <Pressable
-              onPress={() => handleOAuth(startGoogleOAuth)}
+              onPress={() => handleOAuth("oauth_google")}
               accessibilityRole="button"
               accessibilityLabel={`${actionLabel} with Google`}
               style={({ pressed }) => ({
@@ -230,7 +251,7 @@ export default function AuthScreen() {
 
             {/* Apple */}
             <Pressable
-              onPress={() => handleOAuth(startAppleOAuth)}
+              onPress={() => handleOAuth("oauth_apple")}
               accessibilityRole="button"
               accessibilityLabel={`${actionLabel} with Apple`}
               style={({ pressed }) => ({

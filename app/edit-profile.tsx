@@ -93,6 +93,22 @@ export default function EditProfileScreen() {
         defaultCurrency: currency,
       };
       await usersApi.updateMe(data, token!);
+
+      // Sync name to Clerk so all screens using useUser() show the updated name
+      if (clerkUser) {
+        try {
+          const parts = name.trim().split(/\s+/);
+          const firstName = parts[0] || "";
+          const lastName = parts.slice(1).join(" ") || "";
+          await clerkUser.update({ firstName, lastName });
+        } catch {
+          // Non-blocking — backend is source of truth
+        }
+      }
+
+      // Invalidate cached profile data so Profile screen refetches
+      invalidateAfterProfileUpdate();
+
       toast.success("Your profile has been updated.");
       goBack();
     } catch (err: unknown) {

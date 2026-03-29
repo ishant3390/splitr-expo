@@ -25,6 +25,13 @@ jest.mock("@clerk/clerk-expo", () => ({
       create: jest.fn(),
       prepareFirstFactor: jest.fn(),
       supportedFirstFactors: [],
+      authenticateWithRedirect: jest.fn(),
+    },
+    setActive: jest.fn(),
+  }),
+  useSignUp: () => ({
+    signUp: {
+      authenticateWithRedirect: jest.fn(),
     },
     setActive: jest.fn(),
   }),

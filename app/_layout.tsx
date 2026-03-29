@@ -82,7 +82,7 @@ function AuthGate() {
     const inOnboarding = segments[0] === "onboarding";
     // Invite/join routes are publicly accessible — unauthenticated users see the
     // group preview and are prompted to sign in only when they tap "Join"
-    const inPublicRoute = segments[0] === "invite" || segments[0] === "join";
+    const inPublicRoute = segments[0] === "invite" || segments[0] === "join" || segments[0] === "sso-callback";
 
     if (!isSignedIn && !inAuthGroup && !inPublicRoute) {
       router.replace("/(auth)");
@@ -125,6 +125,7 @@ function AuthGate() {
       <Stack.Screen name="payment-methods" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="notifications" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="notification-settings" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="sso-callback" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen
         name="settle-up"
         options={SETTLE_UP_SCREEN_OPTIONS}
