@@ -57,6 +57,15 @@ function stableOperationId(action: string, entityId: string, payload?: unknown):
   return `${action}-${entityId}-${payloadHash}`;
 }
 
+/** Generate a UUID v4 correlation ID for request tracing. */
+function generateCorrelationId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback for environments without crypto.randomUUID
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 async function request<T>(
   path: string,
   options?: RequestInit,
@@ -65,6 +74,7 @@ async function request<T>(
   const url = `${BASE_URL}${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-Correlation-ID": generateCorrelationId(),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 

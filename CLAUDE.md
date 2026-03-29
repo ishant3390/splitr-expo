@@ -117,6 +117,7 @@ lib/
 - **Business logic errors**: Use `toast.info()` (not `toast.error()`) — these are expected states (nudge cooldown, already a member, quota exceeded).
 - **Version conflict**: Use `isVersionConflict(err)` from `lib/api.ts` — checks `ERR-302` code specifically, does NOT false-positive on `ERR-409`.
 - **Idempotency**: `POST /expenses` and `POST /settlements` automatically include `Idempotency-Key` header (UUID v4) via `withIdempotency()` wrapper in `lib/api.ts`. Keys persisted to AsyncStorage for crash recovery. Retry with exponential backoff on ERR-415 (in-flight) and 5xx. See `lib/idempotency.ts`.
+- **Correlation ID**: Every API request includes `X-Correlation-ID` header (UUID v4) via `request()` in `lib/api.ts`. Backend echoes the ID in response. Finance mutations also send via audit context. Enables end-to-end traceability for debugging and user bug reports.
 
 ## Key API Endpoints
 - `POST /v1/groups/{groupId}/expenses` — expenses always belong to a group
@@ -289,7 +290,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (2260 unit tests, 84 suites; 141 smoke; 70 integration; 16 dev-sanity)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
+- **Current baseline (2260 unit tests, 84 suites; 141 smoke; 70 integration; 26 dev-sanity)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state
@@ -338,18 +339,22 @@ lib/
 
 ### Dev Sanity Tests (Playwright + Live Dev Environment)
 - **Purpose**: Sanity check against live `dev.splitr.ai` before promoting to prod
-- **Structure**: `e2e/dev-sanity/` with 4 spec files (16 tests total)
+- **Structure**: `e2e/dev-sanity/` with 7 spec files (26 tests total)
 - **Multi-user**: User A (browser + API), User B (API-only via temporary browser context token)
 - **Helpers**: `e2e/dev-sanity/helpers/` — `sanity-auth.ts` (multi-user fixture), `sanity-fixtures.ts` (`[SANITY]` prefixed data)
 - **Env vars**: `E2E_SANITY_USER_A_EMAIL`, `E2E_SANITY_USER_B_EMAIL` in `.env.local`
 - **Data strategy**: All data prefixed with `[SANITY]` + timestamp; auto-cleaned via `ApiClient.cleanup()`
-- **Config**: `playwright.config.ts` — `dev-sanity` project with `baseURL: "https://dev.splitr.ai"`, no webServer, 90s timeout
+- **Config**: `playwright.config.ts` — `dev-sanity` project with `baseURL: "https://dev.splitr.ai"`, no webServer, 90s timeout, serial (1 worker)
+- **429 handling**: `ApiClient.fetchWithRetry()` retries 429s with exponential backoff
 - **Run**: `npm run test:e2e:dev-sanity` (headless) or `npm run test:e2e:dev-sanity:headed`
 - **Specs**:
   - `smoke.spec.ts` (4) — health check, both users auth, home screen loads
-  - `group-expense-settle.spec.ts` (4) — create group, expense, settle, activity
+  - `group-expense-settle.spec.ts` (4) — create group, guest expense, settle, activity
   - `invite-join-flow.spec.ts` (4) — invite, join, cross-user expense, settlement
   - `balance-accuracy.spec.ts` (4) — equal split, partial settlement, multi-expense, balance API
+  - `expense-lifecycle.spec.ts` (4) — edit with version, delete expense, delete settlement reversal, GBP currency
+  - `group-lifecycle.spec.ts` (3) — archive/unarchive, invite regenerate, categories
+  - `profile-and-settings.spec.ts` (3) — name update, currency change, payment handles
 
 ### E2E Test Conventions
 - **Smoke tests**: Import `{ test, expect }` from `./auth.setup`
