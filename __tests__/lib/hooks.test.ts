@@ -239,6 +239,7 @@ describe("hooks.ts", () => {
         totalOwedCents: 1500,
         totalOwesCents: 300,
         netBalanceCents: 1200,
+        normalizedCurrency: undefined,
         groupBalances: [],
         totalOwedByCurrency: [
           { currency: "USD", amount: 1000 },
@@ -264,6 +265,7 @@ describe("hooks.ts", () => {
         totalOwedCents: 0,
         totalOwesCents: 0,
         netBalanceCents: 0,
+        normalizedCurrency: undefined,
         groupBalances: [],
         totalOwedByCurrency: [],
         totalOwingByCurrency: [],
@@ -282,6 +284,7 @@ describe("hooks.ts", () => {
         totalOwedCents: 0,
         totalOwesCents: 0,
         netBalanceCents: 0,
+        normalizedCurrency: undefined,
         groupBalances: [],
         totalOwedByCurrency: [],
         totalOwingByCurrency: [],
@@ -306,9 +309,92 @@ describe("hooks.ts", () => {
         totalOwedCents: 100,
         totalOwesCents: 50,
         netBalanceCents: 50,
+        normalizedCurrency: undefined,
         totalOwedByCurrency: [],
         totalOwingByCurrency: [],
       });
+    });
+
+    it("prefers backend deterministic totals when provided", async () => {
+      const config = renderQueryHook(() => useUserBalance());
+
+      (usersApi.balance as jest.Mock).mockResolvedValue({
+        totalOwed: [
+          { currency: "USD", amount: 1000 },
+          { currency: "EUR", amount: 500 },
+        ],
+        totalOwing: [
+          { currency: "USD", amount: 300 },
+        ],
+        totalOwedCents: 2000,
+        totalOwingCents: 700,
+        netBalanceCents: 1300,
+        normalizedCurrency: "USD",
+        groupBalances: [],
+      });
+
+      const result = await config.queryFn();
+      expect(result).toEqual({
+        totalOwedCents: 2000,
+        totalOwesCents: 700,
+        netBalanceCents: 1300,
+        normalizedCurrency: "USD",
+        groupBalances: [],
+        totalOwedByCurrency: [
+          { currency: "USD", amount: 1000 },
+          { currency: "EUR", amount: 500 },
+        ],
+        totalOwingByCurrency: [
+          { currency: "USD", amount: 300 },
+        ],
+      });
+    });
+
+    it("uses partial deterministic fields without requiring all three", async () => {
+      const config = renderQueryHook(() => useUserBalance());
+
+      (usersApi.balance as jest.Mock).mockResolvedValue({
+        totalOwed: [
+          { currency: "USD", amount: 1000 },
+          { currency: "EUR", amount: 500 },
+        ],
+        totalOwing: [
+          { currency: "USD", amount: 300 },
+        ],
+        totalOwedCents: 2000,
+        totalOwingCents: 700,
+        // net intentionally omitted
+        normalizedCurrency: "USD",
+        groupBalances: [],
+      });
+
+      const result = await config.queryFn();
+      expect(result.totalOwedCents).toBe(2000);
+      expect(result.totalOwesCents).toBe(700);
+      expect(result.netBalanceCents).toBe(1300);
+      expect(result.normalizedCurrency).toBe("USD");
+    });
+
+    it("supports legacy totalOwesCents alias during backend rollout", async () => {
+      const config = renderQueryHook(() => useUserBalance());
+
+      (usersApi.balance as jest.Mock).mockResolvedValue({
+        totalOwed: [
+          { currency: "USD", amount: 1000 },
+        ],
+        totalOwing: [
+          { currency: "USD", amount: 99999 },
+        ],
+        totalOwedCents: 2000,
+        totalOwesCents: 800,
+        netBalanceCents: 1200,
+        groupBalances: [],
+      });
+
+      const result = await config.queryFn();
+      expect(result.totalOwedCents).toBe(2000);
+      expect(result.totalOwesCents).toBe(800);
+      expect(result.netBalanceCents).toBe(1200);
     });
 
     it("queryFn handles non-array groups in fallback", async () => {

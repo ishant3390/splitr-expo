@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>This is my current screen, and I like your screen a lot. I'm just giving my screen if you want to take any ideas from that. Otherwise, I think it's looking good. It's really beautiful. I'm just giving you my screen, so take a look and generate a new light mode version for now.
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splitr — Recommended Design System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* === RECOMMENDED PALETTE === */
+    --bg: #fafafa;
+    --surface-low: #f3f4f6;
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+
+    --teal-50: #f0fdfa;
+    --teal-100: #ccfbf1;
+    --teal-400: #2dd4bf;
+    --teal-500: #14b8a6;
+    --teal-600: #0d9488;
+    --teal-700: #0f766e;
+    --teal-800: #115e59;
+    --teal-900: #134e4a;
+
+    --green-500: #22c55e;
+    --green-100: #dcfce7;
+    --red-400: #f87171;
+    --red-100: #fee2e2;
+    --emerald-500: #10b981;
+    --amber-500: #f59e0b;
+
+    --border-ghost: rgba(13, 148, 136, 0.08);
+    --shadow-teal: rgba(13, 148, 136, 0.06);
+
+    /* Dark mode */
+    --dark-bg: #121820;
+    --dark-surface-low: #1a2332;
+    --dark-surface: #1f2d3d;
+    --dark-surface-elevated: #263545;
+    --dark-text-primary: #f0f2f5;
+    --dark-text-secondary: #8b95a5;
+    --dark-border-ghost: rgba(255, 255, 255, 0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #e5e7eb;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 40px;
+    padding: 40px;
+    min-height: 100vh;
+  }
+
+  .phone-frame {
+    width: 390px;
+    height: 844px;
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+  }
+
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .phone-screen::-webkit-scrollbar { display: none; }
+
+  .label {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+  }
+
+  .section-label {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 60px 0 24px;
+    letter-spacing: -0.02em;
+    width: 100%;
+  }
+
+  .column { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+  /* ============================================ */
+  /* LIGHT MODE SCREEN */
+  /* ============================================ */
+  .light { background: var(--bg); }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px 8px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .light .status-bar { color: var(--text-primary); }
+  .dark .status-bar { color: var(--dark-text-primary); }
+
+  /* -- Balance Card -- */
+  .balance-card {
+    margin: 8px 20px 0;
+    padding: 28px 24px 24px;
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .light .balance-card {
+    background: linear-gradient(135deg, #0d9488, #0891b2);
+    box-shadow: 0 8px 32px rgba(13, 148, 136, 0.2);
+  }
+
+  .dark .balance-card {
+    background: linear-gradient(135deg, #134e4a, #164e63);
+    box-shadow: none;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .balance-card .orb {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .balance-card .orb-1 { width: 140px; height: 140px; top: -30px; right: -20px; }
+  .balance-card .orb-2 { width: 100px; height: 100px; bottom: -20px; left: -16px; background: rgba(255,255,255,0.05); }
+
+  .balance-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .balance-amount {
+    font-size: 42px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 20px;
+    line-height: 1.1;
+  }
+  .balance-amount .decimal {
+    opacity: 0.5;
+    font-weight: 500;
+  }
+
+  .balance-row {
+    display: flex;
+    gap: 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .balance-col {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .balance-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .balance-sub-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+    font-weight: 400;
+  }
+
+  .balance-sub-amount {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* -- Section Headers (The "No-Line" Approach) -- */
+  .section-header {
+    padding: 28px 20px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .light .section-header { color: var(--text-muted); }
+  .dark .section-header { color: var(--dark-text-secondary); }
+
+  /* -- Cards (Tonal Layering) -- */
+  .content-card {
+    margin: 0 20px;
+    padding: 0;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+
+  .light .content-card {
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(13, 148, 136, 0.04), 0 0 0 1px rgba(13, 148, 136, 0.03);
+  }
+
+  .dark .content-card {
+    background: var(--dark-surface-low);
+    border: 1px solid var(--dark-border-ghost);
+  }
+
+  /* -- List Items (No Dividers — Spacing Only) -- */
+  .list-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    gap: 14px;
+    cursor: pointer;
+    transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .light .list-item:hover { background: var(--surface-low); }
+  .dark .list-item:hover { background: var(--dark-surface); }
+
+  /* NO DIVIDERS — spacing gap between items creates separation */
+  .list-item + .list-item {
+    /* Tonal separator: subtle background shift instead of line */
+  }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .avatar-teal { background: var(--teal-100); color: var(--teal-700); }
+  .avatar-green { background: var(--green-100); color: #15803d; }
+  .avatar-red { background: var(--red-100); color: #dc2626; }
+  .avatar-amber { background: #fef3c7; color: #b45309; }
+
+  .dark .avatar-teal { background: var(--teal-900); color: var(--teal-400); }
+  .dark .avatar-green { background: #052e16; color: var(--green-500); }
+  .dark .avatar-red { background: #450a0a; color: var(--red-400); }
+  .dark .avatar-amber { background: #451a03; color: var(--amber-500); }
+
+  .list-content { flex: 1; min-width: 0; }
+
+  .list-title {
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 2px;
+  }
+  .light .list-title { color: var(--text-primary); }
+  .dark .list-title { color: var(--dark-text-primary); }
+
+  .list-subtitle {
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .light .list-subtitle { color: var(--text-secondary); }
+  .dark .list-subtitle { color: var(--dark-text-secondary); }
+
+  .list-amount {
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .amount-positive { color: var(--green-500); }
+  .amount-negative { color: var(--red-400); }
+  .amount-neutral { color: var(--text-secondary); }
+  .dark .amount-neutral { color: var(--dark-text-secondary); }
+
+  .list-amount-label {
+    font-size: 11px;
+    font-weight: 400;
+    text-align: right;
+    margin-top: 1px;
+  }
+  .light .list-amount-label { color: var(--text-muted); }
+  .dark .list-amount-label { color: var(--dark-text-secondary); }
+
+  /* -- Buttons (Pill Shape) -- */
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    padding: 8px 20px 0;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 14px 20px;
+    border-radius: 9999px; /* Pill */
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: -0.01em;
+    text-align: center;
+  }
+
+  .btn-primary {
+    background: var(--teal-600);
+    color: #ffffff;
+    box-shadow: 0 4px 16px rgba(13, 148, 136, 0.2);
+  }
+  .btn-primary:hover {
+    background: var(--teal-700);
+    box-shadow: 0 6px 20px rgba(13, 148, 136, 0.25);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    color: var(--teal-600);
+  }
+  .light .btn-secondary { background: var(--teal-50); }
+  .dark .btn-secondary { background: var(--teal-900); color: var(--teal-400); }
+
+  /* -- Input Fields -- */
+  .input-group {
+    margin: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .input-wrapper { display: flex; flex-direction: column; gap: 6px; }
+
+  .input-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .light .input-label { color: var(--text-muted); }
+  .dark .input-label { color: var(--dark-text-secondary); }
+
+  .input {
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    font-size: 15px;
+    font-weight: 400;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .light .input {
+    background: var(--surface-low);
+    color: var(--text-primary);
+  }
+  .light .input::placeholder { color: var(--text-muted); }
+  .light .input:focus {
+    background: var(--surface);
+    border-color: rgba(13, 148, 136, 0.2);
+    box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.06);
+  }
+
+  .dark .input {
+    background: var(--dark-surface);
+    color: var(--dark-text-primary);
+    border: 1px solid var(--dark-border-ghost);
+  }
+  .dark .input::placeholder { color: var(--dark-text-secondary); }
+  .dark .input:focus {
+    border-color: rgba(20, 184, 166, 0.3);
+    box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.08);
+  }
+
+  /* -- Toast (Floating Pill) -- */
+  .toast-container {
+    padding: 0 20px;
+    margin-top: 12px;
+  }
+
+  .toast-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .toast-success {
+    background: #ecfdf5;
+    color: #065f46;
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.08);
+  }
+  .dark .toast-success {
+    background: #052e16;
+    color: #6ee7b7;
+    box-shadow: none;
+    border: 1px solid rgba(16, 185, 129, 0.15);
+  }
+
+  .toast-error {
+    background: #fef2f2;
+    color: #991b1b;
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.08);
+  }
+  .dark .toast-error {
+    background: #450a0a;
+    color: #fca5a5;
+    box-shadow: none;
+    border: 1px solid rgba(239, 68, 68, 0.15);
+  }
+
+  .toast-icon { font-size: 18px; flex-shrink: 0; }
+
+  /* -- Chips -- */
+  .chip-row {
+    display: flex;
+    gap: 8px;
+    padding: 0 20px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .chip-teal { background: var(--teal-50); color: var(--teal-700); }
+  .chip-green { background: #dcfce7; color: #15803d; }
+  .chip-amber { background: #fef3c7; color: #92400e; }
+  .chip-red { background: #fee2e2; color: #991b1b; }
+  .dark .chip-teal { background: var(--teal-900); color: var(--teal-400); }
+  .dark .chip-green { background: #052e16; color: var(--green-500); }
+  .dark .chip-amber { background: #451a03; color: var(--amber-500); }
+  .dark .chip-red { background: #450a0a; color: var(--red-400); }
+
+  /* -- Empty State -- */
+  .empty-state {
+    padding: 48px 40px;
+    text-align: center;
+  }
+
+  .empty-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 32px;
+  }
+  .light .empty-icon { background: var(--teal-50); }
+  .dark .empty-icon { background: var(--teal-900); }
+
+  .empty-title {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .light .empty-title { color: var(--text-primary); }
+  .dark .empty-title { color: var(--dark-text-primary); }
+
+  .empty-subtitle {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+  .light .empty-subtitle { color: var(--text-secondary); }
+  .dark .empty-subtitle { color: var(--dark-text-secondary); }
+
+  .empty-btn {
+    display: inline-flex;
+    padding: 12px 28px;
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: var(--teal-600);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(13, 148, 136, 0.15);
+  }
+
+  /* -- Tab Bar -- */
+  .tab-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    padding: 8px 12px 28px;
+  }
+
+  .light .tab-bar {
+    background: linear-gradient(to top, #ffffff 80%, rgba(255,255,255,0));
+  }
+  .dark .tab-bar {
+    background: linear-gradient(to top, var(--dark-bg) 80%, rgba(18,24,32,0));
+  }
+
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  .light .tab-item { color: var(--text-muted); }
+  .light .tab-item.active { color: var(--teal-600); }
+  .dark .tab-item { color: var(--dark-text-secondary); }
+  .dark .tab-item.active { color: var(--teal-400); }
+
+  .tab-icon { font-size: 22px; height: 24px; }
+
+  .tab-fab {
+    width: 56px;
+    height: 56px;
+    border-radius: 20px;
+    background: var(--teal-600);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 300;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 16px rgba(13, 148, 136, 0.25);
+    cursor: pointer;
+  }
+
+  .tab-indicator {
+    width: 20px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--teal-600);
+    margin-top: 2px;
+  }
+  .dark .tab-indicator { background: var(--teal-400); }
+
+  /* -- Group Header Card -- */
+  .group-hero {
+    margin: 8px 20px 0;
+    padding: 24px;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .light .group-hero {
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(13, 148, 136, 0.04), 0 0 0 1px rgba(13, 148, 136, 0.03);
+  }
+  .dark .group-hero {
+    background: var(--dark-surface-low);
+    border: 1px solid var(--dark-border-ghost);
+  }
+
+  .group-emoji { font-size: 40px; margin-bottom: 12px; }
+
+  .group-name {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .light .group-name { color: var(--text-primary); }
+  .dark .group-name { color: var(--dark-text-primary); }
+
+  .group-meta {
+    font-size: 13px;
+    font-weight: 400;
+    margin-bottom: 16px;
+  }
+  .light .group-meta { color: var(--text-secondary); }
+  .dark .group-meta { color: var(--dark-text-secondary); }
+
+  .group-balance-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .group-balance-pill {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 14px;
+    text-align: center;
+  }
+  .light .group-balance-pill { background: var(--surface-low); }
+  .dark .group-balance-pill { background: var(--dark-surface); }
+
+  .group-balance-pill .gb-label {
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .light .gb-label { color: var(--text-muted); }
+  .dark .gb-label { color: var(--dark-text-secondary); }
+
+  .group-balance-pill .gb-amount {
+    font-size: 17px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* -- DARK MODE SCREEN -- */
+  .dark { background: var(--dark-bg); }
+
+  /* -- Component Gallery Section -- */
+  .gallery {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-bottom: 100px;
+  }
+
+  .gallery-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding-bottom: 8px;
+  }
+  .light .gallery-section-title {
+    color: var(--text-muted);
+    border-bottom: none;
+  }
+  .dark .gallery-section-title {
+    color: var(--dark-text-secondary);
+  }
+
+  /* Specs callout */
+  .spec-callout {
+    padding: 16px 20px;
+    margin: 20px 20px 0;
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .light .spec-callout {
+    background: var(--teal-50);
+    color: var(--teal-800);
+  }
+  .dark .spec-callout {
+    background: var(--teal-900);
+    color: var(--teal-400);
+  }
+  .spec-callout strong { font-weight: 600; }
+
+  /* header row */
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px 0;
+  }
+  .header-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+  .light .header-title { color: var(--text-primary); }
+  .dark .header-title { color: var(--dark-text-primary); }
+
+  .header-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--teal-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--teal-700);
+  }
+  .dark .header-avatar {
+    background: var(--teal-900);
+    color: var(--teal-400);
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== LIGHT MODE — HOME ==================== -->
+<div class="column">
+  <div class="label">Light Mode — Home</div>
+  <div class="phone-frame">
+    <div class="phone-screen light">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span style="font-size: 12px;">●●●● 📶 🔋</span>
+      </div>
+
+      <div class="header-row">
+        <div class="header-title">Splitr</div>
+        <div class="header-avatar">AW</div>
+      </div>
+
+      <!-- Balance Card -->
+      <div class="balance-card">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="balance-label">Net Balance</div>
+        <div class="balance-amount">₹8,450<span class="decimal">.00</span></div>
+        <div class="balance-row">
+          <div class="balance-col">
+            <div class="balance-icon">↙</div>
+            <div>
+              <div class="balance-sub-label">You are owed</div>
+              <div class="balance-sub-amount">₹12,200</div>
+            </div>
+          </div>
+          <div class="balance-col">
+            <div class="balance-icon">↗</div>
+            <div>
+              <div class="balance-sub-label">You owe</div>
+              <div class="balance-sub-amount">₹3,750</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="btn-row" style="margin-top: 20px;">
+        <div class="btn btn-primary">Settle Up</div>
+        <div class="btn btn-secondary">Add Expense</div>
+      </div>
+
+      <!-- Recent Activity — No Dividers, Tonal Cards -->
+      <div class="section-header">Recent Activity</div>
+      <div class="content-card">
+        <div class="list-item">
+          <div class="avatar avatar-teal">🍕</div>
+          <div class="list-content">
+            <div class="list-title">Pizza Night</div>
+            <div class="list-subtitle">You paid · Goa Trip</div>
+          </div>
+          <div>
+            <div class="list-amount amount-positive">+₹450</div>
+            <div class="list-amount-label">owes you</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-green">🚗</div>
+          <div class="list-content">
+            <div class="list-title">Uber to Airport</div>
+            <div class="list-subtitle">Priya paid · Goa Trip</div>
+          </div>
+          <div>
+            <div class="list-amount amount-negative">−₹320</div>
+            <div class="list-amount-label">you owe</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-amber">⚡</div>
+          <div class="list-content">
+            <div class="list-title">Electricity Bill</div>
+            <div class="list-subtitle">Rohan paid · Flat 4B</div>
+          </div>
+          <div>
+            <div class="list-amount amount-negative">−₹800</div>
+            <div class="list-amount-label">you owe</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-red">💰</div>
+          <div class="list-content">
+            <div class="list-title">Settlement</div>
+            <div class="list-subtitle">You → Priya · Goa Trip</div>
+          </div>
+          <div>
+            <div class="list-amount amount-neutral">₹1,200</div>
+            <div class="list-amount-label">settled</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Groups -->
+      <div class="section-header">Your Groups</div>
+      <div class="content-card">
+        <div class="list-item">
+          <div class="avatar avatar-teal" style="border-radius: 14px; font-size: 20px;">🏖️</div>
+          <div class="list-content">
+            <div class="list-title">Goa Trip</div>
+            <div class="list-subtitle">4 members · 12 expenses</div>
+          </div>
+          <div>
+            <div class="list-amount amount-positive">+₹2,100</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-green" style="border-radius: 14px; font-size: 20px;">🏠</div>
+          <div class="list-content">
+            <div class="list-title">Flat 4B</div>
+            <div class="list-subtitle">3 members · 28 expenses</div>
+          </div>
+          <div>
+            <div class="list-amount amount-negative">−₹800</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 120px;"></div>
+
+      <!-- Tab Bar -->
+      <div class="tab-bar">
+        <div class="tab-item active">
+          <div class="tab-icon">🏠</div>
+          <span>Home</span>
+          <div class="tab-indicator"></div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-icon">👥</div>
+          <span>Groups</span>
+        </div>
+        <div class="tab-item" style="margin-bottom: 0;">
+          <div class="tab-fab">+</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-icon">📊</div>
+          <span>Activity</span>
+        </div>
+        <div class="tab-item">
+          <div class="tab-icon">👤</div>
+          <span>Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DARK MODE — HOME ==================== -->
+<div class="column">
+  <div class="label">Dark Mode — Home</div>
+  <div class="phone-frame">
+    <div class="phone-screen dark">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span style="font-size: 12px;">●●●● 📶 🔋</span>
+      </div>
+
+      <div class="header-row">
+        <div class="header-title">Splitr</div>
+        <div class="header-avatar">AW</div>
+      </div>
+
+      <div class="balance-card">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="balance-label">Net Balance</div>
+        <div class="balance-amount">₹8,450<span class="decimal">.00</span></div>
+        <div class="balance-row">
+          <div class="balance-col">
+            <div class="balance-icon">↙</div>
+            <div>
+              <div class="balance-sub-label">You are owed</div>
+              <div class="balance-sub-amount">₹12,200</div>
+            </div>
+          </div>
+          <div class="balance-col">
+            <div class="balance-icon">↗</div>
+            <div>
+              <div class="balance-sub-label">You owe</div>
+              <div class="balance-sub-amount">₹3,750</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top: 20px;">
+        <div class="btn btn-primary">Settle Up</div>
+        <div class="btn btn-secondary">Add Expense</div>
+      </div>
+
+      <div class="section-header">Recent Activity</div>
+      <div class="content-card">
+        <div class="list-item">
+          <div class="avatar avatar-teal">🍕</div>
+          <div class="list-content">
+            <div class="list-title">Pizza Night</div>
+            <div class="list-subtitle">You paid · Goa Trip</div>
+          </div>
+          <div>
+            <div class="list-amount amount-positive">+₹450</div>
+            <div class="list-amount-label">owes you</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-green">🚗</div>
+          <div class="list-content">
+            <div class="list-title">Uber to Airport</div>
+            <div class="list-subtitle">Priya paid · Goa Trip</div>
+          </div>
+          <div>
+            <div class="list-amount amount-negative">−₹320</div>
+            <div class="list-amount-label">you owe</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-amber">⚡</div>
+          <div class="list-content">
+            <div class="list-title">Electricity Bill</div>
+            <div class="list-subtitle">Rohan paid · Flat 4B</div>
+          </div>
+          <div>
+            <div class="list-amount amount-negative">−₹800</div>
+            <div class="list-amount-label">you owe</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-red">💰</div>
+          <div class="list-content">
+            <div class="list-title">Settlement</div>
+            <div class="list-subtitle">You → Priya · Goa Trip</div>
+          </div>
+          <div>
+            <div class="list-amount amount-neutral">₹1,200</div>
+            <div class="list-amount-label">settled</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Your Groups</div>
+      <div class="content-card">
+        <div class="list-item">
+          <div class="avatar avatar-teal" style="border-radius: 14px; font-size: 20px;">🏖️</div>
+          <div class="list-content">
+            <div class="list-title">Goa Trip</div>
+            <div class="list-subtitle">4 members · 12 expenses</div>
+          </div>
+          <div>
+            <div class="list-amount amount-positive">+₹2,100</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-green" style="border-radius: 14px; font-size: 20px;">🏠</div>
+          <div class="list-content">
+            <div class="list-title">Flat 4B</div>
+            <div class="list-subtitle">3 members · 28 expenses</div>
+          </div>
+          <div>
+            <div class="list-amount amount-negative">−₹800</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 120px;"></div>
+
+      <div class="tab-bar">
+        <div class="tab-item active">
+          <div class="tab-icon">🏠</div>
+          <span>Home</span>
+          <div class="tab-indicator"></div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-icon">👥</div>
+          <span>Groups</span>
+        </div>
+        <div class="tab-item" style="margin-bottom: 0;">
+          <div class="tab-fab">+</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-icon">📊</div>
+          <span>Activity</span>
+        </div>
+        <div class="tab-item">
+          <div class="tab-icon">👤</div>
+          <span>Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LIGHT MODE — GROUP DETAIL ==================== -->
+<div class="column">
+  <div class="label">Light — Group Detail</div>
+  <div class="phone-frame">
+    <div class="phone-screen light">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span style="font-size: 12px;">●●●● 📶 🔋</span>
+      </div>
+
+      <div style="padding: 12px 20px 0; display: flex; align-items: center; gap: 12px;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--surface-low); display: flex; align-items: center; justify-content: center; color: var(--teal-600); font-size: 18px; font-weight: 700;">←</div>
+        <div style="flex: 1;"></div>
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--surface-low); display: flex; align-items: center; justify-content: center; font-size: 16px;">⚙️</div>
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--surface-low); display: flex; align-items: center; justify-content: center; font-size: 16px;">↗️</div>
+      </div>
+
+      <div class="group-hero">
+        <div class="group-emoji">🏖️</div>
+        <div class="group-name">Goa Trip</div>
+        <div class="group-meta">4 members · Created Mar 2026</div>
+        <div class="group-balance-row">
+          <div class="group-balance-pill">
+            <div class="gb-label">Total</div>
+            <div class="gb-amount" style="color: var(--text-primary);">₹18,400</div>
+          </div>
+          <div class="group-balance-pill">
+            <div class="gb-label">You are owed</div>
+            <div class="gb-amount amount-positive">₹2,100</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Members</div>
+      <div class="content-card">
+        <div class="list-item">
+          <div class="avatar avatar-teal">AW</div>
+          <div class="list-content">
+            <div class="list-title">You</div>
+            <div class="list-subtitle">Paid ₹8,200</div>
+          </div>
+          <div>
+            <div class="list-amount amount-positive">+₹2,100</div>
+            <div class="list-amount-label">gets back</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-green">PK</div>
+          <div class="list-content">
+            <div class="list-title">Priya Kumar</div>
+            <div class="list-subtitle">Paid ₹5,400</div>
+          </div>
+          <div>
+            <div class="list-amount amount-positive">+₹1,200</div>
+            <div class="list-amount-label">gets back</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-amber">RJ</div>
+          <div class="list-content">
+            <div class="list-title">Rohan Joshi</div>
+            <div class="list-subtitle">Paid ₹2,800</div>
+          </div>
+          <div>
+            <div class="list-amount amount-negative">−₹1,800</div>
+            <div class="list-amount-label">owes</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-red">SM</div>
+          <div class="list-content">
+            <div class="list-title">Sneha Mehta</div>
+            <div class="list-subtitle">Paid ₹2,000</div>
+          </div>
+          <div>
+            <div class="list-amount amount-negative">−₹1,500</div>
+            <div class="list-amount-label">owes</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Expenses</div>
+      <div class="content-card">
+        <div class="list-item">
+          <div class="avatar avatar-teal">🍕</div>
+          <div class="list-content">
+            <div class="list-title">Pizza Night</div>
+            <div class="list-subtitle">You · Mar 18</div>
+          </div>
+          <div>
+            <div class="list-amount" style="color: var(--text-primary);">₹1,800</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-green">🚗</div>
+          <div class="list-content">
+            <div class="list-title">Uber to Airport</div>
+            <div class="list-subtitle">Priya · Mar 17</div>
+          </div>
+          <div>
+            <div class="list-amount" style="color: var(--text-primary);">₹1,280</div>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="avatar avatar-amber">🏨</div>
+          <div class="list-content">
+            <div class="list-title">Hotel Booking</div>
+            <div class="list-subtitle">You · Mar 15</div>
+          </div>
+          <div>
+            <div class="list-amount" style="color: var(--text-primary);">₹12,000</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 120px;"></div>
+
+      <div class="tab-bar">
+        <div class="tab-item">
+          <div class="tab-icon">🏠</div>
+          <span>Home</span>
+        </div>
+        <div class="tab-item active">
+          <div class="tab-icon">👥</div>
+          <span>Groups</span>
+          <div class="tab-indicator"></div>
+        </div>
+        <div class="tab-item" style="margin-bottom: 0;">
+          <div class="tab-fab">+</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-icon">📊</div>
+          <span>Activity</span>
+        </div>
+        <div class="tab-item">
+          <div class="tab-icon">👤</div>
+          <span>Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LIGHT — COMPONENTS ==================== -->
+<div class="column">
+  <div class="label">Light — Components</div>
+  <div class="phone-frame">
+    <div class="phone-screen light">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span style="font-size: 12px;">●●●● 📶 🔋</span>
+      </div>
+
+      <div class="gallery">
+        <!-- Toasts -->
+        <div>
+          <div class="gallery-section-title">Toasts (Floating Pill)</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="toast-pill toast-success">
+              <span class="toast-icon">✓</span>
+              <span>Profile photo updated.</span>
+            </div>
+            <div class="toast-pill toast-error">
+              <span class="toast-icon">⚠</span>
+              <span>Failed to upload photo.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div>
+          <div class="gallery-section-title">Buttons (Pill Primary)</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="btn btn-primary" style="text-align: center;">Save Changes</div>
+            <div class="btn btn-secondary" style="text-align: center;">Cancel</div>
+            <div class="btn" style="background: none; color: var(--teal-600); text-align: center;">Delete Account</div>
+          </div>
+        </div>
+
+        <!-- Inputs -->
+        <div>
+          <div class="gallery-section-title">Inputs (Focus Animation)</div>
+          <div class="input-wrapper">
+            <div class="input-label">Name</div>
+            <input class="input" value="Ajay Wadhara" />
+          </div>
+          <div class="input-wrapper" style="margin-top: 12px;">
+            <div class="input-label">Email</div>
+            <input class="input" placeholder="your@email.com" />
+          </div>
+        </div>
+
+        <!-- Chips -->
+        <div>
+          <div class="gallery-section-title">Chips</div>
+          <div class="chip-row">
+            <div class="chip chip-teal">Active</div>
+            <div class="chip chip-green">Settled</div>
+            <div class="chip chip-amber">Pending</div>
+            <div class="chip chip-red">Overdue</div>
+          </div>
+        </div>
+
+        <!-- Money Colors -->
+        <div>
+          <div class="gallery-section-title">Money Semantics</div>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--surface); border-radius: 16px; box-shadow: 0 1px 3px rgba(13,148,136,0.04), 0 0 0 1px rgba(13,148,136,0.03);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--text-secondary);">You are owed</span>
+              <span style="font-size: 18px; font-weight: 700; color: var(--green-500); font-variant-numeric: tabular-nums;">+₹8,200</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--text-secondary);">You owe</span>
+              <span style="font-size: 18px; font-weight: 700; color: var(--red-400); font-variant-numeric: tabular-nums;">−₹3,750</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--text-secondary);">Settled</span>
+              <span style="font-size: 18px; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums;">₹0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div>
+          <div class="gallery-section-title">Empty State</div>
+          <div style="background: var(--surface); border-radius: 20px; box-shadow: 0 1px 3px rgba(13,148,136,0.04), 0 0 0 1px rgba(13,148,136,0.03);">
+            <div class="empty-state">
+              <div class="empty-icon">📝</div>
+              <div class="empty-title">No expenses yet</div>
+              <div class="empty-subtitle">Add your first expense to start tracking who owes what.</div>
+              <div class="empty-btn">Add Expense</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Spec Note -->
+        <div class="spec-callout">
+          <strong>Key Design Rules</strong><br><br>
+          ✓ No 1px divider lines — use spacing<br>
+          ✓ Green for owed, Red for owe<br>
+          ✓ Tabular numerals on all amounts<br>
+          ✓ Pill buttons for primary actions<br>
+          ✓ 20px card radius, 20px padding<br>
+          ✓ Teal-tinted shadows (not gray)<br>
+          ✓ Focus animation on inputs<br>
+          ✓ Keep teal brand identity
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DARK — COMPONENTS ==================== -->
+<div class="column">
+  <div class="label">Dark — Components</div>
+  <div class="phone-frame">
+    <div class="phone-screen dark">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span style="font-size: 12px;">●●●● 📶 🔋</span>
+      </div>
+
+      <div class="gallery">
+        <div>
+          <div class="gallery-section-title">Toasts (Floating Pill)</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="toast-pill toast-success">
+              <span class="toast-icon">✓</span>
+              <span>Expense added successfully.</span>
+            </div>
+            <div class="toast-pill toast-error">
+              <span class="toast-icon">⚠</span>
+              <span>Network error. Try again.</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="gallery-section-title">Buttons</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="btn btn-primary" style="text-align: center;">Settle Up</div>
+            <div class="btn btn-secondary" style="text-align: center;">View Details</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="gallery-section-title">Inputs</div>
+          <div class="input-wrapper">
+            <div class="input-label">Amount</div>
+            <input class="input" value="₹1,200.00" />
+          </div>
+          <div class="input-wrapper" style="margin-top: 12px;">
+            <div class="input-label">Description</div>
+            <input class="input" placeholder="What's this for?" />
+          </div>
+        </div>
+
+        <div>
+          <div class="gallery-section-title">Chips</div>
+          <div class="chip-row">
+            <div class="chip chip-teal">Active</div>
+            <div class="chip chip-green">Settled</div>
+            <div class="chip chip-amber">Pending</div>
+            <div class="chip chip-red">Overdue</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="gallery-section-title">Money Semantics</div>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--dark-surface-low); border-radius: 16px; border: 1px solid var(--dark-border-ghost);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--dark-text-secondary);">You are owed</span>
+              <span style="font-size: 18px; font-weight: 700; color: var(--green-500); font-variant-numeric: tabular-nums;">+₹8,200</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--dark-text-secondary);">You owe</span>
+              <span style="font-size: 18px; font-weight: 700; color: var(--red-400); font-variant-numeric: tabular-nums;">−₹3,750</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 14px; color: var(--dark-text-secondary);">Settled</span>
+              <span style="font-size: 18px; font-weight: 700; color: var(--dark-text-secondary); font-variant-numeric: tabular-nums;">₹0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="gallery-section-title">Empty State</div>
+          <div style="background: var(--dark-surface-low); border-radius: 20px; border: 1px solid var(--dark-border-ghost);">
+            <div class="empty-state">
+              <div class="empty-icon">📝</div>
+              <div class="empty-title">No expenses yet</div>
+              <div class="empty-subtitle">Add your first expense to start tracking who owes what.</div>
+              <div class="empty-btn">Add Expense</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-callout">
+          <strong>Dark Mode Rules</strong><br><br>
+          ✓ Background: #121820 (warm, not blue)<br>
+          ✓ Cards: #1a2332 with 8% white border<br>
+          ✓ Elevated: #1f2d3d for modals<br>
+          ✓ No shadows — border-only depth<br>
+          ✓ Teal brightened to #14b8a6<br>
+          ✓ Green/Red amounts same as light
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

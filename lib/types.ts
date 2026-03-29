@@ -49,10 +49,37 @@ export interface CurrencyAmount {
   amount: number;
 }
 
+export interface FxSnapshotDto {
+  baseCurrency: string;
+  quoteCurrency: string;
+  rateSource: string;
+  quotedAt: string;
+  roundingMode?: string;
+  roundingScale?: number;
+  rateDecimal?: string;
+  rateNumerator?: string;
+  rateDenominator?: string;
+  providerTimestamp?: string;
+  fetchedAt?: string;
+  fallbackLevel?: number;
+}
+
+export interface ConvertedMinorAmountDto {
+  currency: string;
+  amountMinor: number;
+}
+
 /** Raw shape from GET /v1/users/me/balance (multi-currency) */
 export interface UserBalanceRawDto {
   totalOwed: CurrencyAmount[];
   totalOwing: CurrencyAmount[];
+  /** Optional deterministic aggregates provided by backend to avoid FE recomputation. */
+  totalOwedCents?: number;
+  totalOwingCents?: number;
+  /** @deprecated Backward-compatible alias for totalOwingCents during rollout. */
+  totalOwesCents?: number;
+  netBalanceCents?: number;
+  normalizedCurrency?: string;
   groupBalances?: Array<{
     groupId: string;
     groupName: string;
@@ -65,6 +92,7 @@ export interface UserBalanceDto {
   totalOwedCents: number;
   totalOwesCents: number;
   netBalanceCents: number;
+  normalizedCurrency?: string;
   totalOwedByCurrency?: CurrencyAmount[];
   totalOwingByCurrency?: CurrencyAmount[];
   groupBalances?: Array<{
@@ -172,6 +200,8 @@ export interface ExpenseDto {
   description: string;
   amountCents: number;
   currency?: string;
+  convertedAmount?: ConvertedMinorAmountDto;
+  fxSnapshot?: FxSnapshotDto;
   date: string;
   category?: CategoryDto;
   splitType?: string;
@@ -301,6 +331,8 @@ export interface SettlementDto {
   payeeGuest?: GuestUserDto;
   amount: number;
   currency: string;
+  convertedAmount?: ConvertedMinorAmountDto;
+  fxSnapshot?: FxSnapshotDto;
   paymentMethod?: string;
   paymentReference?: string;
   settlementDate: string;

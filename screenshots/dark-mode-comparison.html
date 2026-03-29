@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splitr — Dark Mode Comparison</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #111;
+    color: #f1f5f9;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 15px;
+    margin-bottom: 48px;
+  }
+
+  /* Section headers */
+  .section-header {
+    text-align: center;
+    margin: 60px 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .section-title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .section-desc {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 14px;
+    margin-bottom: 32px;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+
+  /* Phone grid */
+  .phone-row {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .phone-wrapper {
+    text-align: center;
+  }
+  .phone-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    color: #94a3b8;
+  }
+  .phone-label .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .badge-current { background: #334155; color: #94a3b8; }
+  .badge-new { background: #0d9488; color: #fff; }
+  .badge-option { background: #7c3aed; color: #fff; }
+
+  /* Phone frame */
+  .phone {
+    width: 320px;
+    height: 640px;
+    border-radius: 32px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .phone-inner {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .phone-inner::-webkit-scrollbar { display: none; }
+
+  /* Notch */
+  .notch {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    padding-top: 8px;
+  }
+  .notch-pill {
+    width: 100px;
+    height: 28px;
+    border-radius: 14px;
+    background: #000;
+  }
+
+  /* ===== THEME TOKENS ===== */
+
+  /* Light */
+  .theme-light {
+    --bg: #f8fafb;
+    --fg: #0f172a;
+    --card: #ffffff;
+    --card-fg: #0f172a;
+    --muted: #f1f5f9;
+    --muted-fg: #64748b;
+    --border: #e2e8f0;
+    --primary: #0d9488;
+    --accent: #14b8a6;
+    --success: #10b981;
+    --destructive: #ef4444;
+    --hero-from: #0d9488;
+    --hero-to: #0891b2;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --card-border: none;
+    --tab-bg: #ffffff;
+    --tab-border: 1px solid #e2e8f0;
+    --icon-bg: #f0fdfa;
+    --icon-bg-red: #fef2f2;
+    --badge-green-bg: #ecfdf5;
+    --badge-green-fg: #059669;
+    --badge-red-bg: #fef2f2;
+    --badge-red-fg: #ef4444;
+    --badge-settled-bg: #f1f5f9;
+    --badge-settled-fg: #64748b;
+    --separator: rgba(0,0,0,0.05);
+  }
+
+  /* Dark (Current — Navy Slate) */
+  .theme-dark-navy {
+    --bg: #0f172a;
+    --fg: #f1f5f9;
+    --card: #1e293b;
+    --card-fg: #f1f5f9;
+    --muted: #334155;
+    --muted-fg: #94a3b8;
+    --border: #334155;
+    --primary: #0d9488;
+    --accent: #14b8a6;
+    --success: #10b981;
+    --destructive: #ef4444;
+    --hero-from: #134e4a;
+    --hero-to: #164e63;
+    --card-shadow: none;
+    --card-border: none;
+    --tab-bg: #1e293b;
+    --tab-border: 1px solid #334155;
+    --icon-bg: rgba(13,148,136,0.12);
+    --icon-bg-red: rgba(239,68,68,0.12);
+    --badge-green-bg: rgba(16,185,129,0.12);
+    --badge-green-fg: #34d399;
+    --badge-red-bg: rgba(239,68,68,0.12);
+    --badge-red-fg: #f87171;
+    --badge-settled-bg: #334155;
+    --badge-settled-fg: #94a3b8;
+    --separator: rgba(255,255,255,0.06);
+  }
+
+  /* Dark Option A: Pure Black (OLED) */
+  .theme-dark-black {
+    --bg: #000000;
+    --fg: #f1f5f9;
+    --card: #0d0d0d;
+    --card-fg: #f1f5f9;
+    --muted: #1a1a1a;
+    --muted-fg: #a1a1aa;
+    --border: #262626;
+    --primary: #0d9488;
+    --accent: #2dd4bf;
+    --success: #34d399;
+    --destructive: #f87171;
+    --hero-from: #042f2e;
+    --hero-to: #083344;
+    --card-shadow: none;
+    --card-border: 1px solid #262626;
+    --tab-bg: #0d0d0d;
+    --tab-border: 1px solid #262626;
+    --icon-bg: rgba(13,148,136,0.15);
+    --icon-bg-red: rgba(248,113,113,0.15);
+    --badge-green-bg: rgba(45,212,191,0.1);
+    --badge-green-fg: #2dd4bf;
+    --badge-red-bg: rgba(248,113,113,0.1);
+    --badge-red-fg: #f87171;
+    --badge-settled-bg: #1a1a1a;
+    --badge-settled-fg: #a1a1aa;
+    --separator: rgba(255,255,255,0.06);
+  }
+
+  /* Dark Option B: Elevated Black (OLED + depth) */
+  .theme-dark-elevated {
+    --bg: #000000;
+    --fg: #fafafa;
+    --card: #111111;
+    --card-fg: #fafafa;
+    --muted: #1c1c1e;
+    --muted-fg: #a1a1aa;
+    --border: #2a2a2a;
+    --primary: #14b8a6;
+    --accent: #2dd4bf;
+    --success: #34d399;
+    --destructive: #f87171;
+    --hero-from: #052e2d;
+    --hero-to: #0a3a3a;
+    --card-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    --card-border: 1px solid rgba(255,255,255,0.06);
+    --tab-bg: #111111;
+    --tab-border: 1px solid rgba(255,255,255,0.06);
+    --icon-bg: rgba(20,184,166,0.12);
+    --icon-bg-red: rgba(248,113,113,0.12);
+    --badge-green-bg: rgba(45,212,191,0.08);
+    --badge-green-fg: #2dd4bf;
+    --badge-red-bg: rgba(248,113,113,0.08);
+    --badge-red-fg: #f87171;
+    --badge-settled-bg: #1c1c1e;
+    --badge-settled-fg: #a1a1aa;
+    --separator: rgba(255,255,255,0.04);
+  }
+
+  /* ===== SHARED PHONE INTERNALS ===== */
+  .screen {
+    background: var(--bg);
+    min-height: 100%;
+    padding-bottom: 70px;
+  }
+
+  /* Hero gradient */
+  .hero {
+    background: linear-gradient(135deg, var(--hero-from), var(--hero-to));
+    padding: 16px 20px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    border-radius: 60px;
+    background: rgba(255,255,255,0.06);
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -20px; left: 40%;
+    width: 80px; height: 80px;
+    border-radius: 40px;
+    background: rgba(255,255,255,0.04);
+  }
+  .hero-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .hero-app-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .hero-bell {
+    width: 36px; height: 36px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .hero-welcome {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 16px;
+  }
+
+  /* Balance card inside hero */
+  .balance-card {
+    background: rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 16px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .balance-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 4px;
+  }
+  .balance-amount {
+    font-size: 36px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 12px;
+  }
+  .balance-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  .balance-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .balance-icon {
+    width: 28px; height: 28px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #fff;
+  }
+  .balance-sub-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+  }
+  .balance-sub-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .settle-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* Content area */
+  .content { padding: 16px 16px 0; }
+
+  /* Section heading row */
+  .section-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 16px 0 10px;
+  }
+  .section-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .section-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  /* Group card */
+  .group-card {
+    background: var(--card);
+    border-radius: 14px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    border: var(--card-border);
+  }
+  .group-card-inner {
+    display: flex;
+    align-items: center;
+    padding: 14px;
+    gap: 12px;
+  }
+  .group-emoji {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    background: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .group-info { flex: 1; }
+  .group-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--card-fg);
+  }
+  .group-meta {
+    font-size: 12px;
+    color: var(--muted-fg);
+    margin-top: 2px;
+  }
+  .group-chevron {
+    color: var(--muted-fg);
+    font-size: 16px;
+  }
+  .group-balance-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px 10px;
+    border-top: 1px solid var(--separator);
+  }
+  .group-balance-label {
+    font-size: 12px;
+    color: var(--muted-fg);
+  }
+
+  /* Balance badges */
+  .badge-pill {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 8px;
+  }
+  .badge-green {
+    background: var(--badge-green-bg);
+    color: var(--badge-green-fg);
+  }
+  .badge-red {
+    background: var(--badge-red-bg);
+    color: var(--badge-red-fg);
+  }
+  .badge-settled {
+    background: var(--badge-settled-bg);
+    color: var(--badge-settled-fg);
+  }
+
+  /* Activity card */
+  .activity-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--card-shadow);
+    border: var(--card-border);
+  }
+  .activity-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .activity-icon-green { background: var(--icon-bg); }
+  .activity-icon-red { background: var(--icon-bg-red); }
+  .activity-info { flex: 1; }
+  .activity-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--card-fg);
+  }
+  .activity-meta {
+    font-size: 12px;
+    color: var(--muted-fg);
+    margin-top: 2px;
+  }
+  .activity-right { text-align: right; flex-shrink: 0; }
+  .activity-amount {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .amount-green { color: var(--badge-green-fg); }
+  .amount-red { color: var(--badge-red-fg); }
+  .amount-neutral { color: var(--card-fg); }
+  .activity-tag {
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: var(--tab-bg);
+    border-top: var(--tab-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 8px;
+    z-index: 20;
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: var(--muted-fg);
+    font-weight: 500;
+  }
+  .tab-item.active { color: var(--primary); }
+  .tab-icon {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .tab-fab {
+    width: 48px; height: 48px;
+    border-radius: 24px;
+    background: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: #fff; font-weight: 300;
+    margin-top: -16px;
+    box-shadow: 0 4px 12px rgba(13,148,136,0.3);
+  }
+
+  /* Left accent strip */
+  .accent-strip {
+    width: 4px;
+    border-radius: 2px;
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+  }
+  .group-card { position: relative; padding-left: 4px; }
+
+  /* ===== COMPARISON TABLE ===== */
+  .token-table {
+    width: 100%;
+    max-width: 1000px;
+    margin: 40px auto;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .token-table th {
+    text-align: left;
+    padding: 10px 14px;
+    background: #1e293b;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .token-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid #1e293b;
+    color: #e2e8f0;
+  }
+  .token-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .swatch {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.1);
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+
+  /* Divider */
+  .divider {
+    max-width: 900px;
+    margin: 60px auto;
+    border: none;
+    border-top: 1px solid #1e293b;
+  }
+
+  /* Pros/Cons */
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto 40px;
+  }
+  .comparison-box {
+    background: #0f172a;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #1e293b;
+  }
+  .comparison-box h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .comparison-box ul {
+    list-style: none;
+    padding: 0;
+  }
+  .comparison-box li {
+    padding: 6px 0;
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.5;
+    display: flex;
+    gap: 8px;
+  }
+  .comparison-box li::before {
+    content: '•';
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 768px) {
+    .phone-row { flex-direction: column; align-items: center; }
+    .comparison-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Splitr Dark Mode Comparison</h1>
+<p class="subtitle">Side-by-side comparison of all theme options for both Home and Group Detail screens</p>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: HOME SCREEN -->
+<!-- ============================================================ -->
+
+<p class="section-header">Screen 1</p>
+<p class="section-title">Home Screen</p>
+<p class="section-desc">The main dashboard showing net balance, active groups, and recent activity</p>
+
+<div class="phone-row">
+
+  <!-- LIGHT -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Light <span class="badge badge-current">CURRENT</span></div>
+    <div class="phone theme-light">
+      <div class="phone-inner">
+        <div class="screen">
+          <div class="hero">
+            <div class="hero-title-row">
+              <span class="hero-app-name">Splitr</span>
+              <span class="hero-bell">🔔</span>
+            </div>
+            <div class="hero-welcome">Welcome back, Ajay</div>
+            <div class="balance-card">
+              <div class="balance-label">Net Balance</div>
+              <div class="balance-amount">£11.25</div>
+              <div class="balance-row">
+                <div class="balance-item">
+                  <div class="balance-icon">↙</div>
+                  <div><div class="balance-sub-label">You are owed</div><div class="balance-sub-value">£22.50</div></div>
+                </div>
+                <div class="balance-item">
+                  <div class="balance-icon">↗</div>
+                  <div><div class="balance-sub-label">You owe</div><div class="balance-sub-value">£11.25</div></div>
+                </div>
+              </div>
+              <button class="settle-btn">⚖️ Settle up £11.25</button>
+            </div>
+          </div>
+          <div class="content">
+            <div class="section-row"><span class="section-name">Active Groups</span><span class="section-link">View all</span></div>
+            <div class="group-card">
+              <div class="accent-strip" style="background:#94a3b8"></div>
+              <div class="group-card-inner">
+                <div class="group-emoji">🎵</div>
+                <div class="group-info"><div class="group-name">Diljit</div><div class="group-meta">2 members · 3 hours ago</div></div>
+                <span class="group-chevron">›</span>
+              </div>
+              <div class="group-balance-row">
+                <span class="group-balance-label">Your balance</span>
+                <span class="badge-pill badge-settled">settled</span>
+              </div>
+            </div>
+            <div class="group-card">
+              <div class="accent-strip" style="background:#ef4444"></div>
+              <div class="group-card-inner">
+                <div class="group-emoji">🍕</div>
+                <div class="group-info"><div class="group-name">TGIF</div><div class="group-meta">4 members · 4 days ago</div></div>
+                <span class="group-chevron">›</span>
+              </div>
+              <div class="group-balance-row">
+                <span class="group-balance-label">Your balance</span>
+                <span class="badge-pill badge-red">-£11.25</span>
+              </div>
+            </div>
+            <div class="section-row"><span class="section-name">Recent Activity</span><span class="section-link">View all</span></div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">👤+</div>
+              <div class="activity-info"><div class="activity-title">You added Chinam</div><div class="activity-meta">in Diljit</div></div>
+              <div class="activity-right"><div class="activity-meta">3 days ago</div></div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-red">🍺</div>
+              <div class="activity-info"><div class="activity-title">Chinam B. added beer</div><div class="activity-meta">in TGIF</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£45.00</div>
+                <div class="activity-tag amount-red">you borrowed £11.25</div>
+                <div class="activity-meta">3 days ago</div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-bar">
+            <div class="tab-item active"><div class="tab-icon">🏠</div>Home</div>
+            <div class="tab-item"><div class="tab-icon">👥</div>Groups</div>
+            <div class="tab-fab">+</div>
+            <div class="tab-item"><div class="tab-icon">📊</div>Activity</div>
+            <div class="tab-item"><div class="tab-icon">👤</div>Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DARK NAVY (Current) -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Dark Navy <span class="badge badge-current">CURRENT</span></div>
+    <div class="phone theme-dark-navy">
+      <div class="phone-inner">
+        <div class="screen">
+          <div class="hero">
+            <div class="hero-title-row">
+              <span class="hero-app-name">Splitr</span>
+              <span class="hero-bell">🔔</span>
+            </div>
+            <div class="hero-welcome">Welcome back, Ajay</div>
+            <div class="balance-card">
+              <div class="balance-label">Net Balance</div>
+              <div class="balance-amount">£11.25</div>
+              <div class="balance-row">
+                <div class="balance-item">
+                  <div class="balance-icon">↙</div>
+                  <div><div class="balance-sub-label">You are owed</div><div class="balance-sub-value">£22.50</div></div>
+                </div>
+                <div class="balance-item">
+                  <div class="balance-icon">↗</div>
+                  <div><div class="balance-sub-label">You owe</div><div class="balance-sub-value">£11.25</div></div>
+                </div>
+              </div>
+              <button class="settle-btn">⚖️ Settle up £11.25</button>
+            </div>
+          </div>
+          <div class="content">
+            <div class="section-row"><span class="section-name">Active Groups</span><span class="section-link">View all</span></div>
+            <div class="group-card">
+              <div class="accent-strip" style="background:#94a3b8"></div>
+              <div class="group-card-inner">
+                <div class="group-emoji">🎵</div>
+                <div class="group-info"><div class="group-name">Diljit</div><div class="group-meta">2 members · 3 hours ago</div></div>
+                <span class="group-chevron">›</span>
+              </div>
+              <div class="group-balance-row">
+                <span class="group-balance-label">Your balance</span>
+                <span class="badge-pill badge-settled">settled</span>
+              </div>
+            </div>
+            <div class="group-card">
+              <div class="accent-strip" style="background:#ef4444"></div>
+              <div class="group-card-inner">
+                <div class="group-emoji">🍕</div>
+                <div class="group-info"><div class="group-name">TGIF</div><div class="group-meta">4 members · 4 days ago</div></div>
+                <span class="group-chevron">›</span>
+              </div>
+              <div class="group-balance-row">
+                <span class="group-balance-label">Your balance</span>
+                <span class="badge-pill badge-red">-£11.25</span>
+              </div>
+            </div>
+            <div class="section-row"><span class="section-name">Recent Activity</span><span class="section-link">View all</span></div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">👤+</div>
+              <div class="activity-info"><div class="activity-title">You added Chinam</div><div class="activity-meta">in Diljit</div></div>
+              <div class="activity-right"><div class="activity-meta">3 days ago</div></div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-red">🍺</div>
+              <div class="activity-info"><div class="activity-title">Chinam B. added beer</div><div class="activity-meta">in TGIF</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£45.00</div>
+                <div class="activity-tag amount-red">you borrowed £11.25</div>
+                <div class="activity-meta">3 days ago</div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-bar">
+            <div class="tab-item active"><div class="tab-icon">🏠</div>Home</div>
+            <div class="tab-item"><div class="tab-icon">👥</div>Groups</div>
+            <div class="tab-fab">+</div>
+            <div class="tab-item"><div class="tab-icon">📊</div>Activity</div>
+            <div class="tab-item"><div class="tab-icon">👤</div>Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION A: Pure Black -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Option A: Pure Black <span class="badge badge-new">NEW</span></div>
+    <div class="phone theme-dark-black">
+      <div class="phone-inner">
+        <div class="screen">
+          <div class="hero">
+            <div class="hero-title-row">
+              <span class="hero-app-name">Splitr</span>
+              <span class="hero-bell">🔔</span>
+            </div>
+            <div class="hero-welcome">Welcome back, Ajay</div>
+            <div class="balance-card">
+              <div class="balance-label">Net Balance</div>
+              <div class="balance-amount">£11.25</div>
+              <div class="balance-row">
+                <div class="balance-item">
+                  <div class="balance-icon">↙</div>
+                  <div><div class="balance-sub-label">You are owed</div><div class="balance-sub-value">£22.50</div></div>
+                </div>
+                <div class="balance-item">
+                  <div class="balance-icon">↗</div>
+                  <div><div class="balance-sub-label">You owe</div><div class="balance-sub-value">£11.25</div></div>
+                </div>
+              </div>
+              <button class="settle-btn">⚖️ Settle up £11.25</button>
+            </div>
+          </div>
+          <div class="content">
+            <div class="section-row"><span class="section-name">Active Groups</span><span class="section-link">View all</span></div>
+            <div class="group-card">
+              <div class="accent-strip" style="background:#94a3b8"></div>
+              <div class="group-card-inner">
+                <div class="group-emoji">🎵</div>
+                <div class="group-info"><div class="group-name">Diljit</div><div class="group-meta">2 members · 3 hours ago</div></div>
+                <span class="group-chevron">›</span>
+              </div>
+              <div class="group-balance-row">
+                <span class="group-balance-label">Your balance</span>
+                <span class="badge-pill badge-settled">settled</span>
+              </div>
+            </div>
+            <div class="group-card">
+              <div class="accent-strip" style="background:#f87171"></div>
+              <div class="group-card-inner">
+                <div class="group-emoji">🍕</div>
+                <div class="group-info"><div class="group-name">TGIF</div><div class="group-meta">4 members · 4 days ago</div></div>
+                <span class="group-chevron">›</span>
+              </div>
+              <div class="group-balance-row">
+                <span class="group-balance-label">Your balance</span>
+                <span class="badge-pill badge-red">-£11.25</span>
+              </div>
+            </div>
+            <div class="section-row"><span class="section-name">Recent Activity</span><span class="section-link">View all</span></div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">👤+</div>
+              <div class="activity-info"><div class="activity-title">You added Chinam</div><div class="activity-meta">in Diljit</div></div>
+              <div class="activity-right"><div class="activity-meta">3 days ago</div></div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-red">🍺</div>
+              <div class="activity-info"><div class="activity-title">Chinam B. added beer</div><div class="activity-meta">in TGIF</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£45.00</div>
+                <div class="activity-tag amount-red">you borrowed £11.25</div>
+                <div class="activity-meta">3 days ago</div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-bar">
+            <div class="tab-item active"><div class="tab-icon">🏠</div>Home</div>
+            <div class="tab-item"><div class="tab-icon">👥</div>Groups</div>
+            <div class="tab-fab">+</div>
+            <div class="tab-item"><div class="tab-icon">📊</div>Activity</div>
+            <div class="tab-item"><div class="tab-icon">👤</div>Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B: Elevated Black -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Option B: Elevated Black <span class="badge badge-option">ALT</span></div>
+    <div class="phone theme-dark-elevated">
+      <div class="phone-inner">
+        <div class="screen">
+          <div class="hero">
+            <div class="hero-title-row">
+              <span class="hero-app-name">Splitr</span>
+              <span class="hero-bell">🔔</span>
+            </div>
+            <div class="hero-welcome">Welcome back, Ajay</div>
+            <div class="balance-card">
+              <div class="balance-label">Net Balance</div>
+              <div class="balance-amount">£11.25</div>
+              <div class="balance-row">
+                <div class="balance-item">
+                  <div class="balance-icon">↙</div>
+                  <div><div class="balance-sub-label">You are owed</div><div class="balance-sub-value">£22.50</div></div>
+                </div>
+                <div class="balance-item">
+                  <div class="balance-icon">↗</div>
+                  <div><div class="balance-sub-label">You owe</div><div class="balance-sub-value">£11.25</div></div>
+                </div>
+              </div>
+              <button class="settle-btn">⚖️ Settle up £11.25</button>
+            </div>
+          </div>
+          <div class="content">
+            <div class="section-row"><span class="section-name">Active Groups</span><span class="section-link">View all</span></div>
+            <div class="group-card">
+              <div class="accent-strip" style="background:#a1a1aa"></div>
+              <div class="group-card-inner">
+                <div class="group-emoji">🎵</div>
+                <div class="group-info"><div class="group-name">Diljit</div><div class="group-meta">2 members · 3 hours ago</div></div>
+                <span class="group-chevron">›</span>
+              </div>
+              <div class="group-balance-row">
+                <span class="group-balance-label">Your balance</span>
+                <span class="badge-pill badge-settled">settled</span>
+              </div>
+            </div>
+            <div class="group-card">
+              <div class="accent-strip" style="background:#f87171"></div>
+              <div class="group-card-inner">
+                <div class="group-emoji">🍕</div>
+                <div class="group-info"><div class="group-name">TGIF</div><div class="group-meta">4 members · 4 days ago</div></div>
+                <span class="group-chevron">›</span>
+              </div>
+              <div class="group-balance-row">
+                <span class="group-balance-label">Your balance</span>
+                <span class="badge-pill badge-red">-£11.25</span>
+              </div>
+            </div>
+            <div class="section-row"><span class="section-name">Recent Activity</span><span class="section-link">View all</span></div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">👤+</div>
+              <div class="activity-info"><div class="activity-title">You added Chinam</div><div class="activity-meta">in Diljit</div></div>
+              <div class="activity-right"><div class="activity-meta">3 days ago</div></div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-red">🍺</div>
+              <div class="activity-info"><div class="activity-title">Chinam B. added beer</div><div class="activity-meta">in TGIF</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£45.00</div>
+                <div class="activity-tag amount-red">you borrowed £11.25</div>
+                <div class="activity-meta">3 days ago</div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-bar">
+            <div class="tab-item active"><div class="tab-icon">🏠</div>Home</div>
+            <div class="tab-item"><div class="tab-icon">👥</div>Groups</div>
+            <div class="tab-fab">+</div>
+            <div class="tab-item"><div class="tab-icon">📊</div>Activity</div>
+            <div class="tab-item"><div class="tab-icon">👤</div>Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: GROUP DETAIL SCREEN -->
+<!-- ============================================================ -->
+
+<hr class="divider">
+
+<p class="section-header">Screen 2</p>
+<p class="section-title">Group Detail Screen</p>
+<p class="section-desc">Expense ledger showing group balance, expenses, and member activity</p>
+
+<div class="phone-row">
+
+  <!-- LIGHT — GROUP -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Light <span class="badge badge-current">CURRENT</span></div>
+    <div class="phone theme-light">
+      <div class="phone-inner">
+        <div class="screen">
+          <div class="hero" style="padding-top:12px;padding-bottom:16px;">
+            <div class="hero-title-row">
+              <span style="font-size:18px;color:#fff;display:flex;align-items:center;gap:8px;">← <b>TGIF</b></span>
+              <span style="display:flex;gap:10px;font-size:16px;">🔍 ⚙️</span>
+            </div>
+            <div style="text-align:center;margin-top:12px;">
+              <div class="balance-label" style="text-align:center">Total Group Balance</div>
+              <div class="balance-amount" style="text-align:center;font-size:32px;">£1,240.50</div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+              <button class="settle-btn" style="flex:1;background:rgba(255,255,255,0.15);">📋 Add Expense</button>
+              <button class="settle-btn" style="flex:1;background:rgba(45,212,191,0.8);color:#000;font-weight:700;">⚖️ Settle Up</button>
+            </div>
+          </div>
+          <div class="content">
+            <div style="display:flex;gap:10px;margin-bottom:16px;">
+              <div style="flex:1;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--card-shadow);border:var(--card-border);">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted-fg);margin-bottom:4px;">YOU OWE</div>
+                <div style="font-size:22px;font-weight:700;color:var(--badge-red-fg);">£42.00</div>
+              </div>
+              <div style="flex:1;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--card-shadow);border:var(--card-border);">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted-fg);margin-bottom:4px;">YOU ARE OWED</div>
+                <div style="font-size:22px;font-weight:700;color:var(--badge-green-fg);">£118.50</div>
+              </div>
+            </div>
+            <div class="section-row"><span class="section-name">Recent Expenses</span><span class="section-link">View all</span></div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">🍺</div>
+              <div class="activity-info"><div class="activity-title">Beer</div><div class="activity-meta">Paid by Ajay · Oct 12</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£84.00</div>
+                <div class="activity-tag" style="color:var(--muted-fg);">OWED: £21.00</div>
+              </div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-red">🍕</div>
+              <div class="activity-info"><div class="activity-title">Pizza</div><div class="activity-meta">Paid by Sarah · Oct 10</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£112.50</div>
+                <div class="activity-tag amount-red">YOU OWE: £28.00</div>
+              </div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">🚗</div>
+              <div class="activity-info"><div class="activity-title">Late Night Uber</div><div class="activity-meta">Paid by You · Oct 09</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£32.00</div>
+                <div class="activity-tag" style="color:var(--muted-fg);">OWED: £24.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DARK NAVY — GROUP -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Dark Navy <span class="badge badge-current">CURRENT</span></div>
+    <div class="phone theme-dark-navy">
+      <div class="phone-inner">
+        <div class="screen">
+          <div class="hero" style="padding-top:12px;padding-bottom:16px;">
+            <div class="hero-title-row">
+              <span style="font-size:18px;color:#fff;display:flex;align-items:center;gap:8px;">← <b>TGIF</b></span>
+              <span style="display:flex;gap:10px;font-size:16px;">🔍 ⚙️</span>
+            </div>
+            <div style="text-align:center;margin-top:12px;">
+              <div class="balance-label" style="text-align:center">Total Group Balance</div>
+              <div class="balance-amount" style="text-align:center;font-size:32px;">£1,240.50</div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+              <button class="settle-btn" style="flex:1;background:rgba(255,255,255,0.15);">📋 Add Expense</button>
+              <button class="settle-btn" style="flex:1;background:rgba(45,212,191,0.8);color:#000;font-weight:700;">⚖️ Settle Up</button>
+            </div>
+          </div>
+          <div class="content">
+            <div style="display:flex;gap:10px;margin-bottom:16px;">
+              <div style="flex:1;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--card-shadow);border:var(--card-border);">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted-fg);margin-bottom:4px;">YOU OWE</div>
+                <div style="font-size:22px;font-weight:700;color:var(--badge-red-fg);">£42.00</div>
+              </div>
+              <div style="flex:1;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--card-shadow);border:var(--card-border);">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted-fg);margin-bottom:4px;">YOU ARE OWED</div>
+                <div style="font-size:22px;font-weight:700;color:var(--badge-green-fg);">£118.50</div>
+              </div>
+            </div>
+            <div class="section-row"><span class="section-name">Recent Expenses</span><span class="section-link">View all</span></div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">🍺</div>
+              <div class="activity-info"><div class="activity-title">Beer</div><div class="activity-meta">Paid by Ajay · Oct 12</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£84.00</div>
+                <div class="activity-tag" style="color:var(--muted-fg);">OWED: £21.00</div>
+              </div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-red">🍕</div>
+              <div class="activity-info"><div class="activity-title">Pizza</div><div class="activity-meta">Paid by Sarah · Oct 10</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£112.50</div>
+                <div class="activity-tag amount-red">YOU OWE: £28.00</div>
+              </div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">🚗</div>
+              <div class="activity-info"><div class="activity-title">Late Night Uber</div><div class="activity-meta">Paid by You · Oct 09</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£32.00</div>
+                <div class="activity-tag" style="color:var(--muted-fg);">OWED: £24.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION A: Pure Black — GROUP -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Option A: Pure Black <span class="badge badge-new">NEW</span></div>
+    <div class="phone theme-dark-black">
+      <div class="phone-inner">
+        <div class="screen">
+          <div class="hero" style="padding-top:12px;padding-bottom:16px;">
+            <div class="hero-title-row">
+              <span style="font-size:18px;color:#fff;display:flex;align-items:center;gap:8px;">← <b>TGIF</b></span>
+              <span style="display:flex;gap:10px;font-size:16px;">🔍 ⚙️</span>
+            </div>
+            <div style="text-align:center;margin-top:12px;">
+              <div class="balance-label" style="text-align:center">Total Group Balance</div>
+              <div class="balance-amount" style="text-align:center;font-size:32px;">£1,240.50</div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+              <button class="settle-btn" style="flex:1;background:rgba(255,255,255,0.12);">📋 Add Expense</button>
+              <button class="settle-btn" style="flex:1;background:rgba(45,212,191,0.8);color:#000;font-weight:700;">⚖️ Settle Up</button>
+            </div>
+          </div>
+          <div class="content">
+            <div style="display:flex;gap:10px;margin-bottom:16px;">
+              <div style="flex:1;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--card-shadow);border:var(--card-border);">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted-fg);margin-bottom:4px;">YOU OWE</div>
+                <div style="font-size:22px;font-weight:700;color:var(--badge-red-fg);">£42.00</div>
+              </div>
+              <div style="flex:1;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--card-shadow);border:var(--card-border);">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted-fg);margin-bottom:4px;">YOU ARE OWED</div>
+                <div style="font-size:22px;font-weight:700;color:var(--badge-green-fg);">£118.50</div>
+              </div>
+            </div>
+            <div class="section-row"><span class="section-name">Recent Expenses</span><span class="section-link">View all</span></div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">🍺</div>
+              <div class="activity-info"><div class="activity-title">Beer</div><div class="activity-meta">Paid by Ajay · Oct 12</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£84.00</div>
+                <div class="activity-tag" style="color:var(--muted-fg);">OWED: £21.00</div>
+              </div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-red">🍕</div>
+              <div class="activity-info"><div class="activity-title">Pizza</div><div class="activity-meta">Paid by Sarah · Oct 10</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£112.50</div>
+                <div class="activity-tag amount-red">YOU OWE: £28.00</div>
+              </div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">🚗</div>
+              <div class="activity-info"><div class="activity-title">Late Night Uber</div><div class="activity-meta">Paid by You · Oct 09</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£32.00</div>
+                <div class="activity-tag" style="color:var(--muted-fg);">OWED: £24.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B: Elevated Black — GROUP -->
+  <div class="phone-wrapper">
+    <div class="phone-label">Option B: Elevated Black <span class="badge badge-option">ALT</span></div>
+    <div class="phone theme-dark-elevated">
+      <div class="phone-inner">
+        <div class="screen">
+          <div class="hero" style="padding-top:12px;padding-bottom:16px;">
+            <div class="hero-title-row">
+              <span style="font-size:18px;color:#fff;display:flex;align-items:center;gap:8px;">← <b>TGIF</b></span>
+              <span style="display:flex;gap:10px;font-size:16px;">🔍 ⚙️</span>
+            </div>
+            <div style="text-align:center;margin-top:12px;">
+              <div class="balance-label" style="text-align:center">Total Group Balance</div>
+              <div class="balance-amount" style="text-align:center;font-size:32px;">£1,240.50</div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+              <button class="settle-btn" style="flex:1;background:rgba(255,255,255,0.1);">📋 Add Expense</button>
+              <button class="settle-btn" style="flex:1;background:rgba(45,212,191,0.8);color:#000;font-weight:700;">⚖️ Settle Up</button>
+            </div>
+          </div>
+          <div class="content">
+            <div style="display:flex;gap:10px;margin-bottom:16px;">
+              <div style="flex:1;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--card-shadow);border:var(--card-border);">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted-fg);margin-bottom:4px;">YOU OWE</div>
+                <div style="font-size:22px;font-weight:700;color:var(--badge-red-fg);">£42.00</div>
+              </div>
+              <div style="flex:1;background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--card-shadow);border:var(--card-border);">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted-fg);margin-bottom:4px;">YOU ARE OWED</div>
+                <div style="font-size:22px;font-weight:700;color:var(--badge-green-fg);">£118.50</div>
+              </div>
+            </div>
+            <div class="section-row"><span class="section-name">Recent Expenses</span><span class="section-link">View all</span></div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">🍺</div>
+              <div class="activity-info"><div class="activity-title">Beer</div><div class="activity-meta">Paid by Ajay · Oct 12</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£84.00</div>
+                <div class="activity-tag" style="color:var(--muted-fg);">OWED: £21.00</div>
+              </div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-red">🍕</div>
+              <div class="activity-info"><div class="activity-title">Pizza</div><div class="activity-meta">Paid by Sarah · Oct 10</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£112.50</div>
+                <div class="activity-tag amount-red">YOU OWE: £28.00</div>
+              </div>
+            </div>
+            <div class="activity-card">
+              <div class="activity-icon activity-icon-green">🚗</div>
+              <div class="activity-info"><div class="activity-title">Late Night Uber</div><div class="activity-meta">Paid by You · Oct 09</div></div>
+              <div class="activity-right">
+                <div class="activity-amount amount-neutral">£32.00</div>
+                <div class="activity-tag" style="color:var(--muted-fg);">OWED: £24.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- TOKEN COMPARISON TABLE -->
+<!-- ============================================================ -->
+
+<hr class="divider">
+
+<p class="section-header">Reference</p>
+<p class="section-title">Token Comparison</p>
+<p class="section-desc">Exact color values across all four theme variants</p>
+
+<table class="token-table">
+  <thead>
+    <tr>
+      <th>Token</th>
+      <th>Light</th>
+      <th>Dark Navy (Current)</th>
+      <th>Option A: Pure Black</th>
+      <th>Option B: Elevated Black</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Background</td>
+      <td><span class="swatch" style="background:#f8fafb"></span>#f8fafb</td>
+      <td><span class="swatch" style="background:#0f172a"></span>#0f172a</td>
+      <td><span class="swatch" style="background:#000000"></span>#000000</td>
+      <td><span class="swatch" style="background:#000000"></span>#000000</td>
+    </tr>
+    <tr>
+      <td>Card</td>
+      <td><span class="swatch" style="background:#ffffff"></span>#ffffff</td>
+      <td><span class="swatch" style="background:#1e293b"></span>#1e293b</td>
+      <td><span class="swatch" style="background:#0d0d0d"></span>#0d0d0d</td>
+      <td><span class="swatch" style="background:#111111"></span>#111111</td>
+    </tr>
+    <tr>
+      <td>Card Border</td>
+      <td>none (shadow)</td>
+      <td>none</td>
+      <td><span class="swatch" style="background:#262626"></span>#262626 solid</td>
+      <td><span class="swatch" style="background:rgba(255,255,255,0.06)"></span>white 6% opacity</td>
+    </tr>
+    <tr>
+      <td>Muted</td>
+      <td><span class="swatch" style="background:#f1f5f9"></span>#f1f5f9</td>
+      <td><span class="swatch" style="background:#334155"></span>#334155</td>
+      <td><span class="swatch" style="background:#1a1a1a"></span>#1a1a1a</td>
+      <td><span class="swatch" style="background:#1c1c1e"></span>#1c1c1e</td>
+    </tr>
+    <tr>
+      <td>Border</td>
+      <td><span class="swatch" style="background:#e2e8f0"></span>#e2e8f0</td>
+      <td><span class="swatch" style="background:#334155"></span>#334155</td>
+      <td><span class="swatch" style="background:#262626"></span>#262626</td>
+      <td><span class="swatch" style="background:#2a2a2a"></span>#2a2a2a</td>
+    </tr>
+    <tr>
+      <td>Muted Foreground</td>
+      <td><span class="swatch" style="background:#64748b"></span>#64748b</td>
+      <td><span class="swatch" style="background:#94a3b8"></span>#94a3b8</td>
+      <td><span class="swatch" style="background:#a1a1aa"></span>#a1a1aa</td>
+      <td><span class="swatch" style="background:#a1a1aa"></span>#a1a1aa</td>
+    </tr>
+    <tr>
+      <td>Hero Gradient</td>
+      <td><span class="swatch" style="background:linear-gradient(135deg,#0d9488,#0891b2)"></span>teal-600 → cyan-600</td>
+      <td><span class="swatch" style="background:linear-gradient(135deg,#134e4a,#164e63)"></span>teal-900 → cyan-900</td>
+      <td><span class="swatch" style="background:linear-gradient(135deg,#042f2e,#083344)"></span>teal-950 → cyan-950</td>
+      <td><span class="swatch" style="background:linear-gradient(135deg,#052e2d,#0a3a3a)"></span>teal-950 (custom)</td>
+    </tr>
+    <tr>
+      <td>Accent (links)</td>
+      <td><span class="swatch" style="background:#0d9488"></span>#0d9488</td>
+      <td><span class="swatch" style="background:#0d9488"></span>#0d9488</td>
+      <td><span class="swatch" style="background:#2dd4bf"></span>#2dd4bf (brighter)</td>
+      <td><span class="swatch" style="background:#14b8a6"></span>#14b8a6</td>
+    </tr>
+    <tr>
+      <td>Success Text</td>
+      <td><span class="swatch" style="background:#059669"></span>#059669</td>
+      <td><span class="swatch" style="background:#34d399"></span>#34d399</td>
+      <td><span class="swatch" style="background:#2dd4bf"></span>#2dd4bf</td>
+      <td><span class="swatch" style="background:#34d399"></span>#34d399</td>
+    </tr>
+    <tr>
+      <td>Destructive Text</td>
+      <td><span class="swatch" style="background:#ef4444"></span>#ef4444</td>
+      <td><span class="swatch" style="background:#f87171"></span>#f87171</td>
+      <td><span class="swatch" style="background:#f87171"></span>#f87171</td>
+      <td><span class="swatch" style="background:#f87171"></span>#f87171</td>
+    </tr>
+    <tr>
+      <td>Tab Bar BG</td>
+      <td><span class="swatch" style="background:#ffffff"></span>#ffffff</td>
+      <td><span class="swatch" style="background:#1e293b"></span>#1e293b</td>
+      <td><span class="swatch" style="background:#0d0d0d"></span>#0d0d0d</td>
+      <td><span class="swatch" style="background:#111111"></span>#111111</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<!-- PROS / CONS -->
+<!-- ============================================================ -->
+
+<hr class="divider">
+
+<p class="section-header">Decision</p>
+<p class="section-title">Option A vs Option B</p>
+<p class="section-desc">Both replace the current navy dark mode. Pick one.</p>
+
+<div class="comparison-grid">
+  <div class="comparison-box">
+    <h3 style="color:#2dd4bf">Option A: Pure Black</h3>
+    <ul>
+      <li>True OLED black — maximum battery savings on AMOLED</li>
+      <li>Matches the reference screenshot you shared exactly</li>
+      <li>Crisp card borders (#262626) prevent cards from merging with background</li>
+      <li>Brighter accent (#2dd4bf vs #0d9488) compensates for max contrast</li>
+      <li>Neutral gray tones (zinc scale) instead of bluish slate — feels more "tech"</li>
+      <li>Hero gradient darker (teal-950) — subtle teal glow, not navy</li>
+      <li>Similar to: X (Twitter) OLED, Reddit OLED, Cash App dark</li>
+    </ul>
+  </div>
+  <div class="comparison-box">
+    <h3 style="color:#14b8a6">Option B: Elevated Black</h3>
+    <ul>
+      <li>True black background + slightly elevated cards (#111) for depth</li>
+      <li>Soft translucent borders (white 6% opacity) instead of hard lines</li>
+      <li>Subtle card shadows add layering depth on non-OLED screens</li>
+      <li>Same accent as light mode (#14b8a6) — more brand-consistent</li>
+      <li>iOS-inspired elevation system (Apple uses #1c1c1e for grouped cards)</li>
+      <li>Feels warmer than Option A while still being true black</li>
+      <li>Similar to: Apple iOS dark, Revolut dark, Notion dark</li>
+    </ul>
+  </div>
+</div>
+
+<div style="max-width:900px;margin:0 auto;padding:20px;background:rgba(13,148,136,0.06);border-radius:16px;border:1px solid rgba(13,148,136,0.15);text-align:center;">
+  <p style="font-size:14px;color:#94a3b8;margin-bottom:8px;">Implementation scope for either option:</p>
+  <p style="font-size:13px;color:#64748b;line-height:1.6;">
+    <b style="color:#e2e8f0">4 files</b> — <code style="color:#2dd4bf">global.css</code> (CSS vars) + <code style="color:#2dd4bf">tokens.ts</code> (dark colors) + <code style="color:#2dd4bf">gradients.ts</code> (hero gradients) + <code style="color:#2dd4bf">Card component</code> (conditional border)<br>
+    If adding as 4th theme option: also <code style="color:#2dd4bf">profile.tsx</code> (theme selector) + <code style="color:#2dd4bf">lib/theme.ts</code> (new preference)
+  </p>
+</div>
+
+<div style="height:80px"></div>
+
+</body>
+</html>

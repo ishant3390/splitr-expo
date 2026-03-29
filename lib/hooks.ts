@@ -86,13 +86,26 @@ export function useUserBalance() {
       try {
         // Try aggregate endpoint first
         const raw = await usersApi.balance(token);
+        const deterministicOwed = Number.isFinite(raw.totalOwedCents)
+          ? raw.totalOwedCents
+          : undefined;
+        const deterministicOwing = Number.isFinite(raw.totalOwingCents)
+          ? raw.totalOwingCents
+          : (Number.isFinite(raw.totalOwesCents) ? raw.totalOwesCents : undefined);
+        const deterministicNet = Number.isFinite(raw.netBalanceCents)
+          ? raw.netBalanceCents
+          : undefined;
         // Normalize multi-currency arrays to single totals (sum all currencies)
         const sumAmounts = (arr?: CurrencyAmount[]) =>
           (arr ?? []).reduce((s, c) => s + (c.amount ?? 0), 0);
+        const totalOwedCents = deterministicOwed ?? sumAmounts(raw.totalOwed);
+        const totalOwesCents = deterministicOwing ?? sumAmounts(raw.totalOwing);
+        const netBalanceCents = deterministicNet ?? (totalOwedCents - totalOwesCents);
         return {
-          totalOwedCents: sumAmounts(raw.totalOwed),
-          totalOwesCents: sumAmounts(raw.totalOwing),
-          netBalanceCents: sumAmounts(raw.totalOwed) - sumAmounts(raw.totalOwing),
+          totalOwedCents,
+          totalOwesCents,
+          netBalanceCents,
+          normalizedCurrency: raw.normalizedCurrency,
           totalOwedByCurrency: raw.totalOwed ?? [],
           totalOwingByCurrency: raw.totalOwing ?? [],
           groupBalances: raw.groupBalances,
