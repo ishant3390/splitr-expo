@@ -546,7 +546,17 @@ export class ApiClient {
     let lastError: unknown = null;
     for (let attempt = 1; attempt <= this.maxNetworkRetries; attempt += 1) {
       try {
-        return await fetch(url, init);
+        const res = await fetch(url, init);
+        // Retry on 429 (rate limit) with exponential backoff
+        if (res.status === 429 && attempt < this.maxNetworkRetries) {
+          const retryAfter = res.headers.get("retry-after");
+          const delayMs = retryAfter
+            ? parseInt(retryAfter, 10) * 1000
+            : 2000 * attempt;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+        return res;
       } catch (err) {
         lastError = err;
         if (attempt >= this.maxNetworkRetries) {
