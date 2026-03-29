@@ -24,7 +24,8 @@
     "test:regression:modal:all": "npm run test:regression:modal && npm run test:regression:modal:integration",
     "audit:tokens": "npx tsx scripts/audit-tokens.ts",
     "build:web": "expo export -p web",
-    "build:web:dev": "EXPO_PUBLIC_API_URL=https://api-dev.splitr.ai/api expo export -p web"
+    "build:web:dev": "EXPO_PUBLIC_API_URL=https://api-dev.splitr.ai/api expo export -p web",
+    "serve:web": "npx serve dist -s"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.19.31",
