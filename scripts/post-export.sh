@@ -14,22 +14,28 @@ mkdir -p "$FONT_DIR"
 # Copy all .ttf files to flat directory
 find dist/assets/node_modules -name "*.ttf" -exec cp {} "$FONT_DIR/" \; 2>/dev/null
 
-# Rewrite font paths in JS bundle(s): replace the deep @-prefixed path with /assets/fonts/filename
+# Rewrite font paths in JS bundle(s) — cross-platform sed (works on both macOS and Linux)
 for jsfile in dist/_expo/static/js/web/entry-*.js; do
   if [ -f "$jsfile" ]; then
-    # Replace: /assets/node_modules/@expo-google-fonts/inter/WEIGHT/FILENAME.ttf
-    # With:    /assets/fonts/FILENAME.ttf
-    sed -i '' 's|/assets/node_modules/@expo-google-fonts/inter/[^/]*/\([^"]*\.ttf\)|/assets/fonts/\1|g' "$jsfile"
-    echo "Rewrote font paths in $(basename $jsfile)"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      sed -i '' 's|/assets/node_modules/@expo-google-fonts/inter/[^/]*/\([^"]*\.ttf\)|/assets/fonts/\1|g' "$jsfile"
+    else
+      sed -i 's|/assets/node_modules/@expo-google-fonts/inter/[^/]*/\([^"]*\.ttf\)|/assets/fonts/\1|g' "$jsfile"
+    fi
+    echo "Rewrote font paths in $(basename "$jsfile")"
   fi
 done
 
 # Also fix paths in CSS if any
 for cssfile in dist/_expo/static/css/*.css; do
   if [ -f "$cssfile" ]; then
-    sed -i '' 's|/assets/node_modules/@expo-google-fonts/inter/[^)]*\/\([^)]*\.ttf\)|/assets/fonts/\1|g' "$cssfile"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      sed -i '' 's|/assets/node_modules/@expo-google-fonts/inter/[^)]*\/\([^)]*\.ttf\)|/assets/fonts/\1|g' "$cssfile"
+    else
+      sed -i 's|/assets/node_modules/@expo-google-fonts/inter/[^)]*\/\([^)]*\.ttf\)|/assets/fonts/\1|g' "$cssfile"
+    fi
   fi
 done
 
-FONT_COUNT=$(ls "$FONT_DIR"/*.ttf 2>/dev/null | wc -l | tr -d ' ')
+FONT_COUNT=$(find "$FONT_DIR" -name "*.ttf" 2>/dev/null | wc -l | tr -d ' ')
 echo "Copied $FONT_COUNT font files to /assets/fonts/"
