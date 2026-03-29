@@ -14,6 +14,7 @@ interface TrackedResource {
 export class ApiClient {
   private token: string;
   private tracked: TrackedResource[] = [];
+  private readonly maxNetworkRetries = 3;
 
   constructor(token: string) {
     this.token = token;
@@ -24,13 +25,11 @@ export class ApiClient {
     options?: RequestInit
   ): Promise<T> {
     const url = `${API_BASE}${path}`;
-    const res = await fetch(url, {
+    const headers = this.buildHeaders(path, options);
+
+    const res = await this.fetchWithRetry(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.token}`,
-        ...options?.headers,
-      },
+      headers,
     });
 
     if (!res.ok) {
@@ -411,6 +410,20 @@ export class ApiClient {
     >(`/v1/groups/${groupId}/settlements/suggestions`);
   }
 
+  // ---- Join Group ----
+
+  async joinGroupByInvite(inviteCode: string) {
+    // Note: does NOT track for cleanup — only the group creator should clean up
+    return this.request<{
+      id: string;
+      name: string;
+      memberCount?: number;
+    }>("/v1/groups/join", {
+      method: "POST",
+      body: JSON.stringify({ inviteCode }),
+    });
+  }
+
   // ---- Balance ----
 
   async getBalance() {
@@ -466,13 +479,11 @@ export class ApiClient {
     options?: RequestInit
   ): Promise<{ ok: boolean; status: number; data?: T; error?: string }> {
     const url = `${API_BASE}${path}`;
-    const res = await fetch(url, {
+    const headers = this.buildHeaders(path, options);
+
+    const res = await this.fetchWithRetry(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.token}`,
-        ...options?.headers,
-      },
+      headers,
     });
 
     const text = await res.text().catch(() => "");
@@ -483,6 +494,68 @@ export class ApiClient {
     }
 
     return { ok: false, status: res.status, error: text };
+  }
+
+  private buildHeaders(path: string, options?: RequestInit): Headers {
+    const method = (options?.method || "GET").toUpperCase();
+    const headers = new Headers(options?.headers || {});
+
+    headers.set("Authorization", `Bearer ${this.token}`);
+
+    const body = options?.body;
+    const isFormDataBody =
+      typeof FormData !== "undefined" && body instanceof FormData;
+    if (body != null && !isFormDataBody && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+
+    if (
+      this.requiresIdempotencyHeader(path, method) &&
+      !headers.has("Idempotency-Key")
+    ) {
+      headers.set("Idempotency-Key", this.createIdempotencyKey());
+    }
+
+    return headers;
+  }
+
+  private requiresIdempotencyHeader(path: string, method: string): boolean {
+    if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      return false;
+    }
+
+    return (
+      /^\/v1\/groups\/[^/]+\/expenses(?:\/|$)/.test(path) ||
+      /^\/v1\/expenses\/[^/]+$/.test(path) ||
+      /^\/v1\/groups\/[^/]+\/settlements(?:\/|$)/.test(path) ||
+      /^\/v1\/settlements\/[^/]+$/.test(path)
+    );
+  }
+
+  private createIdempotencyKey(): string {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  private async fetchWithRetry(
+    url: string,
+    init: RequestInit
+  ): Promise<Response> {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= this.maxNetworkRetries; attempt += 1) {
+      try {
+        return await fetch(url, init);
+      } catch (err) {
+        lastError = err;
+        if (attempt >= this.maxNetworkRetries) {
+          throw err;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+      }
+    }
+    throw lastError ?? new Error("Network request failed");
   }
 
   // ---- Cleanup ----

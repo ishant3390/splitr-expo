@@ -317,7 +317,7 @@ export default function ActivityScreen() {
                       <View className="flex-1">
                         <Text className="text-sm font-sans-semibold text-card-foreground">
                           {title}
-                          {groupName && (
+                          {groupName && !isGroupLifecycle && (
                             <Text style={{ fontFamily: ff.regular, fontStyle: "italic", color: c.mutedForeground }}>
                               {" "}in {groupName}
                             </Text>

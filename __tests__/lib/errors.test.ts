@@ -121,10 +121,44 @@ describe("getUserMessage", () => {
     expect(getUserMessage(body)).toBe("Something went wrong. Please try again.");
   });
 
+  it("returns finance-specific message for ERR-419", () => {
+    const body: ApiErrorBody = {
+      code: "ERR-419",
+      category: "VALIDATION",
+      message: "Payer amounts mismatch",
+    };
+    expect(getUserMessage(body)).toBe(
+      "The individual amounts don't add up to the total. Please check and try again."
+    );
+  });
+
+  it("returns finance-specific message for ERR-420", () => {
+    const body: ApiErrorBody = {
+      code: "ERR-420",
+      category: "VALIDATION",
+      message: "Invalid participant identity",
+    };
+    expect(getUserMessage(body)).toBe(
+      "Invalid participant selection. Each person must be either a member or a guest."
+    );
+  });
+
+  it("returns finance-specific message for ERR-421", () => {
+    const body: ApiErrorBody = {
+      code: "ERR-421",
+      category: "VALIDATION",
+      message: "Self payment not allowed",
+    };
+    expect(getUserMessage(body)).toBe(
+      "You can't settle a debt with yourself. Please select a different person."
+    );
+  });
+
   it("has entries for all documented error codes", () => {
     const expectedCodes = [
       "ERR-001", "ERR-002",
       "ERR-100", "ERR-101", "ERR-102", "ERR-103", "ERR-104",
+      "ERR-419", "ERR-420", "ERR-421",
       "ERR-201", "ERR-204", "ERR-205",
       "ERR-300", "ERR-301", "ERR-302",
       "ERR-400", "ERR-401", "ERR-402", "ERR-403", "ERR-404",

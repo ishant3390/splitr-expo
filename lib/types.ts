@@ -201,7 +201,10 @@ export interface ExpenseDto {
   amountCents: number;
   currency?: string;
   convertedAmount?: ConvertedMinorAmountDto;
+  convertedAmountCents?: number;
+  convertedCurrency?: string;
   fxSnapshot?: FxSnapshotDto;
+  fxSnapshotId?: string;
   date: string;
   category?: CategoryDto;
   splitType?: string;
@@ -331,8 +334,11 @@ export interface SettlementDto {
   payeeGuest?: GuestUserDto;
   amount: number;
   currency: string;
-  convertedAmount?: ConvertedMinorAmountDto;
+  convertedAmount?: ConvertedMinorAmountDto | number;
+  convertedAmountCents?: number;
+  convertedCurrency?: string;
   fxSnapshot?: FxSnapshotDto;
+  fxSnapshotId?: string;
   paymentMethod?: string;
   paymentReference?: string;
   settlementDate: string;

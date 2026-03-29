@@ -345,6 +345,32 @@ lib/
 - Keep tests independent — each test navigates from `/` fresh
 - Integration tests must not leave stale `[E2E]` data — always use `apiClient` for setup/teardown
 
+## Deployment
+
+### Environments
+| Env | Frontend | Backend | Auth |
+|-----|----------|---------|------|
+| **Local** | `localhost:8081` | `localhost:8085` | Clerk dev key (`.env.local`) |
+| **Dev** | `https://dev.splitr.ai` | `https://api-dev.splitr.ai/api` | Clerk dev key (CF Pages env vars) |
+| **Prod** | `https://splitr.ai` (future) | TBD | Clerk prod key |
+
+### Cloudflare Pages (Frontend)
+- **Repo**: `splitr-ai/splitr-expo` (GitHub org)
+- **Build**: `npm run build:web` → Expo export + `scripts/post-export.sh` (404.html SPA fallback + font flattening)
+- **Output**: `dist/`
+- **Auto-deploys**: on push to `main`
+- **Env vars** (set in CF Pages dashboard, not committed): `NODE_VERSION`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- **Known constraint**: Cloudflare Pages cannot serve files with `@` in directory paths — post-export script flattens `@expo-google-fonts` to `/assets/fonts/`
+
+### Landing Page
+- Separate Vite+React app in `/landing/` directory
+- Deployed independently to Cloudflare Pages at `splitr.ai`
+- Has its own `package.json`, build system, and wrangler config
+
+### Railway (Backend)
+- Spring Boot API at `api-dev.splitr.ai`
+- CORS: configured via `CORS_ALLOWED_ORIGINS` env var (includes `dev.splitr.ai` + localhost)
+
 ## Commands
 ```bash
 npx expo start                        # Start dev server
@@ -358,6 +384,9 @@ npm run test:e2e:headed               # Smoke tests in headed browser
 npm run test:e2e:integration          # Run integration tests (backend at :8085 required)
 npm run test:e2e:integration:headed   # Integration tests in headed browser
 npm run test:e2e:all                  # Run both smoke + integration suites
+npm run build:web                     # Build Expo web for production (outputs dist/)
+npm run build:web:dev                 # Build with dev API URL baked in
+npm run serve:web                     # Serve built dist/ locally (SPA mode)
 ```
 
 ## Design Context
@@ -400,3 +429,22 @@ Broad audience — anyone who shares expenses with others. Covers young adults s
 - **FE tasks**: `pipeline-fe.md` — read for pending work, update status when picking/completing
 - **BE requests**: `pipeline-be.md` — write here when FE needs something from backend
 - **Workflow**: Check pipeline → read spec in `fe/` → plan → get approval → implement → mark `done`
+
+## Mandatory Engineering Workflow (User Preference)
+- **Always plan first** for any non-trivial task.
+- Planning must include **research first**:
+  - codebase investigation,
+  - internet/library research when dependencies or versions are involved,
+  - latest compatible versions and migration notes where relevant.
+- After plan creation, **show the plan to the user and wait for approval**.
+- **Do not implement until explicit user approval** (`go`, `start`, `implement`, etc.).
+- After implementation, run a **critical review loop**:
+  - start sub-agents/code-review agents,
+  - fix findings,
+  - re-review until no high-impact issues remain.
+- Then run verification:
+  - targeted regression tests for changed areas,
+  - required broader tests (including E2E where applicable).
+- At task end, run a short **learning pass**:
+  - capture mistakes/lessons from session,
+  - update instructions/memory so the same issue is prevented.

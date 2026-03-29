@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Platform } from "react-native";
 import { useColorScheme } from "nativewind";
 import { X, CheckCircle2, AlertTriangle, Info } from "lucide-react-native";
 import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
@@ -58,7 +58,30 @@ const BG_MAP_DARK = {
   info: "#042f2e",
 };
 
+export function getToastCardWebStyle(isWeb: boolean) {
+  if (!isWeb) return {};
+  return {
+    width: "100%" as const,
+    maxWidth: 420,
+    alignSelf: "flex-end" as const,
+  };
+}
+
+export function getToastViewportStyle(isWeb: boolean) {
+  return {
+    pointerEvents: "box-none" as const,
+    position: "absolute" as const,
+    top: isWeb ? undefined : 60,
+    left: 16,
+    right: 16,
+    bottom: isWeb ? 24 : undefined,
+    alignItems: isWeb ? "flex-end" as const : undefined,
+    zIndex: 9999,
+  };
+}
+
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+  const isWeb = Platform.OS === "web";
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const c = colors(isDark);
@@ -110,6 +133,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 8,
         elevation: 3,
+        ...getToastCardWebStyle(isWeb),
       }]}
     >
       <Icon size={18} color={color} />
@@ -149,6 +173,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const isWeb = Platform.OS === "web";
   const nextId = useRef(0);
 
   const show = useCallback((message: string, type: ToastType, options?: { action?: ToastAction; duration?: number }) => {
@@ -170,14 +195,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={ctx}>
       {children}
       <View
-        style={{
-          pointerEvents: "box-none",
-          position: "absolute",
-          top: 60,
-          left: 16,
-          right: 16,
-          zIndex: 9999,
-        }}
+        testID="toast-viewport"
+        style={getToastViewportStyle(isWeb)}
       >
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />

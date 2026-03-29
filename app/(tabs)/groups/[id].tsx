@@ -28,7 +28,7 @@ import { sanitizeImageUrl } from "@/lib/image-utils";
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useCategories } from "@/lib/hooks";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatCents, formatDate, formatRelativeTime, cn } from "@/lib/utils";
+import { formatCents, formatDate, formatRelativeTime, cn, getFxDisplayAmounts } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticLight, hapticWarning } from "@/lib/haptics";
 import { dedupeMembers, computeExpenseCardDisplay, formatActivityTitle } from "@/lib/screen-helpers";
@@ -516,6 +516,13 @@ export default function GroupDetailScreen() {
                       expense, currentBackendUserId, members, expense.createdBy,
                       (cents) => formatCents(cents, expense.currency ?? group?.defaultCurrency),
                     );
+                    const amountDisplay = getFxDisplayAmounts({
+                      amountCents: expense.amountCents ?? 0,
+                      currency: expense.currency ?? group?.defaultCurrency,
+                      convertedAmount: expense.convertedAmount,
+                      convertedAmountCents: expense.convertedAmountCents,
+                      convertedCurrency: expense.convertedCurrency,
+                    });
                     const expenseDate = expense.date || expense.createdAt;
 
                     return (
@@ -556,6 +563,11 @@ export default function GroupDetailScreen() {
                                     {display.subtitle}
                                     {expenseDate ? ` \u00B7 ${formatDate(expenseDate)}` : ""}
                                   </Text>
+                                  {amountDisplay.secondary ? (
+                                    <Text className="text-[11px] text-muted-foreground font-sans mt-0.5">
+                                      {amountDisplay.secondary}
+                                    </Text>
+                                  ) : null}
                                 </View>
                                 <View className="items-end">
                                   <Text className="text-[10px] text-muted-foreground font-sans">

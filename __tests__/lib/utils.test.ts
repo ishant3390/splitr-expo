@@ -13,6 +13,7 @@ import {
   sanitizeAmountInput,
   parseAmountInputToCents,
   getMemberAvatarUrl,
+  getFxDisplayAmounts,
 } from "@/lib/utils";
 
 describe("centsToAmount", () => {
@@ -466,5 +467,69 @@ describe("getMemberAvatarUrl", () => {
         avatarUrl: "https://https://clerk.com/avatar.jpg",
       })
     ).toBe("https://clerk.com/avatar.jpg");
+  });
+});
+
+describe("getFxDisplayAmounts", () => {
+  it("returns primary only when no converted amount is present", () => {
+    expect(getFxDisplayAmounts({ amountCents: 5000, currency: "USD" })).toEqual({
+      primary: "$50.00",
+      secondary: null,
+    });
+  });
+
+  it("returns secondary from object convertedAmount when currency differs", () => {
+    expect(
+      getFxDisplayAmounts({
+        amountCents: 5000,
+        currency: "USD",
+        convertedAmount: { amountMinor: 4600, currency: "EUR" },
+      })
+    ).toEqual({
+      primary: "$50.00",
+      secondary: "≈ €46.00",
+    });
+  });
+
+  it("supports numeric convertedAmount with convertedCurrency", () => {
+    expect(
+      getFxDisplayAmounts({
+        amountCents: 3000,
+        currency: "USD",
+        convertedAmount: 2700,
+        convertedCurrency: "GBP",
+      })
+    ).toEqual({
+      primary: "$30.00",
+      secondary: "≈ £27.00",
+    });
+  });
+
+  it("supports convertedAmountCents legacy shape", () => {
+    expect(
+      getFxDisplayAmounts({
+        amountCents: 7000,
+        currency: "USD",
+        convertedAmountCents: 6400,
+        convertedCurrency: "EUR",
+      })
+    ).toEqual({
+      primary: "$70.00",
+      secondary: "≈ €64.00",
+    });
+  });
+
+  it("suppresses secondary when converted currency equals base currency", () => {
+    expect(
+      getFxDisplayAmounts({
+        amountCents: 2500,
+        currency: "USD",
+        convertedAmountCents: 2500,
+        convertedCurrency: "USD",
+      })
+    ).toEqual({
+      primary: "$25.00",
+      secondary: null,
+    });
   });
 });

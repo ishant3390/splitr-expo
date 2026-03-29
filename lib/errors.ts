@@ -65,6 +65,9 @@ export const ERROR_MESSAGES: Record<string, string> = {
   "ERR-102": "Please fill in all required fields.",
   "ERR-103": "Invalid format. Please check your input.",
   "ERR-104": "Invalid value provided.",
+  "ERR-419": "The individual amounts don't add up to the total. Please check and try again.",
+  "ERR-420": "Invalid participant selection. Each person must be either a member or a guest.",
+  "ERR-421": "You can't settle a debt with yourself. Please select a different person.",
 
   // Authorization
   "ERR-201": "You don't have permission to do that.",

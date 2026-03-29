@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react-native";
 import { Pressable, Text } from "react-native";
-import { ToastProvider, useToast } from "@/components/ui/toast";
+import { ToastProvider, useToast, getToastViewportStyle, getToastCardWebStyle } from "@/components/ui/toast";
 
 function TestConsumer() {
   const toast = useToast();
@@ -142,5 +142,34 @@ describe("Toast", () => {
     // The dismiss button is after the toast text, find it by looking for the X icon
     // Instead, just verify the toast can be dismissed by programmatic means
     // by pressing any sibling pressable. The toast renders with onDismiss prop.
+  });
+
+  it("uses bottom-right viewport style on web", () => {
+    expect(getToastViewportStyle(true)).toMatchObject({
+      top: undefined,
+      bottom: 24,
+      alignItems: "flex-end",
+      left: 16,
+      right: 16,
+    });
+  });
+
+  it("uses top viewport style on native", () => {
+    expect(getToastViewportStyle(false)).toMatchObject({
+      top: 60,
+      bottom: undefined,
+      alignItems: undefined,
+      left: 16,
+      right: 16,
+    });
+  });
+
+  it("applies constrained toast card width on web", () => {
+    expect(getToastCardWebStyle(true)).toMatchObject({
+      width: "100%",
+      maxWidth: 420,
+      alignSelf: "flex-end",
+    });
+    expect(getToastCardWebStyle(false)).toEqual({});
   });
 });

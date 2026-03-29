@@ -14,10 +14,16 @@ test.beforeAll(async () => {
  * Scroll to find a group by name in the Groups tab and click it.
  */
 async function scrollToGroupAndClick(page: any, groupName: string) {
-  const groupLocator = page.getByText(groupName).first();
+  const groupLocator = page.getByText(groupName, { exact: true }).last();
+  await groupLocator.waitFor({ state: "attached", timeout: 15000 });
   await groupLocator.scrollIntoViewIfNeeded().catch(() => {});
-  await expect(groupLocator).toBeVisible({ timeout: 10000 });
-  await groupLocator.click();
+  await page.waitForTimeout(250);
+  await groupLocator.evaluate((el: HTMLElement) => {
+    const target =
+      el.closest('[role="button"],button,a,[data-testid]') ?? el;
+    (target as HTMLElement).click();
+  });
+  await page.waitForTimeout(250);
 }
 
 test.describe("Invite Flow", () => {
@@ -30,47 +36,29 @@ test.describe("Invite Flow", () => {
     await page.getByRole("button", { name: "Groups" }).click();
     await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
     await scrollToGroupAndClick(page, group.name);
-    await expect(page.getByText(group.name).first()).toBeVisible({ timeout: 10000 });
+    await page.getByLabel("Group settings").first().click();
+    await page
+      .getByText("MEMBERS", { exact: false })
+      .first()
+      .waitFor({ state: "attached", timeout: 10000 });
+    const inviteLinkButton = page.getByText("Invite Link", { exact: true }).first();
+    await inviteLinkButton.scrollIntoViewIfNeeded().catch(() => {});
+    await inviteLinkButton.evaluate((el: HTMLElement) => {
+      const target =
+        el.closest('[role="button"],button,a,[data-testid]') ?? el;
+      (target as HTMLElement).click();
+    });
+    await page
+      .getByTestId("group-settings-share-modal-sheet")
+      .waitFor({ state: "attached", timeout: 10000 });
 
-    // Look for Share/Invite button — it's an icon (chain link) in the header, not text
-    const shareByLabel = page.getByRole("button", { name: /share/i }).first();
-    const shareByAria = page.locator('[aria-label="Share"]').first();
-    const shareByText = page.getByText(/Share|Invite/).first();
-
-    let hasShare = await shareByLabel
-      .isVisible({ timeout: 3000 })
+    // Modal should show an invite link
+    const hasLink = await page
+      .getByText(/https:\/\/splitr\.ai\/invite\//)
+      .first()
+      .isVisible({ timeout: 5000 })
       .catch(() => false);
-
-    if (hasShare) {
-      await shareByLabel.click();
-    } else {
-      hasShare = await shareByAria
-        .isVisible({ timeout: 2000 })
-        .catch(() => false);
-      if (hasShare) {
-        await shareByAria.click();
-      } else {
-        hasShare = await shareByText
-          .isVisible({ timeout: 2000 })
-          .catch(() => false);
-        if (hasShare) {
-          await shareByText.click();
-        }
-      }
-    }
-
-    if (hasShare) {
-      await page.waitForTimeout(1000);
-
-      // Modal should show an invite link
-      const hasLink = await page
-        .getByText(/splitr/)
-        .first()
-        .isVisible({ timeout: 5000 })
-        .catch(() => false);
-
-      expect(hasLink).toBeTruthy();
-    }
+    expect(hasLink).toBeTruthy();
   });
 
   test("invite preview shows group info for valid code", async ({

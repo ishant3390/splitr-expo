@@ -124,7 +124,7 @@ test.describe("Settings Screens", () => {
 
     // Should show help/support content
     const hasContent = await page
-      .getByText(/FAQ|Contact|Feedback|Report/i)
+      .getByText(/Frequently Asked Questions|Get in Touch|Email Support|Visit Website|Rate 5 Stars/i)
       .first()
       .isVisible({ timeout: 5000 })
       .catch(() => false);
@@ -157,7 +157,7 @@ test.describe("Settings Screens", () => {
       await page.waitForTimeout(1000);
 
       const hasContent = await page
-        .getByText(/Venmo|PayPal|Bank|Add|Method/i)
+        .getByText(/Payment Methods|Save Payment Methods|Show all payment methods|Venmo|PayPal/i)
         .first()
         .isVisible({ timeout: 5000 })
         .catch(() => false);
@@ -167,15 +167,25 @@ test.describe("Settings Screens", () => {
     }
 
     await paymentLink.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
 
     // Should show payment methods content
-    const hasContent = await page
-      .getByText(/Venmo|PayPal|Bank|Add|Method/i)
+    const hasTitle = await page
+      .getByText("Payment Methods", { exact: true })
+      .first()
+      .isVisible({ timeout: 7000 })
+      .catch(() => false);
+    const hasSave = await page
+      .getByText("Save Payment Methods", { exact: true })
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
+    const hasRegionText = await page
+      .getByText(/Region/i)
       .first()
       .isVisible({ timeout: 5000 })
       .catch(() => false);
 
-    expect(hasContent).toBeTruthy();
+    expect(hasTitle || hasSave || hasRegionText).toBeTruthy();
   });
 });

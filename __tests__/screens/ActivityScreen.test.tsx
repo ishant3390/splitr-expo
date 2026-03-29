@@ -371,6 +371,7 @@ describe("ActivityScreen", () => {
     await waitFor(() => {
       expect(screen.getByText(/Alice created group Trip/)).toBeTruthy();
     });
+    expect(screen.queryByText(/in Trip/)).toBeNull();
     fireEvent.press(screen.getByText(/Alice created group Trip/));
     expect(mockPush).toHaveBeenCalled();
   });

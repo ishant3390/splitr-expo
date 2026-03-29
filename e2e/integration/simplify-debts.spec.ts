@@ -27,10 +27,16 @@ test.beforeAll(async () => {
  * Scroll to find a group by name in the Groups tab and click it.
  */
 async function scrollToGroupAndClick(page: any, groupName: string) {
-  const groupLocator = page.getByText(groupName).first();
+  const groupLocator = page.getByText(groupName, { exact: true }).first();
+  await groupLocator.waitFor({ state: "attached", timeout: 15000 });
   await groupLocator.scrollIntoViewIfNeeded().catch(() => {});
-  await expect(groupLocator).toBeVisible({ timeout: 10000 });
-  await groupLocator.click();
+  await page.waitForTimeout(250);
+  await groupLocator.evaluate((el: HTMLElement) => {
+    const target =
+      el.closest('[role="button"],button,a,[data-testid]') ?? el;
+    (target as HTMLElement).click();
+  });
+  await page.waitForTimeout(250);
 }
 
 /**

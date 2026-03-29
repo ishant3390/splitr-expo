@@ -358,6 +358,32 @@ describe("GroupDetailScreen — Clean Ledger", () => {
     });
   });
 
+  it("renders converted secondary amount when expense has FX fields", async () => {
+    mockListExpenses.mockResolvedValue({
+      data: [
+        {
+          id: "e1",
+          description: "Hotel",
+          amountCents: 12000,
+          currency: "USD",
+          convertedAmount: { amountMinor: 11000, currency: "EUR" },
+          category: { icon: "food", name: "Food" },
+          payers: [{ user: { id: "u1", name: "Alice" }, amountPaid: 12000 }],
+          splits: [{ user: { id: "u1" } }, { user: { id: "u2" } }],
+          createdAt: "2026-03-10T10:00:00Z",
+          date: "2026-03-10",
+          createdBy: { id: "u1", name: "Alice" },
+        },
+      ],
+      pagination: { hasMore: false },
+    });
+    render(<GroupDetailScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Hotel")).toBeTruthy();
+      expect(screen.getByText("≈ €110.00")).toBeTruthy();
+    });
+  });
+
   it("renders expense card with Splitwise-style display", async () => {
     mockListExpenses.mockResolvedValue({
       data: [

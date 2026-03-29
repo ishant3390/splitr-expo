@@ -45,6 +45,7 @@ import { invalidateAfterSettlementChange } from "@/lib/query";
 import { validateSettlementInvariants } from "@/lib/finance-invariants";
 import {
   formatCents,
+  getFxDisplayAmounts,
   getInitials,
   cn,
   getCurrencySymbol,
@@ -827,6 +828,13 @@ export default function SettleUpScreen() {
                         const payeeName =
                           s.payeeUser?.name ?? s.payeeGuest?.name ?? "Someone";
                         const methodConfig = getPaymentMethodIcon(s.paymentMethod);
+                        const settlementAmountDisplay = getFxDisplayAmounts({
+                          amountCents: s.amount,
+                          currency: s.currency,
+                          convertedAmount: s.convertedAmount,
+                          convertedAmountCents: s.convertedAmountCents,
+                          convertedCurrency: s.convertedCurrency,
+                        });
                         return (
                           <Card key={s.id} className="p-4">
                             <View className="flex-row items-center gap-3">
@@ -849,8 +857,13 @@ export default function SettleUpScreen() {
                               </View>
                               <View className="items-end gap-1">
                                 <Text selectable className="text-sm font-sans-bold text-success" style={{ fontVariant: ["tabular-nums"] }}>
-                                  {formatCents(s.amount, s.currency)}
+                                  {settlementAmountDisplay.primary}
                                 </Text>
+                                {settlementAmountDisplay.secondary ? (
+                                  <Text className="text-[11px] text-muted-foreground font-sans">
+                                    {settlementAmountDisplay.secondary}
+                                  </Text>
+                                ) : null}
                                 <Pressable
                                   onPress={() => { hapticWarning(); handleDeleteWithUndo(s); }}
                                   hitSlop={8}

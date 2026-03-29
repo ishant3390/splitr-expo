@@ -173,3 +173,44 @@ export function extractInviteCode(input: string): string {
   if (match) return match[1];
   return trimmed;
 }
+
+type FxLikeAmount = {
+  amountCents?: number;
+  currency?: string;
+  convertedAmount?: { amountMinor: number; currency: string } | number;
+  convertedAmountCents?: number;
+  convertedCurrency?: string;
+};
+
+/**
+ * Returns FX dual display values:
+ * - primary: original amount/currency
+ * - secondary: subtle converted amount (if backend provided and currency differs)
+ */
+export function getFxDisplayAmounts(
+  item: FxLikeAmount
+): { primary: string; secondary: string | null } {
+  const baseAmount = item.amountCents ?? 0;
+  const baseCurrency = item.currency ?? "USD";
+  const primary = formatCents(baseAmount, baseCurrency);
+
+  let convertedMinor: number | null = null;
+  let convertedCurrency: string | undefined;
+
+  if (typeof item.convertedAmount === "number") {
+    convertedMinor = item.convertedAmount;
+    convertedCurrency = item.convertedCurrency;
+  } else if (item.convertedAmount && typeof item.convertedAmount.amountMinor === "number") {
+    convertedMinor = item.convertedAmount.amountMinor;
+    convertedCurrency = item.convertedAmount.currency;
+  } else if (typeof item.convertedAmountCents === "number") {
+    convertedMinor = item.convertedAmountCents;
+    convertedCurrency = item.convertedCurrency;
+  }
+
+  if (convertedMinor == null || !convertedCurrency || convertedCurrency === baseCurrency) {
+    return { primary, secondary: null };
+  }
+
+  return { primary, secondary: `≈ ${formatCents(convertedMinor, convertedCurrency)}` };
+}

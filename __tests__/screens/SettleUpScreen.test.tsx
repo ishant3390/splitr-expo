@@ -355,6 +355,33 @@ describe("SettleUpScreen — per-group mode", () => {
     });
   });
 
+  it("renders settlement converted secondary amount when FX fields are present", async () => {
+    mockListSettlements.mockResolvedValue([
+      {
+        id: "s1",
+        payerUser: { id: "u1", name: "Alice" },
+        payeeUser: { id: "u2", name: "Bob" },
+        amount: 3000,
+        currency: "USD",
+        convertedAmountCents: 2700,
+        convertedCurrency: "EUR",
+        settlementDate: "2026-03-10",
+        paymentMethod: "venmo",
+        notes: "For dinner",
+        createdAt: "2026-03-10T10:00:00Z",
+      },
+    ]);
+    render(<SettleUpScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Suggested")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText(/History/));
+    await waitFor(() => {
+      expect(screen.getByText("Alice paid Bob")).toBeTruthy();
+      expect(screen.getByText("≈ €27.00")).toBeTruthy();
+    });
+  });
+
   it("handles load more settlements", async () => {
     // Return exactly 20 items to trigger hasMoreSettlements
     const items = Array.from({ length: 20 }, (_, i) => ({
