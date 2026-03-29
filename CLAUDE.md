@@ -19,7 +19,7 @@ Splitr is a mobile expense splitting app (Expo/React Native) competing with Spli
 
 ## Tech Stack
 - **Framework**: Expo SDK 52, React Native 0.76, Expo Router v4 (file-based routing)
-- **Auth**: Clerk (`@clerk/clerk-expo`) — OAuth (Google, Apple, Facebook, Instagram) + email/phone OTP
+- **Auth**: Clerk (`@clerk/clerk-expo` + `@clerk/clerk-react`) — OAuth (Google, Apple) + email/phone OTP. Web uses redirect-based OAuth (`signIn.authenticateWithRedirect`), native uses popup via `useOAuth`. SSO callback at `app/sso-callback.tsx`.
 - **Styling**: NativeWind v4 + Tailwind CSS v3 (class-based, `cn()` utility for merging)
 - **Icons**: `lucide-react-native` (primary), custom SVGs in `components/icons/`
 - **Fonts**: Inter (4 weights: Regular, Medium, SemiBold, Bold)
@@ -289,7 +289,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (2142 unit tests, 80 suites; 129 smoke; 70 integration)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
+- **Current baseline (2260 unit tests, 84 suites; 141 smoke; 70 integration; 16 dev-sanity)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state
@@ -336,9 +336,25 @@ lib/
   - `profile-image.spec.ts` (7) — API upload/delete, unique URL, UI avatar update, member avatarUrl sync
   - `group-banner.spec.ts` (4) — API upload/delete, unique URL, banner display on group detail
 
+### Dev Sanity Tests (Playwright + Live Dev Environment)
+- **Purpose**: Sanity check against live `dev.splitr.ai` before promoting to prod
+- **Structure**: `e2e/dev-sanity/` with 4 spec files (16 tests total)
+- **Multi-user**: User A (browser + API), User B (API-only via temporary browser context token)
+- **Helpers**: `e2e/dev-sanity/helpers/` — `sanity-auth.ts` (multi-user fixture), `sanity-fixtures.ts` (`[SANITY]` prefixed data)
+- **Env vars**: `E2E_SANITY_USER_A_EMAIL`, `E2E_SANITY_USER_B_EMAIL` in `.env.local`
+- **Data strategy**: All data prefixed with `[SANITY]` + timestamp; auto-cleaned via `ApiClient.cleanup()`
+- **Config**: `playwright.config.ts` — `dev-sanity` project with `baseURL: "https://dev.splitr.ai"`, no webServer, 90s timeout
+- **Run**: `npm run test:e2e:dev-sanity` (headless) or `npm run test:e2e:dev-sanity:headed`
+- **Specs**:
+  - `smoke.spec.ts` (4) — health check, both users auth, home screen loads
+  - `group-expense-settle.spec.ts` (4) — create group, expense, settle, activity
+  - `invite-join-flow.spec.ts` (4) — invite, join, cross-user expense, settlement
+  - `balance-accuracy.spec.ts` (4) — equal split, partial settlement, multi-expense, balance API
+
 ### E2E Test Conventions
 - **Smoke tests**: Import `{ test, expect }` from `./auth.setup`
 - **Integration tests**: Import `{ test, expect }` from `./helpers/cleanup` (provides `apiClient`)
+- **Dev sanity tests**: Import `{ test, expect }` from `./helpers/sanity-auth` (provides `userAClient`, `userBClient`)
 - Import from `@playwright/test` directly for unauthenticated tests
 - Use resilient selectors: `getByText()`, `getByRole()`, `getByTestId()`
 - Handle conditional UI (empty states vs data) with `.isVisible().catch(() => false)`
@@ -384,6 +400,8 @@ npm run test:e2e:headed               # Smoke tests in headed browser
 npm run test:e2e:integration          # Run integration tests (backend at :8085 required)
 npm run test:e2e:integration:headed   # Integration tests in headed browser
 npm run test:e2e:all                  # Run both smoke + integration suites
+npm run test:e2e:dev-sanity           # Run dev sanity tests against dev.splitr.ai
+npm run test:e2e:dev-sanity:headed    # Dev sanity tests in headed browser
 npm run build:web                     # Build Expo web for production (outputs dist/)
 npm run build:web:dev                 # Build with dev API URL baked in
 npm run serve:web                     # Serve built dist/ locally (SPA mode)

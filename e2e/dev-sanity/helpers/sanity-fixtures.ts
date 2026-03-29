@@ -70,6 +70,31 @@ export const sanityFixtures = {
     };
   },
 
+  guestExpense(
+    payerUserId: string,
+    guestUserId: string,
+    overrides?: {
+      description?: string;
+      totalAmount?: number;
+    }
+  ) {
+    const totalAmount = overrides?.totalAmount || 2000;
+    const splitAmount = Math.floor(totalAmount / 2);
+
+    return {
+      description: `[SANITY] ${overrides?.description || "Guest Expense"} ${ts()}`,
+      totalAmount,
+      currency: "USD",
+      expenseDate: new Date().toISOString().split("T")[0],
+      splitType: "EQUAL",
+      payers: [{ userId: payerUserId, amountPaid: totalAmount }],
+      splits: [
+        { userId: payerUserId, splitAmount },
+        { guestUserId, splitAmount },
+      ],
+    };
+  },
+
   guestMember(overrides?: { name?: string; email?: string }) {
     return {
       name: `[SANITY] ${overrides?.name || "Guest"} ${ts()}`,

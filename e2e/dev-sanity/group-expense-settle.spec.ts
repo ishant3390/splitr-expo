@@ -71,13 +71,20 @@ test.describe("Dev Sanity — Group → Expense → Settle", () => {
     );
 
     const guestId = guest.guestUser?.id || guest.id;
-    const expense = await userAClient.createExpense(
-      group.id,
-      sanityFixtures.expense(me.id, [me.id, guestId], {
-        description: "Lunch",
-        totalAmount: 4000,
-      })
-    );
+    const totalAmount = 4000;
+    const splitAmount = totalAmount / 2;
+    const expense = await userAClient.createExpense(group.id, {
+      description: `[SANITY] Lunch ${Date.now().toString(36)}`,
+      totalAmount,
+      currency: "USD",
+      expenseDate: new Date().toISOString().split("T")[0],
+      splitType: "EQUAL",
+      payers: [{ userId: me.id, amountPaid: totalAmount }],
+      splits: [
+        { userId: me.id, splitAmount },
+        { guestUserId: guestId, splitAmount },
+      ],
+    });
     expect(expense.id).toBeTruthy();
 
     // Verify expense shows in group detail
@@ -104,7 +111,7 @@ test.describe("Dev Sanity — Group → Expense → Settle", () => {
     // Create $50 expense split equally → guest owes $25
     await userAClient.createExpense(
       group.id,
-      sanityFixtures.expense(me.id, [me.id, guestId], {
+      sanityFixtures.guestExpense(me.id, guestId, {
         description: "Dinner",
         totalAmount: 5000,
       })
@@ -115,11 +122,15 @@ test.describe("Dev Sanity — Group → Expense → Settle", () => {
     expect(suggestions.length).toBeGreaterThan(0);
     expect(suggestions[0].amount).toBe(2500); // $25
 
-    // Record settlement
-    const settlement = await userAClient.createSettlement(
-      group.id,
-      sanityFixtures.settlement(guestId, me.id, { amount: 2500 })
-    );
+    // Record settlement (guest pays user)
+    const settlement = await userAClient.createSettlement(group.id, {
+      payerGuestUserId: guestId,
+      payeeUserId: me.id,
+      amount: 2500,
+      currency: "USD",
+      paymentMethod: "cash",
+      settlementDate: new Date().toISOString().split("T")[0],
+    });
     expect(settlement.id).toBeTruthy();
 
     // Suggestions should now be empty (fully settled)
@@ -141,7 +152,7 @@ test.describe("Dev Sanity — Group → Expense → Settle", () => {
 
     await userAClient.createExpense(
       group.id,
-      sanityFixtures.expense(me.id, [me.id, guestId], {
+      sanityFixtures.guestExpense(me.id, guestId, {
         description: "Activity Check",
         totalAmount: 1500,
       })

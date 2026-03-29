@@ -37,6 +37,8 @@ export default defineConfig({
     {
       name: "dev-sanity",
       testDir: "./e2e/dev-sanity",
+      fullyParallel: false,
+      workers: 1,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: "https://dev.splitr.ai",
@@ -46,7 +48,7 @@ export default defineConfig({
         video: "retain-on-failure",
       },
       timeout: 90000,
-      retries: 2,
+      retries: 1,
     },
   ],
 
