@@ -41,6 +41,8 @@ import type {
 } from "./types";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8085/api";
+const MAX_429_RETRIES = 1;
+const DEFAULT_429_RETRY_MS = 5000;
 
 function hashOperationPayload(payload: unknown): string {
   const json = JSON.stringify(payload ?? null);
@@ -69,9 +71,15 @@ function generateCorrelationId(): string {
 async function request<T>(
   path: string,
   options?: RequestInit,
-  token?: string | null
+  token?: string | null,
+  retryCount = 0
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
+  const method = (options?.method || "GET").toUpperCase();
+  const requestHeaders = new Headers(options?.headers);
+  const canRetry429 =
+    ["GET", "HEAD", "OPTIONS"].includes(method) ||
+    requestHeaders.has("Idempotency-Key");
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Correlation-ID": generateCorrelationId(),
@@ -80,6 +88,13 @@ async function request<T>(
 
   const res = await fetch(url, { ...options, headers: { ...headers, ...options?.headers } });
 
+  if (res.status === 429 && canRetry429 && retryCount < MAX_429_RETRIES) {
+    const retryAfterHeader = res.headers?.get("Retry-After");
+    const retryDelayMs = parseRetryAfterMs(retryAfterHeader) ?? DEFAULT_429_RETRY_MS;
+    await sleep(retryDelayMs);
+    return request<T>(path, options, token, retryCount + 1);
+  }
+
   if (!res.ok) {
     const errorBody = await res.text().catch(() => "Unknown error");
     throw buildApiError(errorBody, res.status);
@@ -87,6 +102,23 @@ async function request<T>(
 
   const text = await res.text();
   return text ? JSON.parse(text) : ({} as T);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterMs(value: string | null): number | null {
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.floor(seconds * 1000);
+  }
+  const dateMs = Date.parse(value);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+  return null;
 }
 
 /**

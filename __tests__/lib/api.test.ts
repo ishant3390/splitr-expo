@@ -522,6 +522,49 @@ describe("error handling", () => {
   });
 });
 
+describe("429 retry handling", () => {
+  it("retries once using Retry-After header then succeeds", async () => {
+    const first429 = {
+      ok: false,
+      status: 429,
+      headers: { get: (key: string) => (key === "Retry-After" ? "0" : null) },
+      text: () => Promise.resolve("Rate limited"),
+    };
+    const success = mockResponse({ id: "u1", name: "Retry User" });
+    mockFetch.mockResolvedValueOnce(first429).mockResolvedValueOnce(success);
+
+    const result = await usersApi.me("token");
+
+    expect(result).toEqual({ id: "u1", name: "Retry User" });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls back to default retry delay when Retry-After is missing", async () => {
+    jest.useFakeTimers();
+    try {
+      const first429 = {
+        ok: false,
+        status: 429,
+        headers: { get: () => null },
+        text: () => Promise.resolve("Rate limited"),
+      };
+      const success = mockResponse({ id: "u2", name: "Default Delay User" });
+      mockFetch.mockResolvedValueOnce(first429).mockResolvedValueOnce(success);
+
+      const requestPromise = usersApi.me("token");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      await jest.advanceTimersByTimeAsync(5000);
+      const result = await requestPromise;
+
+      expect(result).toEqual({ id: "u2", name: "Default Delay User" });
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
 describe("settlementsApi", () => {
   it("lists settlements for a group", async () => {
     mockFetch.mockResolvedValue(mockResponse([]));

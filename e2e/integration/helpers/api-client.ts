@@ -527,8 +527,13 @@ export class ApiClient {
   private buildHeaders(path: string, options?: RequestInit): Headers {
     const method = (options?.method || "GET").toUpperCase();
     const headers = new Headers(options?.headers || {});
+    const useRateLimitBypass = process.env.PLAYWRIGHT_PROJECT === "dev-sanity";
+    const rateLimitBypassKey = process.env.RATE_LIMIT_BYPASS_KEY;
 
     headers.set("Authorization", `Bearer ${this.token}`);
+    if (useRateLimitBypass && rateLimitBypassKey && !headers.has("X-RateLimit-Bypass")) {
+      headers.set("X-RateLimit-Bypass", rateLimitBypassKey);
+    }
 
     const body = options?.body;
     const isFormDataBody =
