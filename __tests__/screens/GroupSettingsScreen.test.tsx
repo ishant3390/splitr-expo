@@ -347,9 +347,65 @@ describe("GroupSettingsScreen", () => {
     fireEvent.changeText(emailInput, "dave@test.com");
     fireEvent.press(screen.getByText("Add to Group"));
     await waitFor(() => {
-      expect(mockInviteByEmail).toHaveBeenCalledWith("g1", { email: "dave@test.com" }, "mock-token");
+      expect(mockInviteByEmail).toHaveBeenCalledWith("g1", { email: "dave@test.com", name: "Dave" }, "mock-token");
       expect(mockToast.success).toHaveBeenCalledWith("Invite sent to dave@test.com");
     });
+  });
+
+  it("prevents self-add when entered email matches current user email", async () => {
+    render(<GroupSettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Add")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Add"));
+    await waitFor(() => {
+      expect(screen.getByText("Add Member")).toBeTruthy();
+    });
+    const nameInput = screen.getByPlaceholderText("e.g., Alex");
+    fireEvent.changeText(nameInput, "Test User");
+    const emailInput = screen.getByPlaceholderText("e.g., alex@example.com");
+    fireEvent.changeText(emailInput, "test@example.com");
+    fireEvent.press(screen.getByText("Add to Group"));
+    expect(mockToast.info).toHaveBeenCalledWith("You're already a member of this group.");
+    expect(mockInviteByEmail).not.toHaveBeenCalled();
+  });
+
+  it("sends name along with email when inviting by email", async () => {
+    render(<GroupSettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Add")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Add"));
+    await waitFor(() => {
+      expect(screen.getByText("Add Member")).toBeTruthy();
+    });
+    const nameInput = screen.getByPlaceholderText("e.g., Alex");
+    fireEvent.changeText(nameInput, "Alice Smith");
+    const emailInput = screen.getByPlaceholderText("e.g., alex@example.com");
+    fireEvent.changeText(emailInput, "alice@example.com");
+    fireEvent.press(screen.getByText("Add to Group"));
+    await waitFor(() => {
+      expect(mockInviteByEmail).toHaveBeenCalledWith("g1", { email: "alice@example.com", name: "Alice Smith" }, "mock-token");
+    });
+  });
+
+  it("prevents self-add via contact selection when contact email matches current user", async () => {
+    mockListContacts.mockResolvedValue([
+      { userId: "u3", guestUserId: null, name: "Test User", email: "test@example.com", isGuest: false, avatarUrl: null },
+    ]);
+    render(<GroupSettingsScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Add")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByText("Add"));
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeTruthy();
+    });
+    const addButtons = screen.getAllByText("Add");
+    fireEvent.press(addButtons[addButtons.length - 1]);
+    expect(mockToast.info).toHaveBeenCalledWith("You're already a member of this group.");
+    expect(mockInviteByEmail).not.toHaveBeenCalled();
+    expect(mockAddGuestMember).not.toHaveBeenCalled();
   });
 
   it("validates empty name when adding member", async () => {
@@ -684,7 +740,7 @@ describe("GroupSettingsScreen", () => {
     const addButtons = screen.getAllByText("Add");
     fireEvent.press(addButtons[addButtons.length - 1]);
     await waitFor(() => {
-      expect(mockInviteByEmail).toHaveBeenCalledWith("g1", { email: "diana@test.com" }, "mock-token");
+      expect(mockInviteByEmail).toHaveBeenCalledWith("g1", { email: "diana@test.com", name: "Diana" }, "mock-token");
       expect(mockToast.success).toHaveBeenCalledWith("Invite sent to Diana.");
     });
   });

@@ -292,11 +292,16 @@ export default function GroupSettingsScreen() {
       toast.error("Please enter a valid email address.");
       return;
     }
+    const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress?.toLowerCase();
+    if (email && currentEmail && email === currentEmail) {
+      toast.info("You're already a member of this group.");
+      return;
+    }
     setAddingMember(true);
     try {
       const token = await getToken();
       if (email) {
-        await groupsApi.inviteByEmail(groupId, { email }, token!);
+        await groupsApi.inviteByEmail(groupId, { email, name }, token!);
         hapticSuccess();
         toast.success(`Invite sent to ${email}`);
       } else {
@@ -324,11 +329,16 @@ export default function GroupSettingsScreen() {
   };
 
   const handleAddContact = async (contact: ContactDto) => {
+    const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress?.toLowerCase();
+    if (contact.email && currentEmail && contact.email.toLowerCase() === currentEmail) {
+      toast.info("You're already a member of this group.");
+      return;
+    }
     setAddingMember(true);
     try {
       const token = await getToken();
       if (contact.email) {
-        await groupsApi.inviteByEmail(groupId, { email: contact.email }, token!);
+        await groupsApi.inviteByEmail(groupId, { email: contact.email, name: contact.name }, token!);
       } else {
         await groupsApi.addGuestMember(groupId, { name: contact.name }, token!);
       }

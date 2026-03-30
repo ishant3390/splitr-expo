@@ -11,6 +11,7 @@ import {
   extractInviteCode,
   getCurrencySymbol,
   sanitizeAmountInput,
+  sanitizePercentInput,
   parseAmountInputToCents,
   getMemberAvatarUrl,
   getFxDisplayAmounts,
@@ -391,6 +392,32 @@ describe("sanitizeAmountInput", () => {
     // User types "3" → "25.53"
     amount = sanitizeAmountInput("25.53");
     expect(amount).toBe("25.53");
+  });
+});
+
+describe("sanitizePercentInput", () => {
+  it("passes through valid percentages unchanged", () => {
+    expect(sanitizePercentInput("50")).toBe("50");
+    expect(sanitizePercentInput("99.5")).toBe("99.5");
+    expect(sanitizePercentInput("100")).toBe("100");
+    expect(sanitizePercentInput("0")).toBe("0");
+  });
+
+  it("caps values above 100", () => {
+    expect(sanitizePercentInput("101")).toBe("100");
+    expect(sanitizePercentInput("150.5")).toBe("100");
+  });
+
+  it("strips non-numeric characters", () => {
+    expect(sanitizePercentInput("abc")).toBe("");
+  });
+
+  it("limits to 2 decimal places", () => {
+    expect(sanitizePercentInput("50.123")).toBe("50.12");
+  });
+
+  it("handles empty string", () => {
+    expect(sanitizePercentInput("")).toBe("");
   });
 });
 

@@ -24,7 +24,7 @@ import { GroupAvatar } from "@/components/ui/group-avatar";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useUserBalance, useTopDebtor, useGroups, useUserProfile, useGroupCurrencyMap } from "@/lib/hooks";
 import { useNetwork } from "@/components/NetworkProvider";
-import { cn, formatCents, formatDate, formatRelativeTime, getInitials } from "@/lib/utils";
+import { cn, formatCents, formatDate, formatRelativeTime, getInitials, getFxDisplayAmounts } from "@/lib/utils";
 import { formatActivityTitle, formatActivityInvolvement, formatCentsForInvolvement, resolveActivityGroupName } from "@/lib/screen-helpers";
 import { MultiCurrencyAmount, formatMultiCurrency } from "@/components/ui/multi-currency-amount";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -609,6 +609,18 @@ export default function HomeScreen() {
                   const displayAmount = (item.details?.amount ?? item.details?.amountCents ?? item.details?.newAmount) as number | undefined;
                   const itemCurrency = (item.details?.currency as string) ?? groupCurrencyMap.get(item.groupId ?? "") ?? "USD";
                   const involvement = formatActivityInvolvement(item);
+                  const fxDisplay = displayAmount != null
+                    ? getFxDisplayAmounts({
+                        amountCents: displayAmount,
+                        currency: itemCurrency,
+                        convertedAmountCents: item.details?.convertedAmountCents as number | undefined,
+                        convertedCurrency: item.details?.convertedCurrency as string | undefined,
+                        convertedAmount: item.details?.convertedAmount as
+                          | { amountMinor: number; currency: string }
+                          | number
+                          | undefined,
+                      })
+                    : null;
                   const destination = item.groupId
                     ? { pathname: `/(tabs)/groups/${item.groupId}` as const }
                     : null;
@@ -665,6 +677,11 @@ export default function HomeScreen() {
                                 {formatCents(displayAmount, itemCurrency)}
                               </Text>
                             )}
+                            {fxDisplay?.secondary ? (
+                              <Text className="text-[11px] text-muted-foreground font-sans">
+                                {fxDisplay.secondary}
+                              </Text>
+                            ) : null}
                             {involvement.text != null && (
                               <View
                                 className={cn(

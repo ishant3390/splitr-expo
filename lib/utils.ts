@@ -58,6 +58,15 @@ export function sanitizeAmountInput(raw: string): string {
   return cleaned;
 }
 
+export function sanitizePercentInput(raw: string): string {
+  const cleaned = sanitizeAmountInput(raw);
+  const num = parseFloat(cleaned);
+  if (!isNaN(num) && num > 100) {
+    return "100";
+  }
+  return cleaned;
+}
+
 export function formatCurrency(amount: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

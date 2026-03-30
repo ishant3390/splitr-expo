@@ -189,6 +189,130 @@ test.describe("Member Management", () => {
     await page.getByText(guestName).first().waitFor({ state: "attached", timeout: 10000 });
   });
 
+  // ── Invite by Email with Name ────────────────────────────────────────────
+
+  test("invite by email includes name in request and member shows correct name", async ({
+    apiClient,
+  }) => {
+    const group = await apiClient.createGroup(
+      fixtures.group({ name: "Invite Name" })
+    );
+    const guestName = `[E2E] Named Guest ${Date.now().toString(36)}`;
+    const guestEmail = `e2e-named-${Date.now()}@test.splitr.ai`;
+
+    const member = await apiClient.inviteByEmail(group.id, guestEmail, guestName);
+
+    // Verify the returned member has the expected name
+    const returnedName =
+      member.displayName ||
+      member.guestUser?.name ||
+      member.user?.name ||
+      "";
+    expect(returnedName).toContain("[E2E] Named Guest");
+
+    // Verify via member list
+    const members = await apiClient.listMembers(group.id);
+    const invited = members.find(
+      (m) =>
+        m.displayName?.includes("[E2E] Named Guest") ||
+        m.guestUser?.name?.includes("[E2E] Named Guest") ||
+        m.user?.name?.includes("[E2E] Named Guest")
+    );
+    expect(invited).toBeTruthy();
+  });
+
+  test("self-add via own email returns error from backend", async ({
+    apiClient,
+  }) => {
+    const group = await apiClient.createGroup(
+      fixtures.group({ name: "Self Add" })
+    );
+    const me = await apiClient.getMe();
+
+    // Attempt to invite own email — backend should reject
+    const result = await apiClient.requestSafe(
+      `/v1/groups/${group.id}/members/invite`,
+      {
+        method: "POST",
+        body: JSON.stringify({ email: me.email, name: me.name }),
+      }
+    );
+
+    expect(result.ok).toBe(false);
+    // Backend returns 409 for already-a-member (ERR-409)
+    expect(result.status).toBe(409);
+    const errorBody = result.error ? JSON.parse(result.error) : {};
+    expect(errorBody.code).toBe("ERR-409");
+  });
+
+  test("UI prevents self-add with info toast before API call", async ({
+    page,
+    apiClient,
+  }) => {
+    const group = await apiClient.createGroup(
+      fixtures.group({ name: "Self Add UI" })
+    );
+    const me = await apiClient.getMe();
+
+    // Navigate to group detail
+    await page.getByRole("button", { name: "Groups" }).click();
+    await expect(page.getByText("Active", { exact: true })).toBeVisible({ timeout: 10000 });
+    await scrollToGroupAndClick(page, group.name);
+    await expect(page.getByText(group.name).first()).toBeVisible({ timeout: 10000 });
+
+    // Open group settings
+    await page.getByLabel("Group settings").first().click();
+    await page.waitForTimeout(1000);
+
+    // Open Add Member modal
+    const addMemberBtn = page.getByText("Add Member").first();
+    const hasAddMember = await addMemberBtn
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
+
+    if (!hasAddMember) {
+      // If Add Member button not found, skip gracefully
+      test.skip();
+      return;
+    }
+    await addMemberBtn.click();
+    await page.waitForTimeout(500);
+
+    // Fill in name and own email
+    const nameInput = page.getByPlaceholder(/Name/);
+    await nameInput.fill("[E2E] Self Add Test");
+
+    const emailInput = page.getByPlaceholder(/Email/);
+    const hasEmail = await emailInput
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    if (!hasEmail) {
+      test.skip();
+      return;
+    }
+    await emailInput.fill(me.email);
+
+    // Submit
+    const submitBtn = page
+      .getByRole("button", { name: /Add to Group|Add|Save|Done/ })
+      .first();
+    const hasSubmit = await submitBtn
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
+    if (!hasSubmit) {
+      test.skip();
+      return;
+    }
+    await submitBtn.click();
+    await page.waitForTimeout(1000);
+
+    // Verify info toast with "already a member" message
+    const toastText = page.getByText(/already a member/i).first();
+    await expect(toastText).toBeVisible({ timeout: 5000 });
+  });
+
   // ── Member Removal with Outstanding Debt ─────────────────────────────────
 
   test("remove member with outstanding debt is blocked", async ({

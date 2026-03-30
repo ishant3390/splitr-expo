@@ -271,14 +271,17 @@ export class ApiClient {
     });
   }
 
-  async inviteByEmail(groupId: string, email: string) {
+  async inviteByEmail(groupId: string, email: string, name?: string) {
+    const body: { email: string; name?: string } = { email };
+    if (name) body.name = name;
     return this.request<{
       id: string;
       user?: { id: string; name: string };
       guestUser?: { id: string; name: string };
+      displayName?: string;
     }>(`/v1/groups/${groupId}/members/invite`, {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(body),
     });
   }
 

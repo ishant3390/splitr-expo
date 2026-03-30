@@ -45,6 +45,7 @@ import {
   centsToAmount,
   getCurrencySymbol,
   sanitizeAmountInput,
+  sanitizePercentInput,
   getMemberAvatarUrl,
   parseAmountInputToCents,
 } from "@/lib/utils";
@@ -577,6 +578,7 @@ export default function AddExpenseScreen() {
                   value={amount}
                   onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
                   keyboardType="decimal-pad"
+                  inputMode="decimal"
                   placeholder="0"
                   testID="amount-input"
                   maxLength={12}
@@ -962,9 +964,10 @@ export default function AddExpenseScreen() {
                                 <TextInput
                                   value={splitPercentages[member.id] ?? ""}
                                   onChangeText={(val) =>
-                                    setSplitPercentages((prev) => ({ ...prev, [member.id]: val }))
+                                    setSplitPercentages((prev) => ({ ...prev, [member.id]: sanitizePercentInput(val) }))
                                   }
                                   keyboardType="decimal-pad"
+                                  inputMode="decimal"
                                   inputAccessoryViewID="amount-done"
                                   placeholder="0"
                                   placeholderTextColor={c.placeholder}
@@ -985,6 +988,7 @@ export default function AddExpenseScreen() {
                                     setSplitFixedAmounts((prev) => ({ ...prev, [member.id]: sanitizeAmountInput(val) }))
                                   }
                                   keyboardType="decimal-pad"
+                                  inputMode="decimal"
                                   inputAccessoryViewID="amount-done"
                                   placeholder="0.00"
                                   placeholderTextColor={c.placeholder}

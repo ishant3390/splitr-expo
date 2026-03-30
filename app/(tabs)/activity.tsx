@@ -16,7 +16,7 @@ import { SHADOWS } from "@/lib/shadows";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useGroups, useUserProfile, useGroupCurrencyMap } from "@/lib/hooks";
-import { cn, formatCents, formatDate, formatRelativeTime } from "@/lib/utils";
+import { cn, formatCents, formatDate, formatRelativeTime, getFxDisplayAmounts } from "@/lib/utils";
 import { formatActivityTitle, formatActivityInvolvement, formatCentsForInvolvement, resolveActivityGroupName } from "@/lib/screen-helpers";
 import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import type { ActivityLogDto } from "@/lib/types";
@@ -292,6 +292,18 @@ export default function ActivityScreen() {
             const itemCurrency = (item.details?.currency as string) ?? groupCurrencyMap.get(item.groupId ?? "") ?? "USD";
             const involvement = formatActivityInvolvement(item);
             const involvedCount = item.details?.involvedCount as number | undefined;
+            const fxDisplay = displayAmount != null
+              ? getFxDisplayAmounts({
+                  amountCents: displayAmount,
+                  currency: itemCurrency,
+                  convertedAmountCents: item.details?.convertedAmountCents as number | undefined,
+                  convertedCurrency: item.details?.convertedCurrency as string | undefined,
+                  convertedAmount: item.details?.convertedAmount as
+                    | { amountMinor: number; currency: string }
+                    | number
+                    | undefined,
+                })
+              : null;
 
             const destination = item.groupId
               ? { pathname: `/(tabs)/groups/${item.groupId}` as const }
@@ -360,6 +372,11 @@ export default function ActivityScreen() {
                             {formatCents(displayAmount, itemCurrency)}
                           </Text>
                         )}
+                        {fxDisplay?.secondary ? (
+                          <Text className="text-[11px] text-muted-foreground font-sans">
+                            {fxDisplay.secondary}
+                          </Text>
+                        ) : null}
                         {involvement.text != null && (
                           <View className={cn(
                             "px-2 py-0.5 rounded-full mt-1",

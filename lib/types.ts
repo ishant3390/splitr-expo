@@ -184,6 +184,7 @@ export interface AddGuestMemberRequest {
 
 export interface InviteByEmailRequest {
   email: string;
+  name?: string;
 }
 
 export interface UpdateMemberRequest {

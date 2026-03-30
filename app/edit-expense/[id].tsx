@@ -50,6 +50,7 @@ import {
   centsToAmount,
   getCurrencySymbol,
   sanitizeAmountInput,
+  sanitizePercentInput,
   getMemberAvatarUrl,
   parseAmountInputToCents,
 } from "@/lib/utils";
@@ -576,6 +577,7 @@ export default function EditExpenseScreen() {
                 value={amount}
                 onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
                 keyboardType="decimal-pad"
+                inputMode="decimal"
                 placeholder="0"
                 testID="amount-input"
                 placeholderTextColor={c.placeholder}
@@ -831,9 +833,10 @@ export default function EditExpenseScreen() {
                             <TextInput
                               value={splitPercentages[member.id] ?? ""}
                               onChangeText={(val) =>
-                                setSplitPercentages((prev) => ({ ...prev, [member.id]: val }))
+                                setSplitPercentages((prev) => ({ ...prev, [member.id]: sanitizePercentInput(val) }))
                               }
                               keyboardType="decimal-pad"
+                              inputMode="decimal"
                               placeholder="0"
                               placeholderTextColor={c.placeholder}
                               style={{ width: 44, paddingHorizontal: 8, paddingVertical: 6, fontSize: fs.base, textAlign: "right", color: c.foreground, fontFamily: ff.regular }}
@@ -852,6 +855,7 @@ export default function EditExpenseScreen() {
                                 setSplitFixedAmounts((prev) => ({ ...prev, [member.id]: sanitizeAmountInput(val) }))
                               }
                               keyboardType="decimal-pad"
+                              inputMode="decimal"
                               placeholder="0.00"
                               placeholderTextColor={c.placeholder}
                               style={{ width: 56, paddingHorizontal: 8, paddingVertical: 6, fontSize: fs.base, textAlign: "right", color: c.foreground, fontFamily: ff.regular }}

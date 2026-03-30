@@ -697,6 +697,52 @@ describe("HomeScreen", () => {
     });
   });
 
+  // --- FX secondary amount on activity card ---
+  it("renders FX secondary amount on activity card when convertedAmountCents in details", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amount: 5000, currency: "USD", convertedAmountCents: 4600, convertedCurrency: "EUR" },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/≈ €46.00/)).toBeTruthy();
+    });
+  });
+
+  it("does not render FX secondary on activity card when no converted fields", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amount: 5000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetchActivity,
+    });
+    render(<HomeScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Alice added Dinner")).toBeTruthy();
+    });
+    expect(screen.queryByText(/≈/)).toBeNull();
+  });
+
   // --- Activity with category emoji from map ---
   it("renders correct emoji for known category", async () => {
     mockUseUserActivity.mockReturnValue({

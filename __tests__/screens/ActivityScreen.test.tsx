@@ -431,6 +431,58 @@ describe("ActivityScreen", () => {
     });
   });
 
+  // --- FX secondary amount display ---
+  it("renders FX secondary amount when activity details include convertedAmountCents", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amount: 5000, currency: "USD", convertedAmountCents: 4600, convertedCurrency: "EUR" },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    });
+    render(<ActivityScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/≈ €46.00/)).toBeTruthy();
+    });
+  });
+
+  it("does not render FX secondary when no converted fields in details", async () => {
+    mockUseUserActivity.mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          activityType: "expense_created",
+          actorUserName: "Alice",
+          groupName: "Trip",
+          createdAt: "2026-03-05T10:00:00Z",
+          details: { description: "Dinner", amount: 5000 },
+        },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+    });
+    render(<ActivityScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/Alice added Dinner/)).toBeTruthy();
+    });
+    expect(screen.queryByText(/≈/)).toBeNull();
+  });
+
   // --- Actor guest name fallback (line 146) ---
   it("uses actorGuestName when actorUserName is null", async () => {
     mockUseUserActivity.mockReturnValue({
