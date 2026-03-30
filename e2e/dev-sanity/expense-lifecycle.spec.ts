@@ -130,6 +130,56 @@ test.describe("Dev Sanity — Expense Lifecycle", () => {
     expect(afterDelete[0].amount).toBe(5000);
   });
 
+  test("update settlement amount recalculates remaining balance", async ({
+    userAClient,
+    userBClient,
+  }) => {
+    const userA = await userAClient.getMe();
+    const userB = await userBClient.getMe();
+
+    const group = await userAClient.createGroup(
+      sanityFixtures.group({ name: "Update Settlement" })
+    );
+    const detail = await userAClient.getGroup(group.id);
+    await userBClient.joinGroupByInvite(detail.inviteCode!);
+
+    // Create $100 expense -> B owes A $50
+    await userAClient.createExpense(
+      group.id,
+      sanityFixtures.expense(userA.id, [userA.id, userB.id], {
+        description: "Settlement Update Base",
+        totalAmount: 10000,
+      })
+    );
+
+    // B settles $20 first
+    const settlement = await userBClient.createSettlement(
+      group.id,
+      sanityFixtures.settlement(userB.id, userA.id, { amount: 2000 })
+    );
+
+    // Remaining should be $30
+    const beforeUpdate = await userAClient.getSettlementSuggestions(group.id);
+    expect(beforeUpdate.length).toBe(1);
+    expect(beforeUpdate[0].amount).toBe(3000);
+
+    // Update settlement from $20 -> $35 (requires version)
+    await userBClient.updateSettlement(settlement.id, {
+      payerUserId: userB.id,
+      payeeUserId: userA.id,
+      amount: 3500,
+      currency: "USD",
+      paymentMethod: "cash",
+      settlementDate: new Date().toISOString().split("T")[0],
+      version: settlement.version,
+    });
+
+    // Remaining should now be $15
+    const afterUpdate = await userAClient.getSettlementSuggestions(group.id);
+    expect(afterUpdate.length).toBe(1);
+    expect(afterUpdate[0].amount).toBe(1500);
+  });
+
   test("expense in non-USD currency works", async ({
     userAClient,
     userBClient,

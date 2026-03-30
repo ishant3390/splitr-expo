@@ -387,6 +387,31 @@ export class ApiClient {
     return settlement;
   }
 
+  async updateSettlement(
+    settlementId: string,
+    data: {
+      payerUserId?: string;
+      payerGuestUserId?: string;
+      payeeUserId?: string;
+      payeeGuestUserId?: string;
+      amount: number;
+      currency: string;
+      paymentMethod?: string;
+      settlementDate: string;
+      version: number;
+    }
+  ) {
+    return this.request<{
+      id: string;
+      groupId: string;
+      amount: number;
+      version: number;
+    }>(`/v1/settlements/${settlementId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
   async deleteSettlement(settlementId: string) {
     await this.request<void>(`/v1/settlements/${settlementId}`, {
       method: "DELETE",
