@@ -290,7 +290,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (2272 unit tests, 84 suites; 145 smoke; 96 integration; 29 dev-sanity)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
+- **Current baseline (2272 unit tests, 84 suites; 145 smoke; 96 integration; 49 dev-sanity)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state

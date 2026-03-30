@@ -34,7 +34,8 @@ export const sanityFixtures = {
     }
   ) {
     const totalAmount = overrides?.totalAmount || 2550;
-    const splitAmount = Math.floor(totalAmount / splitUserIds.length);
+    const perPerson = Math.floor(totalAmount / splitUserIds.length);
+    const remainder = totalAmount - perPerson * splitUserIds.length;
 
     return {
       description: `[SANITY] ${overrides?.description || "Test Expense"} ${ts()}`,
@@ -44,9 +45,10 @@ export const sanityFixtures = {
       expenseDate: new Date().toISOString().split("T")[0],
       splitType: overrides?.splitType || "EQUAL",
       payers: [{ userId: payerUserId, amountPaid: totalAmount }],
-      splits: splitUserIds.map((userId) => ({
+      splits: splitUserIds.map((userId, idx) => ({
         userId,
-        splitAmount,
+        splitAmount:
+          idx === splitUserIds.length - 1 ? perPerson + remainder : perPerson,
       })),
     };
   },
@@ -79,7 +81,8 @@ export const sanityFixtures = {
     }
   ) {
     const totalAmount = overrides?.totalAmount || 2000;
-    const splitAmount = Math.floor(totalAmount / 2);
+    const perPerson = Math.floor(totalAmount / 2);
+    const remainder = totalAmount - perPerson * 2;
 
     return {
       description: `[SANITY] ${overrides?.description || "Guest Expense"} ${ts()}`,
@@ -89,8 +92,8 @@ export const sanityFixtures = {
       splitType: "EQUAL",
       payers: [{ userId: payerUserId, amountPaid: totalAmount }],
       splits: [
-        { userId: payerUserId, splitAmount },
-        { guestUserId, splitAmount },
+        { userId: payerUserId, splitAmount: perPerson },
+        { guestUserId, splitAmount: perPerson + remainder },
       ],
     };
   },
@@ -99,6 +102,30 @@ export const sanityFixtures = {
     return {
       name: `[SANITY] ${overrides?.name || "Guest"} ${ts()}`,
       email: overrides?.email,
+    };
+  },
+
+  unequalExpense(
+    payerUserId: string,
+    splits: Array<{ userId?: string; guestUserId?: string; amount: number }>,
+    overrides?: {
+      description?: string;
+      currency?: string;
+    }
+  ) {
+    const totalAmount = splits.reduce((sum, s) => sum + s.amount, 0);
+    return {
+      description: `[SANITY] ${overrides?.description || "Unequal Expense"} ${ts()}`,
+      totalAmount,
+      currency: overrides?.currency || "USD",
+      expenseDate: new Date().toISOString().split("T")[0],
+      splitType: "EXACT",
+      payers: [{ userId: payerUserId, amountPaid: totalAmount }],
+      splits: splits.map((s) => ({
+        userId: s.userId,
+        guestUserId: s.guestUserId,
+        splitAmount: s.amount,
+      })),
     };
   },
 };
