@@ -94,6 +94,7 @@ lib/
 - Use `getToken()` from Clerk for API auth headers
 - API responses may be `{ key: T[] }` maps — use `flattenMap()` in api.ts
 - Amounts stored in cents (use `amountToCents()` / `formatCents(cents, currency)`)
+- **Amount input sanitization**: Use `sanitizeAmountInput()` for currency fields, `sanitizePercentInput()` for percentage fields (caps at 100). All amount TextInputs must have `inputMode="decimal"` for web keyboard support alongside `keyboardType="decimal-pad"` for native.
 - **Multi-currency display**: Cross-group screens (Home, Activity, Groups summary) use `useUserBalance().totalOwedByCurrency` / `totalOwingByCurrency` arrays. Single-group screens pass `group.defaultCurrency`. Use `MultiCurrencyAmount` component for multi-currency rendering, `formatMultiCurrency()` for string contexts. Use `useGroupCurrencyMap()` hook to resolve per-activity-item currency. Use `getCurrencySymbol(currency)` instead of hardcoded `$`/`£`/`€` ternary chains.
 - Deduplicate member lists (API sometimes returns duplicates)
 - Backend category `icon` field returns icon names (e.g. "restaurant"), not emojis — use `getCategoryEmoji()` from `lib/screen-helpers` to convert to emoji
@@ -118,6 +119,7 @@ lib/
 - **Version conflict**: Use `isVersionConflict(err)` from `lib/api.ts` — checks `ERR-302` code specifically, does NOT false-positive on `ERR-409`.
 - **Idempotency**: `POST /expenses` and `POST /settlements` automatically include `Idempotency-Key` header (UUID v4) via `withIdempotency()` wrapper in `lib/api.ts`. Keys persisted to AsyncStorage for crash recovery. Retry with exponential backoff on ERR-415 (in-flight) and 5xx. See `lib/idempotency.ts`.
 - **Correlation ID**: Every API request includes `X-Correlation-ID` header (UUID v4) via `request()` in `lib/api.ts`. Backend echoes the ID in response. Finance mutations also send via audit context. Enables end-to-end traceability for debugging and user bug reports.
+- **429 retry**: `request()` in `lib/api.ts` automatically retries once on 429 for safe requests (GET/HEAD/OPTIONS) and idempotent POSTs (with `Idempotency-Key`). Parses `Retry-After` header for delay (default 5s). E2E `ApiClient` sends `X-RateLimit-Bypass` header for sanity suite.
 
 ## Key API Endpoints
 - `POST /v1/groups/{groupId}/expenses` — expenses always belong to a group
@@ -150,7 +152,8 @@ lib/
 - Join screen handles error codes: ERR-301 (already member), ERR-300 (not found), ERR-401 (expired), ERR-402 (archived)
 - Guest-to-user promotion is automatic on backend when emails match
 - Add Member modal: name (required) + email (optional); email provided → `POST /members/invite` (sends invite email); name only → `addGuestMember`
-- Email invite endpoint: `POST /v1/groups/{groupId}/members/invite { email }` — handles known users, unknown (guest), and already-member (ERR-409)
+- Email invite endpoint: `POST /v1/groups/{groupId}/members/invite { email, name? }` — handles known users, unknown (guest with provided name), and already-member (ERR-409). FE sends user-entered name to avoid email-prefix derivation.
+- Self-add prevention: FE compares entered email against `clerkUser.primaryEmailAddress` before calling invite API. Shows `toast.info("You're already a member of this group.")`
 - Universal link files: `well-known/apple-app-site-association` + `well-known/assetlinks.json` — BE must host at `https://splitr.ai/.well-known/` (fill in APPLE_TEAM_ID + Android SHA256 fingerprint)
 
 ## Push Notification Integration
@@ -210,20 +213,9 @@ lib/
   - Wire format: `@[Name](userId:id)`, `#[Group](groupId:id)`
   - Fallback: When contacts API empty, aggregates members from all groups via `useMergedContacts()`
   - Recency: AsyncStorage tracks last 20 mentioned people, shown first in dropdown
-- **Chat polish (B26-B33)**:
-  - B26: Timestamps between messages (5-min gap threshold)
-  - B27: Typing dots indicator (reanimated bounce animation)
-  - B28: Long-press to copy assistant messages (clipboard + haptic + toast)
-  - B29: Follow-up suggestion pills after expense creation
-  - B30: AsyncStorage persistence for messages + conversationId; "New Chat" button
-  - B31: Bubble grouping (consecutive same-role messages share rounded corners)
-  - B32: Accessibility labels on 13 interactive elements
-  - B33: React.memo MessageItem + FlatList optimization (removeClippedSubviews, maxToRenderPerBatch=10)
-- **Chat additions (B34/B35/B47)**:
-  - B34: Receipt → Chat auto-fill via `receiptMessage` route param, auto-sends on mount
-  - B35: Natural language balance queries — "Who owes me money?" suggested prompt; BE has 4 LLM tools (`get_user_balance`, `get_balance_with_user`, `get_cross_group_balances`, `get_group_balance`)
-  - B47: Scroll-to-bottom FAB — ChevronDown button appears when scrolled >300px from bottom, FadeIn/FadeOut animation, haptic on tap
-- **Tests**: 21 tests in `__tests__/screens/ChatScreen.test.tsx`
+- **Polish**: Timestamps, typing indicator, long-press copy, follow-up pills, AsyncStorage persistence, bubble grouping, a11y labels, FlatList optimization, scroll-to-bottom FAB
+- **Receipt → Chat**: `receiptMessage` route param auto-sends on mount (B34)
+- **Balance queries**: Natural language via 4 LLM tools (`get_user_balance`, `get_balance_with_user`, `get_cross_group_balances`, `get_group_balance`)
 
 ## Group Lifecycle
 - **Archive/Unarchive**: `PATCH /v1/groups/{id}` with `{ isArchived: true/false, version }` — long-press action sheet in Groups screen
@@ -321,25 +313,11 @@ lib/
 - **Data strategy**: All test data prefixed with `[E2E]` + timestamp; tracked resources auto-deleted in reverse order
 - **Backend health**: Every spec runs `ApiClient.isBackendHealthy()` in `beforeAll` — skips with clear message if backend is down
 - **Timing**: Uses `page.waitForResponse()` instead of `waitForTimeout()` for API-dependent waits
-- **Spec files**:
-  - `group-lifecycle.spec.ts` (5) — create, detail, archive, restore, delete
-  - `expense-lifecycle.spec.ts` (5) — UI add, API add, delete, auto-category, split validation
-  - `settlement-flow.spec.ts` (6) — suggestions, record payment, history, balance changes, delete revert
-  - `member-management.spec.ts` (5) — UI add, API add, count update, remove, email member
-  - `home-data.spec.ts` (5) — balance card, owed amounts, recent activity, View All nav
-  - `profile-management.spec.ts` (3) — display data, edit name, change currency
-  - `activity-data.spec.ts` (5) — time grouping, expense items, settlement items, search, pagination
-  - `invite-flow.spec.ts` (4) — share modal, preview, self-join handling, regenerate code
-  - `search-filter.spec.ts` (3) — match search, no-match empty state, clear search
-  - `navigation-data.spec.ts` (5) — group card nav, expense edit, back nav, tab state, View All
-  - `settings-screens.spec.ts` (4) — notifications, privacy, help, payment methods
-  - `payment-handles.spec.ts` (9) — API save/clear/partial update, settlement suggestions with handles, UI save + verify, Pay Directly gate, region methods
-  - `profile-image.spec.ts` (7) — API upload/delete, unique URL, UI avatar update, member avatarUrl sync
-  - `group-banner.spec.ts` (4) — API upload/delete, unique URL, banner display on group detail
+- **Spec files**: 14 specs covering group/expense/settlement lifecycle, member management, home/activity data, invite flow, search, navigation, settings, payment handles, profile images, group banners
 
 ### Dev Sanity Tests (Playwright + Live Dev Environment)
 - **Purpose**: Sanity check against live `dev.splitr.ai` before promoting to prod
-- **Structure**: `e2e/dev-sanity/` with 7 spec files (26 tests total)
+- **Structure**: `e2e/dev-sanity/` with 12 spec files (49 tests total)
 - **Multi-user**: User A (browser + API), User B (API-only via temporary browser context token)
 - **Helpers**: `e2e/dev-sanity/helpers/` — `sanity-auth.ts` (multi-user fixture), `sanity-fixtures.ts` (`[SANITY]` prefixed data)
 - **Env vars**: `E2E_SANITY_USER_A_EMAIL`, `E2E_SANITY_USER_B_EMAIL` in `.env.local`
@@ -347,14 +325,7 @@ lib/
 - **Config**: `playwright.config.ts` — `dev-sanity` project with `baseURL: "https://dev.splitr.ai"`, no webServer, 90s timeout, serial (1 worker)
 - **429 handling**: `ApiClient.fetchWithRetry()` retries 429s with exponential backoff
 - **Run**: `npm run test:e2e:dev-sanity` (headless) or `npm run test:e2e:dev-sanity:headed`
-- **Specs**:
-  - `smoke.spec.ts` (4) — health check, both users auth, home screen loads
-  - `group-expense-settle.spec.ts` (4) — create group, guest expense, settle, activity
-  - `invite-join-flow.spec.ts` (4) — invite, join, cross-user expense, settlement
-  - `balance-accuracy.spec.ts` (4) — equal split, partial settlement, multi-expense, balance API
-  - `expense-lifecycle.spec.ts` (4) — edit with version, delete expense, delete settlement reversal, GBP currency
-  - `group-lifecycle.spec.ts` (3) — archive/unarchive, invite regenerate, categories
-  - `profile-and-settings.spec.ts` (3) — name update, currency change, payment handles
+- **Specs**: 12 specs covering smoke, group/expense/settlement lifecycle, invite/join, balance accuracy, member management, profile/settings, unequal splits, multi-member groups, activity completeness
 
 ### E2E Test Conventions
 - **Smoke tests**: Import `{ test, expect }` from `./auth.setup`
