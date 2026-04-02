@@ -26,7 +26,7 @@ export function AvatarStrip({ members, maxVisible = 5, onPress, size = "md" }: A
   const content = (
     <View className="flex-row items-center">
       {visible.map((member, i) => {
-        const name = member.user?.name ?? member.guestUser?.name ?? member.displayName ?? "?";
+        const name = member.user?.name || member.guestUser?.name || member.displayName || "?";
         return (
           <View
             key={member.id}

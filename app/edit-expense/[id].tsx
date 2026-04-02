@@ -701,7 +701,7 @@ export default function EditExpenseScreen() {
               {members.map((member) => {
                 const isSelected = selectedPayerMemberId === member.id;
                 const memberName =
-                  member.user?.name ?? member.guestUser?.name ?? member.displayName ?? "Member";
+                  member.user?.name || member.guestUser?.name || member.displayName || "Member";
                 return (
                   <Pressable key={member.id} onPress={() => setSelectedPayerMemberId(member.id)}>
                     <Card
@@ -801,7 +801,7 @@ export default function EditExpenseScreen() {
               {members.map((member) => {
                 const isChecked = splitWith.includes(member.id);
                 const memberName =
-                  member.user?.name ?? member.guestUser?.name ?? member.displayName ?? "Member";
+                  member.user?.name || member.guestUser?.name || member.displayName || "Member";
                 return (
                   <Pressable key={member.id} onPress={() => handleToggleMember(member.id)}>
                     <Card

@@ -821,7 +821,7 @@ export default function AddExpenseScreen() {
                   {members.map((member) => {
                     const isSelected = selectedPayerMemberId === member.id;
                     const memberName =
-                      member.user?.name ?? member.guestUser?.name ?? member.displayName ?? "Member";
+                      member.user?.name || member.guestUser?.name || member.displayName || "Member";
                     return (
                       <Pressable
                         key={member.id}
@@ -929,7 +929,7 @@ export default function AddExpenseScreen() {
                 <View className="gap-2">
                   {members.map((member) => {
                     const isChecked = splitWith.includes(member.id);
-                    const memberName = member.user?.name ?? member.guestUser?.name ?? member.displayName ?? "Member";
+                    const memberName = member.user?.name || member.guestUser?.name || member.displayName || "Member";
                     return (
                       <Pressable
                         key={member.id}

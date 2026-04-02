@@ -661,7 +661,7 @@ export default function GroupSettingsScreen() {
 
         <Card className="overflow-hidden">
           {members.map((member, index) => {
-            const memberName = member.user?.name ?? member.guestUser?.name ?? member.displayName ?? "Member";
+            const memberName = member.user?.name || member.guestUser?.name || member.displayName || "Member";
             const memberEmail = member.user?.email ?? member.guestUser?.email;
             const balance = member.balance ?? 0;
 
@@ -893,7 +893,7 @@ export default function GroupSettingsScreen() {
       <ConfirmModal
         visible={!!memberToRemove}
         title="Remove Member"
-        message={`Remove ${memberToRemove?.user?.name ?? memberToRemove?.guestUser?.name ?? "this member"} from the group? Their past expenses will remain.`}
+        message={`Remove ${memberToRemove?.user?.name || memberToRemove?.guestUser?.name || "this member"} from the group? Their past expenses will remain.`}
         confirmLabel={removingMember ? "Removing..." : "Remove"}
         cancelLabel="Cancel"
         destructive

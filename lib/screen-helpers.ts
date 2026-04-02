@@ -105,7 +105,7 @@ export function aggregateByPerson(expenses: ExpenseLike[]): Array<{ name: string
   const byPerson: Record<string, { name: string; total: number }> = {};
   expenses.forEach((e) => {
     e.payers?.forEach((p) => {
-      const name = p.user?.name ?? p.guestUser?.name ?? "Unknown";
+      const name = p.user?.name || p.guestUser?.name || "Unknown";
       const key = p.user?.id ?? p.guestUser?.id ?? name;
       if (!byPerson[key]) byPerson[key] = { name, total: 0 };
       byPerson[key].total += p.amountPaid;
@@ -141,7 +141,7 @@ export function filterExpenses(expenses: ExpenseLike[], query: string): ExpenseL
   const q = query.toLowerCase();
   return expenses.filter((e) => {
     const desc = e.description?.toLowerCase() ?? "";
-    const payer = (e.payers?.[0]?.user?.name ?? e.payers?.[0]?.guestUser?.name ?? "").toLowerCase();
+    const payer = (e.payers?.[0]?.user?.name || e.payers?.[0]?.guestUser?.name || "").toLowerCase();
     const cat = (e.category?.name ?? "").toLowerCase();
     return desc.includes(q) || payer.includes(q) || cat.includes(q);
   });
