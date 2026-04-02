@@ -39,3 +39,30 @@ done
 
 FONT_COUNT=$(find "$FONT_DIR" -name "*.ttf" 2>/dev/null | wc -l | tr -d ' ')
 echo "Copied $FONT_COUNT font files to /assets/fonts/"
+
+# 3. Stamp build hash into service worker for cache versioning
+BUILD_HASH=$(date +%s)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  sed -i '' "s|__BUILD_HASH__|${BUILD_HASH}|g" dist/service-worker.js
+else
+  sed -i "s|__BUILD_HASH__|${BUILD_HASH}|g" dist/service-worker.js
+fi
+echo "Stamped build hash ${BUILD_HASH} into service worker"
+
+# 4. Inject PWA meta tags into index.html
+PWA_HEAD='<meta name="theme-color" content="#0d9488"><meta name="description" content="Split expenses with friends — fast, fair, no awkwardness"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Splitr"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.json">'
+
+SW_SCRIPT='<script>if("serviceWorker"in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/service-worker.js")})}</script>'
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  sed -i '' "s|</head>|${PWA_HEAD}</head>|" dist/index.html
+  sed -i '' "s|</body>|${SW_SCRIPT}</body>|" dist/index.html
+else
+  sed -i "s|</head>|${PWA_HEAD}</head>|" dist/index.html
+  sed -i "s|</body>|${SW_SCRIPT}</body>|" dist/index.html
+fi
+echo "Injected PWA meta tags and service worker registration"
+
+# 5. Re-copy index.html to 404.html (now includes PWA tags)
+cp dist/index.html dist/404.html
+echo "Updated dist/404.html with PWA tags"
