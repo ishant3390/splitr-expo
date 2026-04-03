@@ -12,17 +12,19 @@ import { openAddMemberModal, openFirstGroup } from "./helpers/modal-regression";
 test.describe("Device Contacts", () => {
   test.describe.configure({ mode: "serial" });
 
-  test("Add Member modal does NOT show 'Add from Contacts' on web", async ({ page }) => {
+  test("Add Member modal does NOT show 'Add from Contacts' on web but shows phone field", async ({ page }) => {
     const opened = await openAddMemberModal(page);
     if (!opened) {
       test.skip();
       return;
     }
 
-    // Modal should be visible with standard fields
+    // Modal should be visible with standard fields including phone
     await expect(page.getByText("Add Member")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("Name")).toBeVisible();
     await expect(page.getByText("Email (optional)")).toBeVisible();
+    await expect(page.getByText("Phone (optional)")).toBeVisible();
+    await expect(page.getByPlaceholder("e.g., +1 555 123 4567")).toBeVisible();
     await expect(page.getByText("Add to Group")).toBeVisible();
 
     // "Add from Contacts" button must NOT be visible on web (Platform.OS guard)

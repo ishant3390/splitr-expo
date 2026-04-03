@@ -90,6 +90,7 @@ export default function GroupSettingsScreen() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [addMemberName, setAddMemberName] = useState("");
   const [addMemberEmail, setAddMemberEmail] = useState("");
+  const [addMemberPhone, setAddMemberPhone] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const [contacts, setContacts] = useState<ContactDto[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -285,6 +286,7 @@ export default function GroupSettingsScreen() {
   const handleAddMember = async () => {
     const name = addMemberName.trim();
     const email = addMemberEmail.trim().toLowerCase();
+    const phone = addMemberPhone.trim();
     if (!name) {
       toast.error("Please enter a name.");
       return;
@@ -305,6 +307,10 @@ export default function GroupSettingsScreen() {
         await groupsApi.inviteByEmail(groupId, { email, name }, token!);
         hapticSuccess();
         toast.success(`Invite sent to ${email}`);
+      } else if (phone) {
+        await groupsApi.inviteByPhone(groupId, { phone, name }, token!);
+        hapticSuccess();
+        toast.success(`Invite sent to ${phone}`);
       } else {
         await groupsApi.addGuestMember(groupId, { name }, token!);
         hapticSuccess();
@@ -312,6 +318,7 @@ export default function GroupSettingsScreen() {
       }
       setAddMemberName("");
       setAddMemberEmail("");
+      setAddMemberPhone("");
       setShowAddMember(false);
       const updated = await groupsApi.listMembers(groupId, token!);
       setMembers(dedupeMembers(updated));
@@ -958,7 +965,7 @@ export default function GroupSettingsScreen() {
       {/* Add Member Modal */}
       <BottomSheetModal
         visible={showAddMember}
-        onClose={() => { setShowAddMember(false); setAddMemberEmail(""); }}
+        onClose={() => { setShowAddMember(false); setAddMemberEmail(""); setAddMemberPhone(""); }}
         keyboardAvoiding
         modalTestID="group-settings-add-member-modal"
       >
@@ -966,7 +973,7 @@ export default function GroupSettingsScreen() {
           <Text style={{ fontSize: fs.xl, fontFamily: ff.bold, color: c.foreground }}>
             Add Member
           </Text>
-          <Pressable onPress={() => { setShowAddMember(false); setAddMemberEmail(""); }}>
+          <Pressable onPress={() => { setShowAddMember(false); setAddMemberEmail(""); setAddMemberPhone(""); }}>
             <X size={22} color={c.mutedForeground} />
           </Pressable>
         </View>
@@ -1036,6 +1043,7 @@ export default function GroupSettingsScreen() {
               hapticLight();
               setShowAddMember(false);
               setAddMemberEmail("");
+              setAddMemberPhone("");
               router.push({ pathname: "/device-contacts", params: { groupId } });
             }}
             style={{
@@ -1077,12 +1085,24 @@ export default function GroupSettingsScreen() {
           onChangeText={setAddMemberEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          returnKeyType="next"
+        />
+
+        <Input
+          label="Phone (optional)"
+          placeholder="e.g., +1 555 123 4567"
+          value={addMemberPhone}
+          onChangeText={setAddMemberPhone}
+          keyboardType="phone-pad"
+          inputMode="tel"
+          autoCapitalize="none"
           onSubmitEditing={handleAddMember}
           returnKeyType="done"
+          testID="add-member-phone-input"
         />
 
         <Text style={{ fontSize: fs.sm, fontFamily: ff.regular, color: c.mutedForeground, lineHeight: 18 }}>
-          Add an email to send them a direct invite. Without one, share the group link so they can join.
+          Add an email or phone number to send a direct invite. Without one, share the group link so they can join.
         </Text>
 
         <Button

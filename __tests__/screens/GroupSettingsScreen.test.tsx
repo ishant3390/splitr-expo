@@ -417,8 +417,8 @@ describe("GroupSettingsScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Add to Group")).toBeTruthy();
     });
-    const emailInput = screen.getByPlaceholderText("e.g., alex@example.com");
-    fireEvent(emailInput, "submitEditing");
+    const phoneInput = screen.getByPlaceholderText("e.g., +1 555 123 4567");
+    fireEvent(phoneInput, "submitEditing");
     expect(mockToast.error).toHaveBeenCalledWith("Please enter a name.");
   });
 
