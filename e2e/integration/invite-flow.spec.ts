@@ -54,7 +54,7 @@ test.describe("Invite Flow", () => {
 
     // Modal should show an invite link
     const hasLink = await page
-      .getByText(/https:\/\/splitr\.ai\/invite\//)
+      .getByText(/https:\/\/(?:dev\.)?splitr\.ai\/invite\//)
       .first()
       .isVisible({ timeout: 5000 })
       .catch(() => false);

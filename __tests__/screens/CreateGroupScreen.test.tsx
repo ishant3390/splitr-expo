@@ -31,6 +31,14 @@ jest.mock("@/lib/query", () => ({
   invalidateAfterExpenseChange: jest.fn(),
 }));
 
+jest.mock("@/lib/utils", () => {
+  const actual = jest.requireActual("@/lib/utils");
+  return {
+    ...actual,
+    getInviteUrl: (inviteCode: string) => `https://dev.splitr.ai/invite/${inviteCode}`,
+  };
+});
+
 const mockGetMe = jest.fn(() =>
   Promise.resolve({ defaultCurrency: "EUR" })
 );
@@ -198,10 +206,10 @@ describe("CreateGroupScreen", () => {
     await waitFor(() => {
       expect(screen.getByText("Group Created!")).toBeTruthy();
     });
-    expect(screen.getByText("https://splitr.ai/invite/abc123")).toBeTruthy();
-    fireEvent.press(screen.getByText("https://splitr.ai/invite/abc123"));
+    expect(screen.getByText("https://dev.splitr.ai/invite/abc123")).toBeTruthy();
+    fireEvent.press(screen.getByText("https://dev.splitr.ai/invite/abc123"));
     await waitFor(() => {
-      expect(Clipboard.setStringAsync).toHaveBeenCalledWith("https://splitr.ai/invite/abc123");
+      expect(Clipboard.setStringAsync).toHaveBeenCalledWith("https://dev.splitr.ai/invite/abc123");
     });
   });
 

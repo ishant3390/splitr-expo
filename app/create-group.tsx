@@ -42,7 +42,7 @@ import { Button } from "@/components/ui/button";
 import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
+import { cn, getInviteUrl } from "@/lib/utils";
 import { colors, fontSize as fs, fontFamily as ff, radius, palette } from "@/lib/tokens";
 import { hapticSelection, hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
 import { invalidateAfterGroupChange } from "@/lib/query";
@@ -77,10 +77,6 @@ const CURRENCIES = [
   { code: "AUD", symbol: "A$", flag: "\uD83C\uDDE6\uD83C\uDDFA" },
   { code: "JPY", symbol: "\u00A5", flag: "\uD83C\uDDEF\uD83C\uDDF5" },
 ];
-
-function getInviteUrl(inviteCode: string) {
-  return `https://splitr.ai/invite/${inviteCode}`;
-}
 
 export default function CreateGroupScreen() {
   const router = useRouter();

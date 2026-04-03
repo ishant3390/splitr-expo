@@ -9,6 +9,8 @@ import {
   formatRelativeTime,
   getInitials,
   extractInviteCode,
+  getInviteBaseUrl,
+  getInviteUrl,
   getCurrencySymbol,
   sanitizeAmountInput,
   sanitizePercentInput,
@@ -180,6 +182,10 @@ describe("extractInviteCode", () => {
     expect(extractInviteCode("http://localhost:8081/invite/abc123")).toBe("abc123");
   });
 
+  it("extracts code from dev invite URL", () => {
+    expect(extractInviteCode("https://dev.splitr.ai/invite/abc123")).toBe("abc123");
+  });
+
   it("trims whitespace", () => {
     expect(extractInviteCode("  abc123  ")).toBe("abc123");
   });
@@ -190,6 +196,48 @@ describe("extractInviteCode", () => {
 
   it("handles codes with hyphens and underscores", () => {
     expect(extractInviteCode("https://splitr.ai/invite/a-b_c")).toBe("a-b_c");
+  });
+});
+
+describe("getInviteBaseUrl", () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    jest.resetModules();
+    delete process.env.EXPO_PUBLIC_INVITE_BASE_URL;
+    delete process.env.EXPO_PUBLIC_WEB_URL;
+    delete process.env.EXPO_PUBLIC_SITE_URL;
+    delete process.env.EXPO_PUBLIC_APP_URL;
+    delete process.env.EXPO_PUBLIC_API_URL;
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  it("uses explicit invite base URL when configured", () => {
+    process.env.EXPO_PUBLIC_INVITE_BASE_URL = "https://dev.splitr.ai";
+    expect(getInviteBaseUrl()).toBe("https://dev.splitr.ai");
+  });
+
+  it("uses dev invite origin when API points to dev backend", () => {
+    process.env.EXPO_PUBLIC_API_URL = "https://api-dev.splitr.ai/api";
+    expect(getInviteBaseUrl()).toBe("https://dev.splitr.ai");
+  });
+
+  it("defaults to production origin", () => {
+    process.env.EXPO_PUBLIC_API_URL = "http://localhost:8085/api";
+    expect(getInviteBaseUrl()).toBe("https://splitr.ai");
+  });
+});
+
+describe("getInviteUrl", () => {
+  it("builds invite URL from selected base URL", () => {
+    expect(getInviteUrl("abc123", "https://dev.splitr.ai")).toBe("https://dev.splitr.ai/invite/abc123");
+  });
+
+  it("encodes invite code safely", () => {
+    expect(getInviteUrl("a b/c", "https://splitr.ai")).toBe("https://splitr.ai/invite/a%20b%2Fc");
   });
 });
 

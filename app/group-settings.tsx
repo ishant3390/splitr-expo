@@ -51,7 +51,7 @@ import { parseApiError, getUserMessage } from "@/lib/errors";
 import { useArchiveGroup, useDeleteGroup, useCategories, useUploadGroupBanner, useDeleteGroupBanner } from "@/lib/hooks";
 import { pickImage, validateImage, buildImageFormDataAsync, compressImage, sanitizeImageUrl } from "@/lib/image-utils";
 import { invalidateAfterGroupChange, invalidateAfterMemberChange } from "@/lib/query";
-import { formatCents, getInitials, cn, getMemberAvatarUrl } from "@/lib/utils";
+import { formatCents, getInitials, cn, getMemberAvatarUrl, getInviteUrl } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { hapticLight, hapticSuccess, hapticWarning, hapticError } from "@/lib/haptics";
 import {
@@ -64,10 +64,6 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { SkeletonList } from "@/components/ui/skeleton";
 import type { GroupDto, GroupMemberDto, ExpenseDto, ContactDto } from "@/lib/types";
-
-function getInviteUrl(inviteCode: string) {
-  return `https://splitr.ai/invite/${inviteCode}`;
-}
 
 export default function GroupSettingsScreen() {
   const router = useRouter();

@@ -141,6 +141,14 @@ jest.mock("@/lib/query", () => ({
   invalidateAfterMemberChange: jest.fn(),
 }));
 
+jest.mock("@/lib/utils", () => {
+  const actual = jest.requireActual("@/lib/utils");
+  return {
+    ...actual,
+    getInviteUrl: (inviteCode: string) => `https://dev.splitr.ai/invite/${inviteCode}`,
+  };
+});
+
 import GroupSettingsScreen from "@/app/group-settings";
 
 const origDispatchEvent = typeof window !== "undefined" ? window.dispatchEvent : undefined;
@@ -485,7 +493,7 @@ describe("GroupSettingsScreen", () => {
     fireEvent.press(screen.getByText("Invite Link"));
     await waitFor(() => {
       expect(screen.getByText(/Invite to Trip to Paris/)).toBeTruthy();
-      expect(screen.getByText("https://splitr.ai/invite/abc123")).toBeTruthy();
+      expect(screen.getByText("https://dev.splitr.ai/invite/abc123")).toBeTruthy();
     });
   });
 
@@ -497,11 +505,11 @@ describe("GroupSettingsScreen", () => {
     });
     fireEvent.press(screen.getByText("Invite Link"));
     await waitFor(() => {
-      expect(screen.getByText("https://splitr.ai/invite/abc123")).toBeTruthy();
+      expect(screen.getByText("https://dev.splitr.ai/invite/abc123")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("https://splitr.ai/invite/abc123"));
+    fireEvent.press(screen.getByText("https://dev.splitr.ai/invite/abc123"));
     await waitFor(() => {
-      expect(Clipboard.setStringAsync).toHaveBeenCalledWith("https://splitr.ai/invite/abc123");
+      expect(Clipboard.setStringAsync).toHaveBeenCalledWith("https://dev.splitr.ai/invite/abc123");
     });
   });
 

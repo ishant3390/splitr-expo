@@ -175,10 +175,52 @@ export function getMemberAvatarUrl(user?: { avatarUrl?: string; profileImageUrl?
   return url.replace(/^(https?:\/\/)\1+/, "$1");
 }
 
+const PROD_INVITE_ORIGIN = "https://splitr.ai";
+const DEV_INVITE_ORIGIN = "https://dev.splitr.ai";
+
+function normalizeOrigin(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
+function getWebRuntimeOrigin(): string | null {
+  const maybeOrigin = (globalThis as { location?: { origin?: unknown } }).location?.origin;
+  if (typeof maybeOrigin !== "string" || !maybeOrigin) return null;
+  return normalizeOrigin(maybeOrigin);
+}
+
+export function getInviteBaseUrl(): string {
+  const explicitOrigin =
+    normalizeOrigin(process.env.EXPO_PUBLIC_INVITE_BASE_URL ?? "") ??
+    normalizeOrigin(process.env.EXPO_PUBLIC_WEB_URL ?? "") ??
+    normalizeOrigin(process.env.EXPO_PUBLIC_SITE_URL ?? "") ??
+    normalizeOrigin(process.env.EXPO_PUBLIC_APP_URL ?? "");
+  if (explicitOrigin) return explicitOrigin;
+
+  const runtimeOrigin = getWebRuntimeOrigin();
+  if (runtimeOrigin === PROD_INVITE_ORIGIN || runtimeOrigin === DEV_INVITE_ORIGIN) {
+    return runtimeOrigin;
+  }
+
+  const apiUrl = (process.env.EXPO_PUBLIC_API_URL ?? "").toLowerCase();
+  if (apiUrl.includes("api-dev.splitr.ai")) return DEV_INVITE_ORIGIN;
+
+  return PROD_INVITE_ORIGIN;
+}
+
+export function getInviteUrl(inviteCode: string, baseUrl = getInviteBaseUrl()): string {
+  const code = inviteCode.trim();
+  const normalizedBase = normalizeOrigin(baseUrl) ?? PROD_INVITE_ORIGIN;
+  return `${normalizedBase}/invite/${encodeURIComponent(code)}`;
+}
+
 /** Extract invite code from a raw code string or full invite/join URL. */
 export function extractInviteCode(input: string): string {
   const trimmed = input.trim();
-  const match = trimmed.match(/(?:splitr\.ai|localhost:\d+)\/(?:invite|join)\/([A-Za-z0-9_-]+)/);
+  const match = trimmed.match(/(?:(?:dev\.)?splitr\.ai|localhost:\d+)\/(?:invite|join)\/([A-Za-z0-9_-]+)/);
   if (match) return match[1];
   return trimmed;
 }

@@ -72,7 +72,7 @@ test.describe("Create Group Flow", () => {
       await expect(
         page.getByText("Share the link so others can join")
       ).toBeVisible();
-      await expect(page.getByText(/splitr\.app\/invite/)).toBeVisible();
+      await expect(page.getByText(/https:\/\/(?:dev\.)?splitr\.ai\/invite\//)).toBeVisible();
       await expect(page.getByText("Go to Group")).toBeVisible();
     }
     // If backend is not running, form stays visible — that's ok for CI without backend

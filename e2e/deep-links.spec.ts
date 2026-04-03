@@ -3,6 +3,7 @@
  *
  * Tests the /invite/[code] and /join/[code] routes which handle
  * universal links from https://splitr.ai/invite/{code}
+ * or https://dev.splitr.ai/invite/{code}
  *
  * Unauthenticated tests: use @playwright/test directly
  * Authenticated tests: use ./auth.setup
@@ -131,7 +132,7 @@ authTest.describe("Deep Links (authenticated)", () => {
 
       // Share modal should show an invite link
       const hasInviteLink = await page
-        .getByText(/splitr\.ai\/invite\//i)
+        .getByText(/(?:dev\.)?splitr\.ai\/invite\//i)
         .isVisible()
         .catch(() => false);
 
@@ -174,7 +175,7 @@ authTest.describe("Deep Links (authenticated)", () => {
       await page.waitForTimeout(1000);
 
       // Find the invite URL text
-      const linkEl = page.getByText(/splitr\.ai\/invite\/[a-zA-Z0-9-]+/i).first();
+      const linkEl = page.getByText(/(?:dev\.)?splitr\.ai\/invite\/[a-zA-Z0-9-]+/i).first();
       const linkText = await linkEl.textContent().catch(() => null);
       console.log("Deep link — Found invite link text:", linkText);
 
@@ -251,7 +252,7 @@ authTest.describe("Deep Links (authenticated)", () => {
       await shareBtn.click();
       await page.waitForTimeout(1000);
 
-      const linkEl = page.getByText(/splitr\.ai\/invite\/[a-zA-Z0-9-]+/i).first();
+      const linkEl = page.getByText(/(?:dev\.)?splitr\.ai\/invite\/[a-zA-Z0-9-]+/i).first();
       const linkText = await linkEl.textContent().catch(() => null);
       const match = linkText?.match(/invite\/([a-zA-Z0-9-]+)/);
       const inviteCode = match?.[1];
