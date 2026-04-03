@@ -2,11 +2,10 @@ name = "splitr-landing"
 compatibility_date = "2025-03-22"
 pages_build_output_dir = "dist"
 
-# KV namespace for waitlist emails
-# After creating the namespace, fill in the IDs:
+# KV namespace for waitlist emails (uncomment after creating namespace):
 #   wrangler kv namespace create WAITLIST
 #   wrangler kv namespace create WAITLIST --preview
-[[kv_namespaces]]
-binding = "WAITLIST"
-id = ""
-preview_id = ""
+# [[kv_namespaces]]
+# binding = "WAITLIST"
+# id = ""
+# preview_id = ""

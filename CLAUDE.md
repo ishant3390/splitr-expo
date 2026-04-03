@@ -282,7 +282,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (2272 unit tests, 84 suites; 145 smoke; 96 integration; 49 dev-sanity)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
+- **Current baseline (2303 unit tests, 85 suites; 151 smoke; 96 integration; 49 dev-sanity)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state
@@ -351,7 +351,11 @@ lib/
 - **Build**: `npm run build:web` → Expo export + `scripts/post-export.sh` (404.html SPA fallback + font flattening)
 - **Output**: `dist/`
 - **Auto-deploys**: on push to `main`
-- **Env vars** (set in CF Pages dashboard, not committed): `NODE_VERSION`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- **Env vars** (set in CF Pages dashboard, not committed): `NODE_VERSION`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`, `EXPO_PUBLIC_INVITE_BASE_URL`
+- **Invite link env (required per environment)**:
+  - Dev deploys: `EXPO_PUBLIC_INVITE_BASE_URL=https://dev.splitr.ai`
+  - Prod deploys: `EXPO_PUBLIC_INVITE_BASE_URL=https://splitr.ai`
+  - This ensures share/copy/email invite links point to the correct frontend domain.
 - **Known constraint**: Cloudflare Pages cannot serve files with `@` in directory paths — post-export script flattens `@expo-google-fonts` to `/assets/fonts/`
 
 ### Landing Page

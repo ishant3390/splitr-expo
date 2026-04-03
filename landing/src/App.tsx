@@ -396,7 +396,7 @@ const Navbar = () => {
 
   return (
     <header
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+      className={`fixed top-[36px] w-full z-50 transition-all duration-300 ${
         isScrolled
           ? "bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm py-3"
           : "bg-transparent py-5"
@@ -1214,9 +1214,20 @@ const Footer = () => (
   </footer>
 );
 
+const ComingSoonBanner = () => (
+  <div className="fixed top-0 w-full z-[60] bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-center py-2 px-4">
+    <p className="text-sm font-medium tracking-wide flex items-center justify-center gap-2">
+      <Sparkles size={14} />
+      <span>Coming Soon — Join the waitlist to get early access!</span>
+      <Sparkles size={14} />
+    </p>
+  </div>
+);
+
 export default function App() {
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-teal-200 selection:text-teal-900">
+      <ComingSoonBanner />
       <Navbar />
       <main>
         <Hero />

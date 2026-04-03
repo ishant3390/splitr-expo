@@ -25,9 +25,14 @@ Create `.env.local`:
 
 ```env
 EXPO_PUBLIC_API_URL=http://localhost:8085/api
+EXPO_PUBLIC_INVITE_BASE_URL=https://dev.splitr.ai
 CLERK_SECRET_KEY=sk_test_...          # For E2E tests
 E2E_CLERK_USER_EMAIL=your@email.com   # For E2E tests
 ```
+
+For Cloudflare Pages deploys, set `EXPO_PUBLIC_INVITE_BASE_URL` per environment:
+- Dev/Preview: `https://dev.splitr.ai`
+- Prod: `https://splitr.ai`
 
 ## Testing
 
