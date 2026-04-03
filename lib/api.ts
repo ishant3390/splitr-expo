@@ -34,6 +34,9 @@ import type {
   GroupInvitePreviewDto,
   JoinGroupRequest,
   ContactDto,
+  InviteByPhoneRequest,
+  ContactMatchRequest,
+  ContactMatchResponse,
   PushTokenDto,
   RegisterPushTokenRequest,
   NotificationDto,
@@ -281,6 +284,13 @@ export const groupsApi = {
       token
     ),
 
+  inviteByPhone: (groupId: string, data: InviteByPhoneRequest, token: string) =>
+    request<GroupMemberDto>(
+      `/v1/groups/${groupId}/members/invite-phone`,
+      { method: "POST", body: JSON.stringify(data) },
+      token
+    ),
+
   updateMember: (groupId: string, memberId: string, data: UpdateMemberRequest, token: string) =>
     request<GroupMemberDto>(
       `/v1/groups/${groupId}/members/${memberId}`,
@@ -413,6 +423,14 @@ export const contactsApi = {
     );
     return flattenMap(data as Record<string, ContactDto[]>);
   },
+
+  /** Batch match device contacts against Splitr users */
+  matchContacts: (data: ContactMatchRequest, token: string) =>
+    request<ContactMatchResponse>(
+      "/v1/contacts/match",
+      { method: "POST", body: JSON.stringify(data) },
+      token
+    ),
 };
 
 // ---- Categories ----

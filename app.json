@@ -20,7 +20,8 @@
       ],
       "infoPlist": {
         "NSCameraUsageDescription": "Splitr needs camera access to scan receipts.",
-        "NSPhotoLibraryUsageDescription": "Splitr needs photo library access to select receipt images."
+        "NSPhotoLibraryUsageDescription": "Splitr needs photo library access to select receipt images.",
+        "NSContactsUsageDescription": "Splitr uses your contacts to find friends already on the app and send invites."
       }
     },
     "android": {
@@ -30,7 +31,8 @@
       },
       "package": "com.splitr.ai",
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "android.permission.READ_CONTACTS"
       ],
       "intentFilters": [
         {
@@ -82,7 +84,13 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Splitr to access your contacts to find friends and send invites."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

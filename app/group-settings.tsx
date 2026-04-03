@@ -31,6 +31,7 @@ import {
   Camera as CameraIcon,
   ImageIcon,
   Pencil,
+  BookUser,
 } from "lucide-react-native";
 import QRCode from "react-native-qrcode-svg";
 import { LinearGradient } from "expo-linear-gradient";
@@ -1027,6 +1028,38 @@ export default function GroupSettingsScreen() {
             </View>
           </View>
         ) : null}
+
+        {/* Add from Device Contacts — native only */}
+        {Platform.OS !== "web" && (
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              setShowAddMember(false);
+              setAddMemberEmail("");
+              router.push({ pathname: "/device-contacts", params: { groupId } });
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              paddingVertical: 14,
+              borderRadius: radius.md,
+              borderWidth: 1.5,
+              borderStyle: "dashed",
+              borderColor: c.primary,
+              backgroundColor: isDark ? "rgba(13,148,136,0.08)" : "rgba(13,148,136,0.04)",
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Add from device contacts"
+            testID="add-from-contacts-button"
+          >
+            <BookUser size={18} color={c.primary} />
+            <Text style={{ fontSize: fs.base, fontFamily: ff.semibold, color: c.primary }}>
+              Add from Contacts
+            </Text>
+          </Pressable>
+        )}
 
         <Input
           label="Name"

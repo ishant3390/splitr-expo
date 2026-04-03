@@ -466,6 +466,26 @@ describe("contactsApi", () => {
     expect(Array.isArray(result)).toBe(true);
     expect(result[0].name).toBe("Alice");
   });
+
+  it("sends batch match request to /v1/contacts/match", async () => {
+    const matchResponse = {
+      matched: [{ contactIndex: 0, userId: "usr_1", name: "Alice" }],
+      unmatched: [{ contactIndex: 1, name: "Bob", phone: "+15551234567" }],
+    };
+    mockFetch.mockResolvedValue(mockResponse(matchResponse));
+
+    const result = await contactsApi.matchContacts(
+      { contacts: [{ name: "Alice", email: "alice@test.com" }, { name: "Bob", phone: "+15551234567" }] },
+      "token"
+    );
+
+    expect(result.matched).toHaveLength(1);
+    expect(result.unmatched).toHaveLength(1);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/contacts/match"),
+      expect.objectContaining({ method: "POST" })
+    );
+  });
 });
 
 describe("categoriesApi", () => {
@@ -1423,6 +1443,20 @@ describe("groupsApi - additional coverage", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ email: "alice@test.com" }),
+      })
+    );
+  });
+
+  it("inviteByPhone sends POST to /members/invite-phone", async () => {
+    mockFetch.mockResolvedValue(mockResponse({ id: "m2" }));
+
+    await groupsApi.inviteByPhone("g1", { phone: "+15551234567", name: "Bob" }, "token");
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/groups/g1/members/invite-phone"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ phone: "+15551234567", name: "Bob" }),
       })
     );
   });

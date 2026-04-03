@@ -195,6 +195,43 @@ export interface UpdateMemberRequest {
   notificationsEnabled?: boolean;
 }
 
+export interface InviteByPhoneRequest {
+  phone: string;
+  name?: string;
+}
+
+// ---- Device Contacts Matching ----
+
+export interface DeviceContact {
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface ContactMatchRequest {
+  contacts: DeviceContact[];
+}
+
+export interface MatchedContact {
+  contactIndex: number;
+  userId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface UnmatchedContact {
+  contactIndex: number;
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface ContactMatchResponse {
+  matched: MatchedContact[];
+  unmatched: UnmatchedContact[];
+}
+
 // ---- Expense ----
 
 export interface ExpenseDto {
