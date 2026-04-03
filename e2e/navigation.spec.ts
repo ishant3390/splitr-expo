@@ -43,7 +43,7 @@ test.describe("Cross-Screen Navigation", () => {
 
     // Open a group
     await page.getByText("members").first().click();
-    await expect(page.getByText("Your Balance")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/Your balance/i).first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("Total Spent")).toBeVisible();
 
     // group/[id] is a push screen (no tab bar) — go back
@@ -58,6 +58,7 @@ test.describe("Cross-Screen Navigation", () => {
     await page.getByRole("button", { name: "Add Expense" }).click();
 
     await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
   });
 
   test("Profile to Edit Profile and back", async ({ page }) => {

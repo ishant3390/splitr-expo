@@ -9,6 +9,7 @@ test.describe("Amount Input (decimal inputMode)", () => {
   test.beforeEach(async ({ page }) => {
     await page.getByRole("button", { name: "Add Expense" }).click();
     await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
   });
 
   test("amount input has decimal inputMode on web", async ({ page }) => {
@@ -27,5 +28,18 @@ test.describe("Amount Input (decimal inputMode)", () => {
 
     await amountInput.fill("42.50");
     await expect(amountInput).toHaveValue("42.50");
+  });
+
+  test("currency symbol remains visible while typing amount", async ({ page }) => {
+    const symbol = page.getByTestId("amount-currency-symbol");
+    const amountInput = page.getByTestId("amount-input");
+
+    await expect(symbol).toBeVisible({ timeout: 5000 });
+    await amountInput.fill("31");
+    await expect(amountInput).toHaveValue("31");
+    await expect(symbol).toBeVisible();
+
+    const symbolText = (await symbol.textContent())?.trim();
+    expect(symbolText?.length).toBeGreaterThan(0);
   });
 });

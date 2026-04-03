@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -37,7 +37,11 @@ import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { groupsApi, categoriesApi, expensesApi } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
-import { invalidateAfterGroupChange, invalidateAfterExpenseChange } from "@/lib/query";
+import {
+  invalidateAfterGroupChange,
+  invalidateAfterExpenseChange,
+  invalidateAfterMemberChange,
+} from "@/lib/query";
 import { useToast } from "@/components/ui/toast";
 import {
   getInitials,
@@ -66,6 +70,8 @@ import type { CategoryDto, GroupDto, GroupMemberDto, CreateExpenseRequest, Split
 type SplitType = "equal" | "percentage" | "fixed";
 
 const SMART_DEFAULTS_KEY = "@splitr/add_expense_defaults";
+const CATEGORY_QUICK_IDS = ["food", "transport", "entertainment", "shopping"];
+const DEFAULT_CATEGORY_PREVIEW_COUNT = 4;
 
 export default function AddExpenseScreen() {
   const router = useRouter();
@@ -93,12 +99,18 @@ export default function AddExpenseScreen() {
   const amountInputRef = useRef<TextInput>(null);
   const [amount, setAmount] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [selectedPayerMemberId, setSelectedPayerMemberId] = useState<string | null>(null);
   const [splitWith, setSplitWith] = useState<string[]>([]);
   const [splitType, setSplitType] = useState<SplitType>("equal");
   const [splitPercentages, setSplitPercentages] = useState<Record<string, string>>({});
   const [splitFixedAmounts, setSplitFixedAmounts] = useState<Record<string, string>>({});
   const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const [showPayerPicker, setShowPayerPicker] = useState(false);
+  const [showAddParticipant, setShowAddParticipant] = useState(false);
+  const [addParticipantName, setAddParticipantName] = useState("");
+  const [addParticipantEmail, setAddParticipantEmail] = useState("");
+  const [addingParticipant, setAddingParticipant] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expenseDate, setExpenseDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -180,11 +192,20 @@ export default function AddExpenseScreen() {
   // Load members when selected group changes
   useEffect(() => {
     if (!selectedGroup) return;
+    let cancelled = false;
+    setMembersLoading(true);
+    setMembers([]);
+    setSplitWith([]);
+    setSelectedPayerMemberId(null);
+    setShowPayerPicker(false);
+    setShowAddParticipant(false);
+    setAddParticipantName("");
+    setAddParticipantEmail("");
     const load = async () => {
-      setMembersLoading(true);
       try {
         const token = await getToken();
         const data = await groupsApi.listMembers(selectedGroup.id, token!);
+        if (cancelled) return;
         const raw: GroupMemberDto[] = Array.isArray(data) ? data : [];
         const list = dedupeMembers(raw);
         setMembers(list);
@@ -195,13 +216,19 @@ export default function AddExpenseScreen() {
         const currentMember = list.find((m) => m.user?.email === currentEmail);
         setSelectedPayerMemberId(currentMember?.id ?? list[0]?.id ?? null);
       } catch {
-        setMembers([]);
-        setSplitWith([]);
+        if (!cancelled) {
+          setMembers([]);
+          setSplitWith([]);
+          setSelectedPayerMemberId(null);
+        }
       } finally {
-        setMembersLoading(false);
+        if (!cancelled) setMembersLoading(false);
       }
     };
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedGroup?.id]);
 
   // Reset user-entered fields every time the screen comes into focus
@@ -214,6 +241,12 @@ export default function AddExpenseScreen() {
       setSplitType("equal");
       setSplitPercentages({});
       setSplitFixedAmounts({});
+      setShowGroupPicker(false);
+      setShowPayerPicker(false);
+      setShowAddParticipant(false);
+      setShowAllCategories(false);
+      setAddParticipantName("");
+      setAddParticipantEmail("");
       userPickedCategoryRef.current = false;
     }, [])
   );
@@ -282,7 +315,81 @@ export default function AddExpenseScreen() {
     });
   };
 
-  const receiptMimeRef = useRef<string | undefined>();
+  const refreshMembersAfterParticipantChange = async (groupId: string, token: string) => {
+    const updated = await groupsApi.listMembers(groupId, token);
+    const deduped = dedupeMembers(Array.isArray(updated) ? updated : []);
+    setMembers(deduped);
+    const nextIds = deduped.map((m) => m.id);
+    setSplitWith((prev) => {
+      const retained = prev.filter((id) => nextIds.includes(id));
+      const added = nextIds.filter((id) => !prev.includes(id));
+      const merged = [...retained, ...added];
+      initSplitValues(merged, splitType, amount);
+      return merged;
+    });
+    setSelectedPayerMemberId((prev) => {
+      if (prev && nextIds.includes(prev)) return prev;
+      const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+      const currentMember = deduped.find((m) => m.user?.email === currentEmail);
+      return currentMember?.id ?? deduped[0]?.id ?? null;
+    });
+  };
+
+  const handleAddParticipant = async () => {
+    if (!selectedGroup) {
+      toast.error("Please select a group.");
+      return;
+    }
+    const name = addParticipantName.trim();
+    const email = addParticipantEmail.trim().toLowerCase();
+    if (!name) {
+      toast.error("Please enter a name.");
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress?.toLowerCase();
+    if (email && currentEmail && email === currentEmail) {
+      toast.info("You're already a member of this group.");
+      return;
+    }
+
+    setAddingParticipant(true);
+    try {
+      const token = await getToken();
+      if (email) {
+        await groupsApi.inviteByEmail(selectedGroup.id, { email, name }, token!);
+        toast.success(`Invite sent to ${email}`);
+      } else {
+        await groupsApi.addGuestMember(selectedGroup.id, { name }, token!);
+        toast.success(`${name} added to group.`);
+      }
+      await refreshMembersAfterParticipantChange(selectedGroup.id, token!);
+      invalidateAfterMemberChange(selectedGroup.id);
+      hapticSuccess();
+      setAddParticipantName("");
+      setAddParticipantEmail("");
+      setShowAddParticipant(false);
+    } catch (err: unknown) {
+      hapticError();
+      const apiErr = parseApiError(err);
+      if (apiErr) {
+        if (apiErr.category === "BUSINESS_LOGIC") {
+          toast.info(getUserMessage(apiErr));
+        } else {
+          toast.error(getUserMessage(apiErr));
+        }
+      } else {
+        toast.error("Failed to add participant. Try again later.");
+      }
+    } finally {
+      setAddingParticipant(false);
+    }
+  };
+
+  const receiptMimeRef = useRef<string | undefined>(undefined);
 
   const pickReceiptImage = async (useCamera: boolean) => {
     const asset = await pickImage(useCamera ? "camera" : "gallery", { quality: 0.7 });
@@ -348,7 +455,8 @@ export default function AddExpenseScreen() {
       const payerMember = members.find((m) => m.id === selectedPayerMemberId);
       const totalCents = parsedAmountCents;
       const amountValue = centsToAmount(totalCents);
-      const submitCurrencySymbol = getCurrencySymbol(selectedGroup.defaultCurrency || "USD");
+      const groupCurrencyCode = selectedGroup.defaultCurrency || selectedGroup.currency || "USD";
+      const submitCurrencySymbol = getCurrencySymbol(groupCurrencyCode);
 
       // Deduplicate splits by underlying userId/guestUserId
       const seenSplitIds = new Set<string>();
@@ -437,7 +545,7 @@ export default function AddExpenseScreen() {
       const expenseRequest: CreateExpenseRequest = {
         description: finalDescription,
         totalAmount: totalCents,
-        currency: selectedGroup.defaultCurrency || "USD",
+        currency: groupCurrencyCode,
         categoryId: selectedCategoryId ?? undefined,
         expenseDate: expenseDate.toISOString().split("T")[0],
         splitType: splitType === "fixed" ? "exact" : splitType,
@@ -502,6 +610,7 @@ export default function AddExpenseScreen() {
     }
   };
 
+  const groupCurrencyCode = selectedGroup?.defaultCurrency ?? selectedGroup?.currency ?? "USD";
   const perPerson =
     splitWith.length > 0
       ? (centsToAmount(parseAmountInputToCents(amount) ?? 0) / splitWith.length).toFixed(2)
@@ -513,7 +622,29 @@ export default function AddExpenseScreen() {
     0
   );
   const totalFixed = centsToAmount(totalFixedCents);
-  const currencySymbol = getCurrencySymbol(selectedGroup?.defaultCurrency ?? "USD");
+  const currencySymbol = getCurrencySymbol(groupCurrencyCode);
+  const categoryOrder = useMemo(() => {
+    const lookup = new Map(
+      categories.map((cat, index) => [cat.id.toLowerCase(), index] as const)
+    );
+    const preferredIndices = CATEGORY_QUICK_IDS
+      .map((id) => lookup.get(id))
+      .filter((index): index is number => typeof index === "number");
+    const preferred = preferredIndices.map((index) => categories[index]);
+    const preferredSet = new Set(preferred.map((cat) => cat.id));
+    const rest = categories.filter((cat) => !preferredSet.has(cat.id));
+    return [...preferred, ...rest];
+  }, [categories]);
+  const previewCategories = useMemo(() => {
+    const base = categoryOrder.slice(0, DEFAULT_CATEGORY_PREVIEW_COUNT);
+    if (!selectedCategoryId || base.some((cat) => cat.id === selectedCategoryId)) return base;
+    const selected = categoryOrder.find((cat) => cat.id === selectedCategoryId);
+    if (!selected) return base;
+    if (base.length < DEFAULT_CATEGORY_PREVIEW_COUNT) return [...base, selected];
+    return [...base.slice(0, DEFAULT_CATEGORY_PREVIEW_COUNT - 1), selected];
+  }, [categoryOrder, selectedCategoryId]);
+  const fullCategories = categoryOrder;
+  const hasExtraCategories = fullCategories.length > DEFAULT_CATEGORY_PREVIEW_COUNT;
 
   if (groupsLoading) {
     return (
@@ -534,11 +665,27 @@ export default function AddExpenseScreen() {
         {/* Header */}
         <Animated.View entering={FadeIn.duration(300)} className="border-b border-border">
           <View className="flex-row items-center justify-between px-5 py-3">
-            <Pressable onPress={goBack} hitSlop={12}>
+            <Pressable onPress={goBack} hitSlop={12} style={{ width: 72 }}>
               <Text className="text-base font-sans-medium text-muted-foreground">Cancel</Text>
             </Pressable>
-            <Text className="text-lg font-sans-semibold text-foreground">{isQuickMode ? "Quick Add" : "Add Expense"}</Text>
-            <Pressable onPress={handleSubmit} disabled={submitting} hitSlop={12}>
+            <View className="flex-1 items-center px-2">
+              <Text className="text-lg font-sans-semibold text-foreground">{isQuickMode ? "Quick Add" : "Add Expense"}</Text>
+              {selectedGroup && (
+                <Text
+                  testID="header-group-context"
+                  className="text-xs font-sans text-muted-foreground mt-0.5"
+                  numberOfLines={1}
+                >
+                  {selectedGroup.name}
+                </Text>
+              )}
+            </View>
+            <Pressable
+              onPress={handleSubmit}
+              disabled={submitting || membersLoading}
+              hitSlop={12}
+              style={{ width: 72, alignItems: "flex-end" }}
+            >
               <Text className="text-base font-sans-semibold text-primary">
                 {submitting ? "Saving..." : "Save"}
               </Text>
@@ -548,7 +695,7 @@ export default function AddExpenseScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerClassName="px-5 py-6 gap-6"
+          contentContainerClassName="px-5 pt-6 pb-32 gap-6"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentInsetAdjustmentBehavior="automatic"
@@ -556,49 +703,51 @@ export default function AddExpenseScreen() {
           {/* Amount — hero section */}
           <Animated.View entering={FadeInDown.duration(500)}>
             <View className="items-center py-6 mx-[-20] px-5 bg-primary/[0.03] dark:bg-primary/[0.08] rounded-3xl">
-              <Text className="text-xs font-sans-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                Amount
-              </Text>
               <Pressable
                 onPress={() => amountInputRef.current?.focus()}
-                style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}
+                style={{ width: "100%", alignItems: "center" }}
               >
-                <Text
-                  style={{
-                    fontSize: 48,
-                    fontWeight: "700",
-                    fontVariant: ["tabular-nums"],
-                    color: amount ? c.foreground : c.placeholder,
-                  }}
-                >
-                  {currencySymbol}
-                </Text>
-                <TextInput
-                  ref={amountInputRef}
-                  value={amount}
-                  onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
-                  keyboardType="decimal-pad"
-                  inputMode="decimal"
-                  placeholder="0"
-                  testID="amount-input"
-                  maxLength={12}
-                  placeholderTextColor={c.placeholder}
-                  className="text-foreground"
-                  inputAccessoryViewID="amount-done"
-                  style={{
-                    fontSize: 48,
-                    fontWeight: "700",
-                    padding: 0,
-                    fontVariant: ["tabular-nums"],
-                    minWidth: 36,
-                  }}
-                />
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", maxWidth: "100%" }}>
+                  <Text
+                    testID="amount-currency-symbol"
+                    style={{
+                      fontSize: 48,
+                      fontWeight: "700",
+                      fontVariant: ["tabular-nums"],
+                      color: c.foreground,
+                    }}
+                  >
+                    {currencySymbol}
+                  </Text>
+                  <TextInput
+                    ref={amountInputRef}
+                    value={amount}
+                    onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
+                    keyboardType="decimal-pad"
+                    inputMode="decimal"
+                    placeholder="0"
+                    testID="amount-input"
+                    maxLength={12}
+                    placeholderTextColor={c.placeholder}
+                    className="text-foreground"
+                    inputAccessoryViewID="amount-done"
+                    style={{
+                      fontSize: 48,
+                      fontWeight: "700",
+                      padding: 0,
+                      fontVariant: ["tabular-nums"],
+                      minWidth: 72,
+                      borderWidth: 0,
+                      outlineWidth: 0,
+                      outlineColor: "transparent",
+                      backgroundColor: "transparent",
+                      textAlign: "center",
+                      flexGrow: 0,
+                      flexShrink: 1,
+                    }}
+                  />
+                </View>
               </Pressable>
-              {selectedGroup && (
-                <Text className="text-xs font-sans text-muted-foreground mt-2">
-                  in {selectedGroup.name}
-                </Text>
-              )}
             </View>
           </Animated.View>
 
@@ -713,89 +862,231 @@ export default function AddExpenseScreen() {
             {categories.length === 0 ? (
               <ActivityIndicator color={c.primary} />
             ) : (
-              <View className="flex-row flex-wrap gap-2">
-                {categories.map((cat) => {
-                  const isSelected = selectedCategoryId === cat.id;
-                  return (
-                    <Pressable
-                      key={cat.id}
-                      onPress={() => { hapticSelection(); userPickedCategoryRef.current = true; setSelectedCategoryId(cat.id); }}
-                      className={cn(
-                        "flex-row items-center gap-2 px-3 py-2 rounded-xl border",
-                        isSelected ? "bg-primary border-primary" : "bg-card border-border"
-                      )}
-                    >
-                      <CategoryIcon iconName={cat.icon} size="sm" />
-                      <Text
+              <>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerClassName="gap-2 pr-1"
+                  className="max-h-14"
+                >
+                  {previewCategories.map((cat) => {
+                    const isSelected = selectedCategoryId === cat.id;
+                    return (
+                      <Pressable
+                        key={cat.id}
+                        onPress={() => { hapticSelection(); userPickedCategoryRef.current = true; setSelectedCategoryId(cat.id); }}
                         className={cn(
-                          "text-sm font-sans-medium",
-                          isSelected ? "text-primary-foreground" : "text-foreground"
+                          "h-11 min-w-[116px] px-3 rounded-xl border flex-row items-center gap-2",
+                          isSelected ? "bg-primary border-primary" : "bg-card border-border"
                         )}
                       >
-                        {cat.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+                        <CategoryIcon iconName={cat.icon} size="sm" />
+                        <Text
+                          className={cn(
+                            "text-sm font-sans-medium",
+                            isSelected ? "text-primary-foreground" : "text-foreground"
+                          )}
+                          numberOfLines={1}
+                        >
+                          {cat.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+                {hasExtraCategories && (
+                  <Pressable
+                    testID="category-toggle"
+                    onPress={() => setShowAllCategories((prev) => !prev)}
+                    className="self-start mt-2 px-2.5 py-1 rounded-full bg-muted"
+                  >
+                    <Text className="text-xs font-sans-medium text-muted-foreground">
+                      {showAllCategories ? "Show less" : `Show all (${fullCategories.length})`}
+                    </Text>
+                  </Pressable>
+                )}
+                {showAllCategories && (
+                  <View className="flex-row flex-wrap gap-2 mt-2">
+                    {fullCategories.map((cat) => {
+                      const isSelected = selectedCategoryId === cat.id;
+                      return (
+                        <Pressable
+                          key={`all-${cat.id}`}
+                          onPress={() => { hapticSelection(); userPickedCategoryRef.current = true; setSelectedCategoryId(cat.id); }}
+                          className={cn(
+                            "flex-row items-center gap-2 px-3 py-2 rounded-xl border",
+                            isSelected ? "bg-primary border-primary" : "bg-card border-border"
+                          )}
+                        >
+                          <CategoryIcon iconName={cat.icon} size="sm" />
+                          <Text
+                            className={cn(
+                              "text-sm font-sans-medium",
+                              isSelected ? "text-primary-foreground" : "text-foreground"
+                            )}
+                          >
+                            {cat.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </>
             )}
           </Animated.View>}
 
-          {/* Group selector — compact chip style, auto-selects first group */}
+          {/* Group + Paid by summary for quicker scan */}
           <Animated.View entering={FadeInDown.delay(300).duration(300)}>
-            <Text className="text-sm font-sans-medium text-foreground mb-2">Group</Text>
-            <Pressable onPress={() => setShowGroupPicker(!showGroupPicker)}>
-              <Card className="p-3.5 flex-row items-center justify-between">
-                <Text className="font-sans-medium text-card-foreground">
-                  {selectedGroup?.name ?? "Select a group"}
-                </Text>
-                <ChevronDown size={20} color={c.mutedForeground} />
-              </Card>
-            </Pressable>
-            {showGroupPicker && (
-              <Card className="mt-2 p-2 gap-1">
-                {groups.map((group) => (
-                  <Pressable
-                    key={group.id}
-                    onPress={() => {
-                      setSelectedGroup(group);
-                      setShowGroupPicker(false);
-                    }}
-                    className={cn(
-                      "px-3 py-2.5 rounded-lg",
-                      group.id === selectedGroup?.id ? "bg-primary" : "bg-transparent"
-                    )}
-                  >
-                    <Text
-                      className={cn(
-                        "font-sans-medium",
-                        group.id === selectedGroup?.id
-                          ? "text-primary-foreground"
-                          : "text-card-foreground"
-                      )}
-                    >
-                      {group.name}
-                    </Text>
-                  </Pressable>
-                ))}
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Text className="text-sm font-sans-medium text-foreground mb-2">Group</Text>
                 <Pressable
+                  testID="group-summary-card"
                   onPress={() => {
-                    setShowGroupPicker(false);
-                    router.push("/create-group");
+                    setShowPayerPicker(false);
+                    setShowGroupPicker((prev) => !prev);
                   }}
-                  className="flex-row items-center gap-2 px-3 py-2.5 rounded-lg"
                 >
-                  <Plus size={16} color={c.accent} />
-                  <Text className="font-sans-medium text-accent">Create New Group</Text>
+                  <Card className="p-3.5 flex-row items-center justify-between" style={{ minHeight: 62 }}>
+                    <Text
+                      testID="group-summary-name"
+                      className="font-sans-medium text-card-foreground flex-1"
+                      numberOfLines={1}
+                    >
+                      {selectedGroup?.name ?? "Select a group"}
+                    </Text>
+                    <ChevronDown size={20} color={c.mutedForeground} />
+                  </Card>
                 </Pressable>
-              </Card>
-            )}
+                {showGroupPicker && (
+                  <Card className="mt-2 p-2 gap-1">
+                    {groups.map((group) => (
+                      <Pressable
+                        key={group.id}
+                        onPress={() => {
+                          setSelectedGroup(group);
+                          setShowGroupPicker(false);
+                        }}
+                        className={cn(
+                          "px-3 py-2.5 rounded-lg",
+                          group.id === selectedGroup?.id ? "bg-primary" : "bg-transparent"
+                        )}
+                      >
+                        <Text
+                          className={cn(
+                            "font-sans-medium",
+                            group.id === selectedGroup?.id
+                              ? "text-primary-foreground"
+                              : "text-card-foreground"
+                          )}
+                        >
+                          {group.name}
+                        </Text>
+                      </Pressable>
+                    ))}
+                    <Pressable
+                      onPress={() => {
+                        setShowGroupPicker(false);
+                        router.push("/create-group");
+                      }}
+                      className="flex-row items-center gap-2 px-3 py-2.5 rounded-lg"
+                    >
+                      <Plus size={16} color={c.accent} />
+                      <Text className="font-sans-medium text-accent">Create New Group</Text>
+                    </Pressable>
+                  </Card>
+                )}
+              </View>
+
+              {!isQuickMode && selectedGroup && !membersLoading && members.length > 0 && (
+                <View className="flex-1">
+                  <Text className="text-sm font-sans-medium text-foreground mb-2">Paid by</Text>
+                  <Pressable
+                    testID="payer-summary-card"
+                    onPress={() => {
+                      setShowGroupPicker(false);
+                      setShowPayerPicker((prev) => !prev);
+                    }}
+                  >
+                    <Card className="p-3.5 flex-row items-center justify-between gap-2" style={{ minHeight: 62 }}>
+                      {(() => {
+                        const payer = members.find((m) => m.id === selectedPayerMemberId);
+                        const payerName =
+                          payer?.user?.name || payer?.guestUser?.name || payer?.displayName || "Select payer";
+                        return (
+                          <>
+                            <View className="flex-row items-center gap-2 flex-1">
+                              <Avatar
+                                src={getMemberAvatarUrl(payer?.user)}
+                                fallback={getInitials(payerName)}
+                                size="sm"
+                              />
+                              <Text
+                                testID="payer-summary-name"
+                                className="font-sans-medium text-card-foreground flex-1"
+                                numberOfLines={1}
+                              >
+                                {payerName}
+                              </Text>
+                            </View>
+                            <ChevronDown size={20} color={c.mutedForeground} />
+                          </>
+                        );
+                      })()}
+                    </Card>
+                  </Pressable>
+                  {showPayerPicker && (
+                    <Card className="mt-2 p-2 gap-1">
+                      {members.map((member) => {
+                        const isSelected = selectedPayerMemberId === member.id;
+                        const memberName =
+                          member.user?.name || member.guestUser?.name || member.displayName || "Member";
+                        return (
+                          <Pressable
+                            key={member.id}
+                            testID={`payer-option-${member.id}`}
+                            onPress={() => {
+                              setSelectedPayerMemberId(member.id);
+                              setShowPayerPicker(false);
+                            }}
+                            className={cn(
+                              "px-3 py-2.5 rounded-lg flex-row items-center gap-2",
+                              isSelected ? "bg-primary" : "bg-transparent"
+                            )}
+                          >
+                            <Avatar
+                              src={getMemberAvatarUrl(member.user)}
+                              fallback={getInitials(memberName)}
+                              size="sm"
+                            />
+                            <Text
+                              className={cn(
+                                "font-sans-medium flex-1",
+                                isSelected ? "text-primary-foreground" : "text-card-foreground"
+                              )}
+                            >
+                              {memberName}
+                            </Text>
+                            {isSelected && <Check size={16} color={palette.white} />}
+                          </Pressable>
+                        );
+                      })}
+                    </Card>
+                  )}
+                </View>
+              )}
+            </View>
           </Animated.View>
 
           {/* Quick mode submit button */}
           {isQuickMode && (
             <Animated.View entering={FadeInDown.delay(200).duration(300)}>
-              <Button variant="default" onPress={handleSubmit} disabled={submitting || !amount || !description.trim()}>
+              <Button
+                variant="default"
+                onPress={handleSubmit}
+                disabled={submitting || membersLoading || !amount || !description.trim()}
+              >
                 {submitting ? (
                   <ActivityIndicator size="small" color={palette.white} />
                 ) : (
@@ -808,54 +1099,6 @@ export default function AddExpenseScreen() {
                 Equal split among all members
               </Text>
             </Animated.View>
-          )}
-
-          {/* Paid by */}
-          {!isQuickMode && selectedGroup && members.length > 0 && (
-            <View>
-              <Text className="text-sm font-sans-medium text-foreground mb-2">Paid by</Text>
-              {membersLoading ? (
-                <ActivityIndicator color={c.primary} />
-              ) : (
-                <View className="gap-2">
-                  {members.map((member) => {
-                    const isSelected = selectedPayerMemberId === member.id;
-                    const memberName =
-                      member.user?.name || member.guestUser?.name || member.displayName || "Member";
-                    return (
-                      <Pressable
-                        key={member.id}
-                        onPress={() => setSelectedPayerMemberId(member.id)}
-                      >
-                        <Card
-                          className={cn(
-                            "p-3 flex-row items-center gap-3",
-                            isSelected && "border-primary/30 bg-primary/5"
-                          )}
-                        >
-                          <View
-                            className={cn(
-                              "w-6 h-6 rounded-full border-2 items-center justify-center",
-                              isSelected ? "border-primary bg-primary" : "border-muted-foreground"
-                            )}
-                          >
-                            {isSelected && <Check size={12} color={palette.white} />}
-                          </View>
-                          <Avatar
-                            src={getMemberAvatarUrl(member.user)}
-                            fallback={getInitials(memberName)}
-                            size="sm"
-                          />
-                          <Text className="flex-1 text-sm font-sans-medium text-card-foreground">
-                            {memberName}
-                          </Text>
-                        </Card>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
           )}
 
           {/* Split with */}
@@ -922,6 +1165,49 @@ export default function AddExpenseScreen() {
                   </Pressable>
                 ))}
               </View>
+
+              <Pressable
+                testID="add-participant-toggle"
+                onPress={() => setShowAddParticipant((prev) => !prev)}
+                className="mb-3"
+              >
+                <Card className="p-3 flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <Plus size={16} color={c.primary} />
+                    <Text className="text-sm font-sans-medium text-card-foreground">Add participant</Text>
+                  </View>
+                  <ChevronDown size={16} color={c.mutedForeground} />
+                </Card>
+              </Pressable>
+
+              {showAddParticipant && (
+                <Card className="p-3 mb-3 gap-2" testID="add-participant-form">
+                  <Input
+                    label="Name"
+                    placeholder="e.g., Alex"
+                    value={addParticipantName}
+                    onChangeText={setAddParticipantName}
+                    autoCapitalize="words"
+                    maxLength={80}
+                  />
+                  <Input
+                    label="Email (optional)"
+                    placeholder="e.g., alex@example.com"
+                    value={addParticipantEmail}
+                    onChangeText={setAddParticipantEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoCorrect={false}
+                    maxLength={120}
+                  />
+                  <Button
+                    onPress={handleAddParticipant}
+                    disabled={addingParticipant || !addParticipantName.trim()}
+                  >
+                    {addingParticipant ? "Adding..." : "Add to group"}
+                  </Button>
+                </Card>
+              )}
 
               {membersLoading ? (
                 <ActivityIndicator color={c.primary} />

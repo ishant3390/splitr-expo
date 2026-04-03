@@ -331,10 +331,11 @@ test.describe("AI Chat — functional flows", () => {
 
     // Should navigate to Add Expense screen
     await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
 
     // Add Expense form fields are visible — navigation with params succeeded
     await expect(page.getByPlaceholder("What was this for?")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByPlaceholder("$0")).toBeVisible();
+    await expect(page.getByTestId("amount-input")).toBeVisible();
   });
 
   // ── 3. Balance query → text response
@@ -546,6 +547,7 @@ test.describe("AI Chat — functional flows", () => {
     await expect(page.getByText("Add Expense Manually").first()).toBeVisible({ timeout: 10000 });
     await page.getByText("Add Expense Manually").first().click();
     await expect(page.getByText("Add Expense", { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
   });
 
   // ── 7. Typing indicator appears while waiting for a response

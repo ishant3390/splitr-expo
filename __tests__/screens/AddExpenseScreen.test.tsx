@@ -50,10 +50,13 @@ const mockListCategories = jest.fn(() =>
 );
 const mockCreateExpense = jest.fn(() => Promise.resolve({ id: "e1" }));
 const mockGroupCreate = jest.fn(() => Promise.resolve({ id: "g-auto", name: "Personal" }));
+const mockInviteByEmail = jest.fn(() => Promise.resolve({ id: "m3" }));
+const mockAddGuestMember = jest.fn(() => Promise.resolve({ id: "m3" }));
 
 jest.mock("@/lib/query", () => ({
   invalidateAfterGroupChange: jest.fn(),
   invalidateAfterExpenseChange: jest.fn(),
+  invalidateAfterMemberChange: jest.fn(),
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -63,6 +66,8 @@ jest.mock("@/lib/api", () => ({
     listExpenses: jest.fn(() => Promise.resolve({ data: [] })),
     create: (...args: any[]) => mockGroupCreate(...args),
     createExpense: (...args: any[]) => mockCreateExpense(...args),
+    inviteByEmail: (...args: any[]) => mockInviteByEmail(...args),
+    addGuestMember: (...args: any[]) => mockAddGuestMember(...args),
   },
   categoriesApi: {
     list: (...args: any[]) => mockListCategories(...args),
@@ -82,6 +87,8 @@ beforeEach(() => {
     { id: "c1", name: "Food", icon: "restaurant" },
     { id: "c2", name: "Transport", icon: "car" },
   ]);
+  mockInviteByEmail.mockResolvedValue({ id: "m3" });
+  mockAddGuestMember.mockResolvedValue({ id: "m3" });
 });
 
 describe("AddExpenseScreen", () => {
@@ -110,7 +117,7 @@ describe("AddExpenseScreen", () => {
   it("renders group selector", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Trip")).toBeTruthy();
+      expect(screen.getByTestId("group-summary-name").props.children).toBe("Trip");
     });
   });
 
@@ -126,6 +133,16 @@ describe("AddExpenseScreen", () => {
     await waitFor(() => {
       expect(mockListMembers).toHaveBeenCalledWith("g1", "mock-token");
     });
+  });
+
+  it("shows group and payer summary cards for scanable hierarchy", async () => {
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("group-summary-card")).toBeTruthy();
+      expect(screen.getByTestId("payer-summary-card")).toBeTruthy();
+    });
+    expect(screen.getByTestId("group-summary-name").props.children).toBe("Trip");
+    expect(screen.getByTestId("payer-summary-name").props.children).toBe("Alice");
   });
 
   // --- Loading state (lines 392-400) ---
@@ -229,13 +246,35 @@ describe("AddExpenseScreen", () => {
     expect(screen.getByText("Fixed")).toBeTruthy();
   });
 
+  it("changes payer from payer summary picker", async () => {
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("payer-summary-card")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("payer-summary-card"));
+    await waitFor(() => {
+      expect(screen.getByTestId("payer-option-m2")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("payer-option-m2"));
+    expect(screen.getByTestId("payer-summary-name").props.children).toBe("Bob");
+  });
+
+  it("hides payer summary while members are loading", async () => {
+    mockListMembers.mockImplementation(() => new Promise(() => {}));
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("group-summary-card")).toBeTruthy();
+    });
+    expect(screen.queryByTestId("payer-summary-card")).toBeNull();
+  });
+
   // --- Group picker (lines 571-618) ---
   it("opens group picker on group press", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Trip")).toBeTruthy();
+      expect(screen.getByTestId("group-summary-card")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Trip"));
+    fireEvent.press(screen.getByTestId("group-summary-card"));
     await waitFor(() => {
       expect(screen.getByText("Create New Group")).toBeTruthy();
     });
@@ -244,9 +283,9 @@ describe("AddExpenseScreen", () => {
   it("navigates to create-group from group picker", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Trip")).toBeTruthy();
+      expect(screen.getByTestId("group-summary-card")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Trip"));
+    fireEvent.press(screen.getByTestId("group-summary-card"));
     await waitFor(() => {
       expect(screen.getByText("Create New Group")).toBeTruthy();
     });
@@ -303,6 +342,25 @@ describe("AddExpenseScreen", () => {
     // Category should be selected
   });
 
+  it("shows all categories when tapping category toggle", async () => {
+    mockListCategories.mockResolvedValue([
+      { id: "food", name: "Food", icon: "restaurant" },
+      { id: "transport", name: "Transport", icon: "car" },
+      { id: "entertainment", name: "Entertainment", icon: "film" },
+      { id: "shopping", name: "Shopping", icon: "shopping-bag" },
+      { id: "other", name: "Other", icon: "ellipsis" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("category-toggle")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("category-toggle"));
+    await waitFor(() => {
+      expect(screen.getByText("Other")).toBeTruthy();
+      expect(screen.getByText("Show less")).toBeTruthy();
+    });
+  });
+
   // --- Date section ---
   it("renders date section", async () => {
     render(<AddExpenseScreen />);
@@ -332,6 +390,26 @@ describe("AddExpenseScreen", () => {
     // Amount should be set
   });
 
+  it("shows the selected group's currency symbol in the amount hero", async () => {
+    mockListGroups.mockResolvedValue([
+      { id: "g1", name: "Trip", emoji: "plane", memberCount: 2, defaultCurrency: "GBP" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("amount-currency-symbol").props.children).toBe("£");
+    });
+  });
+
+  it("falls back to legacy group currency field for the amount symbol", async () => {
+    mockListGroups.mockResolvedValue([
+      { id: "g1", name: "Trip", emoji: "plane", memberCount: 2, currency: "GBP" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("amount-currency-symbol").props.children).toBe("£");
+    });
+  });
+
   it("strips $ prefix from amount input", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
@@ -340,6 +418,18 @@ describe("AddExpenseScreen", () => {
     const amountInput = screen.getByPlaceholderText("0");
     fireEvent.changeText(amountInput, "15");
     // The display value should include $
+  });
+
+  it("keeps the currency symbol visible while typing amount", async () => {
+    mockListGroups.mockResolvedValue([
+      { id: "g1", name: "Trip", emoji: "plane", memberCount: 2, defaultCurrency: "GBP" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("amount-input")).toBeTruthy();
+    });
+    fireEvent.changeText(screen.getByTestId("amount-input"), "123.45");
+    expect(screen.getByTestId("amount-currency-symbol").props.children).toBe("£");
   });
 
   it("rejects invalid amount input", async () => {
@@ -413,6 +503,81 @@ describe("AddExpenseScreen", () => {
       // Gallery picker was called with the image
       expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalled();
     }, { timeout: 3000 });
+  });
+
+  it("shows add participant inline action in split section", async () => {
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("add-participant-toggle")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("add-participant-toggle"));
+    await waitFor(() => {
+      expect(screen.getByTestId("add-participant-form")).toBeTruthy();
+    });
+  });
+
+  it("adds guest participant inline and refreshes members", async () => {
+    mockListMembers
+      .mockResolvedValueOnce([
+        { id: "m1", user: { id: "u1", name: "Alice", email: "test@example.com" }, displayName: "Alice" },
+        { id: "m2", user: { id: "u2", name: "Bob" }, displayName: "Bob" },
+      ])
+      .mockResolvedValueOnce([
+        { id: "m1", user: { id: "u1", name: "Alice", email: "test@example.com" }, displayName: "Alice" },
+        { id: "m2", user: { id: "u2", name: "Bob" }, displayName: "Bob" },
+        { id: "m3", guestUser: { id: "g3", name: "Charlie" }, displayName: "Charlie" },
+      ]);
+
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("add-participant-toggle")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("add-participant-toggle"));
+    fireEvent.changeText(screen.getByPlaceholderText("e.g., Alex"), "Charlie");
+    fireEvent.press(screen.getByText("Add to group"));
+
+    await waitFor(() => {
+      expect(mockAddGuestMember).toHaveBeenCalledWith("g1", { name: "Charlie" }, "mock-token");
+    });
+    await waitFor(() => {
+      expect(screen.getAllByText("Charlie").length).toBeGreaterThan(0);
+    });
+    expect(mockToast.error).not.toHaveBeenCalled();
+  });
+
+  it("invites participant by email inline", async () => {
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("add-participant-toggle")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("add-participant-toggle"));
+    fireEvent.changeText(screen.getByPlaceholderText("e.g., Alex"), "Dana");
+    fireEvent.changeText(screen.getByPlaceholderText("e.g., alex@example.com"), "dana@example.com");
+    fireEvent.press(screen.getByText("Add to group"));
+
+    await waitFor(() => {
+      expect(mockInviteByEmail).toHaveBeenCalledWith(
+        "g1",
+        { email: "dana@example.com", name: "Dana" },
+        "mock-token"
+      );
+    });
+    expect(mockToast.error).not.toHaveBeenCalled();
+  });
+
+  it("prevents self-add in inline participant flow", async () => {
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("add-participant-toggle")).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId("add-participant-toggle"));
+    fireEvent.changeText(screen.getByPlaceholderText("e.g., Alex"), "Test User");
+    fireEvent.changeText(screen.getByPlaceholderText("e.g., alex@example.com"), "test@example.com");
+    fireEvent.press(screen.getByText("Add to group"));
+
+    expect(mockToast.info).toHaveBeenCalledWith("You're already a member of this group.");
+    expect(mockInviteByEmail).not.toHaveBeenCalled();
+    expect(mockAddGuestMember).not.toHaveBeenCalled();
   });
 
   // --- Camera failure fallback (lines 226-230) ---
@@ -553,11 +718,11 @@ describe("AddExpenseScreen", () => {
     });
   });
 
-  // --- Group in selected group name display (line 459) ---
-  it("shows selected group name under amount", async () => {
+  // --- Group context display in header ---
+  it("shows selected group name in header subtitle", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByText("in Trip")).toBeTruthy();
+      expect(screen.getByTestId("header-group-context").props.children).toBe("Trip");
     });
   });
 
@@ -592,6 +757,17 @@ describe("AddExpenseScreen", () => {
       expect(screen.getByText("Quick Save")).toBeTruthy();
       expect(screen.getByText("Equal split among all members")).toBeTruthy();
     });
+    spy.mockRestore();
+  });
+
+  it("hides payer summary and add participant action in quick mode", async () => {
+    const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ quick: "true" });
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByText("Quick Add")).toBeTruthy();
+    });
+    expect(screen.queryByTestId("payer-summary-card")).toBeNull();
+    expect(screen.queryByTestId("add-participant-toggle")).toBeNull();
     spy.mockRestore();
   });
 
@@ -720,17 +896,18 @@ describe("AddExpenseScreen", () => {
     ]);
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Trip")).toBeTruthy();
+      expect(screen.getByTestId("group-summary-name").props.children).toBe("Trip");
     });
     // Open picker
-    fireEvent.press(screen.getByText("Trip"));
+    fireEvent.press(screen.getByTestId("group-summary-card"));
     await waitFor(() => {
       expect(screen.getByText("Home")).toBeTruthy();
     });
     // Select Home
     fireEvent.press(screen.getByText("Home"));
     await waitFor(() => {
-      expect(screen.getByText("in Home")).toBeTruthy();
+      expect(screen.getByTestId("group-summary-name").props.children).toBe("Home");
+      expect(screen.getByTestId("header-group-context").props.children).toBe("Home");
     });
   });
 
@@ -803,8 +980,8 @@ describe("AddExpenseScreen", () => {
     ]);
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      // Should select Trip (from saved default) and Transport (c2)
-      expect(screen.getByText("in Trip")).toBeTruthy();
+      // Should select Trip (from saved default) and reflect it in header context
+      expect(screen.getByTestId("header-group-context").props.children).toBe("Trip");
     });
   });
 

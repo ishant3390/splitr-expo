@@ -560,36 +560,38 @@ export default function EditExpenseScreen() {
           <View className="items-center py-8">
             <Pressable
               onPress={() => amountInputRef.current?.focus()}
-              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}
+              style={{ width: "100%", alignItems: "center" }}
             >
-              <Text
-                style={{
-                  fontSize: 48,
-                  fontWeight: "700",
-                  fontVariant: ["tabular-nums"],
-                  color: amount ? c.foreground : c.placeholder,
-                }}
-              >
-                {getCurrencySymbol(expense?.currency ?? "USD")}
-              </Text>
-              <TextInput
-                ref={amountInputRef}
-                value={amount}
-                onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
-                keyboardType="decimal-pad"
-                inputMode="decimal"
-                placeholder="0"
-                testID="amount-input"
-                placeholderTextColor={c.placeholder}
-                className="text-foreground"
-                style={{
-                  fontSize: 48,
-                  fontWeight: "700",
-                  padding: 0,
-                  fontVariant: ["tabular-nums"],
-                  minWidth: 36,
-                }}
-              />
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text
+                  style={{
+                    fontSize: 48,
+                    fontWeight: "700",
+                    fontVariant: ["tabular-nums"],
+                    color: amount ? c.foreground : c.placeholder,
+                  }}
+                >
+                  {getCurrencySymbol(expense?.currency ?? "USD")}
+                </Text>
+                <TextInput
+                  ref={amountInputRef}
+                  value={amount}
+                  onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
+                  keyboardType="decimal-pad"
+                  inputMode="decimal"
+                  placeholder="0"
+                  testID="amount-input"
+                  placeholderTextColor={c.placeholder}
+                  className="text-foreground"
+                  style={{
+                    fontSize: 48,
+                    fontWeight: "700",
+                    padding: 0,
+                    fontVariant: ["tabular-nums"],
+                    minWidth: 36,
+                  }}
+                />
+              </View>
             </Pressable>
           </View>
 

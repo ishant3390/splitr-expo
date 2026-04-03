@@ -39,12 +39,13 @@ test.describe("Expense Lifecycle", () => {
     // Navigate to Add Expense tab
     await page.getByRole("button", { name: "Add Expense" }).click();
     await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
 
     // Fill amount
     const amountInput = page.getByTestId("amount-input").first();
     await amountInput.waitFor({ state: "visible", timeout: 15000 });
     await amountInput.click();
-    await amountInput.fill("$25.50");
+    await amountInput.fill("25.50");
 
     // Fill description
     const descInput = page.getByPlaceholder("What was this for?");
@@ -174,6 +175,7 @@ test.describe("Expense Lifecycle", () => {
     // Navigate to Add Expense
     await page.getByRole("button", { name: "Add Expense" }).click();
     await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
 
     // Wait for categories to load
     await page.waitForTimeout(2000);
@@ -215,7 +217,7 @@ test.describe("Expense Lifecycle", () => {
     const amountInput = page.getByTestId("amount-input").first();
     await amountInput.waitFor({ state: "visible", timeout: 15000 });
     await amountInput.click();
-    await amountInput.fill("$100");
+    await amountInput.fill("100");
 
     // Wait for groups/members to load
     await page.waitForTimeout(2000);

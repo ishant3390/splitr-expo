@@ -10,7 +10,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "nativewind";
-import { BlurView } from "expo-blur";
 import { Plus } from "lucide-react-native";
 import { hapticSelection, hapticMedium } from "@/lib/haptics";
 import { useRouter } from "expo-router";
@@ -208,35 +207,17 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     width: indicatorWidth.value,
   }));
 
-  const blurTint = isDark ? "dark" : "light";
-
   return (
     <View style={styles.wrapper}>
-      {/* Frosted glass tab bar */}
-      <BlurView
-        intensity={Platform.OS === "ios" ? 80 : 0}
-        tint={blurTint}
+      <View
         style={[
           styles.blurContainer,
           {
             paddingBottom: insets.bottom || 16,
-            // Fallback for Android (BlurView doesn't work on Android)
-            ...(Platform.OS !== "ios" && {
-              backgroundColor: isDark ? "rgba(0,0,0,0.92)" : "rgba(255,255,255,0.92)",
-            }),
+            backgroundColor: isDark ? "#0f172a" : "#ffffff",
           },
         ]}
       >
-        {/* Semi-transparent overlay for better contrast */}
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.2)",
-            },
-          ]}
-          pointerEvents="none"
-        />
 
         {/* Subtle top border */}
         <View
@@ -293,7 +274,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           );
         })}
       </View>
-      </BlurView>
+      </View>
     </View>
   );
 }

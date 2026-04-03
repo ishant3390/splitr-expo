@@ -28,6 +28,7 @@ async function openFirstGroup(page: any): Promise<boolean> {
 async function goToAddExpense(page: any) {
   await page.getByRole("button", { name: "Add Expense" }).click();
   await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
   await page.waitForTimeout(1000);
 }
 
@@ -108,6 +109,12 @@ test("Issue 4 — add expense: typing description auto-selects category", async 
   // Try travel
   await descInput.fill("uber to airport");
   await page.waitForTimeout(1000);
+  // Reveal full list for travel if not in top quick categories
+  const hasToggle = await page.getByTestId("category-toggle").isVisible().catch(() => false);
+  if (hasToggle) {
+    await page.getByTestId("category-toggle").click();
+    await page.waitForTimeout(300);
+  }
   await page.screenshot({ path: path.join(SHOTS, "issue4-after-travel-description.png") });
 
   const hasTravelSelected = await page.getByText("Transport").isVisible().catch(() => false) ||
@@ -130,7 +137,7 @@ test("Issue 5 — update expense: edit flow works without error", async ({ page 
   }
 
   // Wait for group detail to fully load
-  await expect(page.getByText("Your Balance")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText(/Your balance/i).first()).toBeVisible({ timeout: 5000 });
 
   // Look for an expense item within the RECENT EXPENSES section
   const hasExpenseSection = await page.getByText("RECENT EXPENSES").isVisible().catch(() => false);
@@ -194,7 +201,7 @@ test("Issue 6 — add expense: percentage/fixed split values are saved", async (
   await goToAddExpense(page);
 
   // Fill amount and description
-  await page.getByPlaceholder("$0").fill("$60");
+  await page.getByTestId("amount-input").fill("60");
   await page.getByPlaceholder("What was this for?").fill("Split test");
   await page.waitForTimeout(1000);
 

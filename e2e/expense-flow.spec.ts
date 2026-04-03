@@ -14,10 +14,10 @@ test.describe("Expense Flow", () => {
     await navigateToAddExpense(page);
 
     await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
 
-    // Amount hero section with placeholder
-    await expect(page.getByText("Amount")).toBeVisible();
-    await expect(page.getByPlaceholder("$0")).toBeVisible();
+    // Amount hero section input (currency symbol is rendered separately)
+    await expect(page.getByTestId("amount-input")).toBeVisible();
   });
 
   test("add expense screen shows description field", async ({ page }) => {
@@ -39,6 +39,7 @@ test.describe("Expense Flow", () => {
 
     // Category section — should show "Category" label
     await expect(page.getByText("Category")).toBeVisible();
+    const hasToggle = await page.getByTestId("category-toggle").isVisible().catch(() => false);
 
     // Wait for categories to load (they come from API)
     await page.waitForTimeout(2000);
@@ -55,6 +56,12 @@ test.describe("Expense Flow", () => {
 
     // Either specific categories loaded, or the section is present
     expect(hasCategories || hasOther).toBeTruthy();
+
+    // Expands to full category list on demand when toggle is present
+    if (hasToggle) {
+      await page.getByTestId("category-toggle").click();
+      await expect(page.getByText("Show less")).toBeVisible();
+    }
   });
 
   test("add expense screen shows group selector", async ({ page }) => {
@@ -132,9 +139,10 @@ test.describe("Expense Flow", () => {
     await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
 
     // Fill amount
-    const amountInput = page.getByPlaceholder("$0");
+    const amountInput = page.getByTestId("amount-input");
     await amountInput.click();
-    await amountInput.fill("$25.50");
+    await amountInput.fill("25.50");
+    await expect(amountInput).toHaveValue("25.50");
 
     // Fill description
     const descInput = page.getByPlaceholder("What was this for?");
@@ -197,7 +205,9 @@ test.describe("Expense Flow", () => {
     if (!hasGroups) return;
 
     await page.getByText("members").first().click();
-    await expect(page.getByText("Your Balance")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/Your balance/i).first()).toBeVisible({
+      timeout: 5000,
+    });
 
     // Check if there are any expense items
     const hasExpenses = await page

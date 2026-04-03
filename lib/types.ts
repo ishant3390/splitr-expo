@@ -119,6 +119,8 @@ export interface GroupDto {
   groupType?: string;
   emoji?: string;
   defaultCurrency?: string;
+  /** Legacy/alternate backend field used by some responses. */
+  currency?: string;
   simplifyDebts?: boolean;
   inviteCode?: string;
   imageUrl?: string;

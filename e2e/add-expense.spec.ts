@@ -14,6 +14,7 @@ test.describe("Add Expense Flow", () => {
   test("shows add expense screen elements", async ({ page }) => {
     // The add expense screen should show the Add Expense title
     await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
   });
 
   test("can navigate to add expense from home quick action", async ({ page }) => {
@@ -28,6 +29,7 @@ test.describe("Add Expense Flow", () => {
     if (hasAdd) {
       await addButton.click();
       await expect(page.getByText("Add Expense")).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId("header-group-context")).toBeVisible({ timeout: 5000 });
     }
   });
 });
