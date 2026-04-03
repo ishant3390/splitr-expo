@@ -389,27 +389,36 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 20);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <header
-      className={`fixed top-[36px] w-full z-50 transition-all duration-300 ${
+      style={{ willChange: "background-color, box-shadow" }}
+      className={`fixed top-[36px] w-full z-50 transition-[background-color,box-shadow,border-color] duration-200 py-3 ${
         isScrolled
-          ? "bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm py-3"
-          : "bg-transparent py-5"
+          ? "bg-white/90 backdrop-blur-sm border-b border-slate-200 shadow-sm"
+          : "bg-transparent border-b border-transparent shadow-none"
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-white font-bold text-xl tracking-tighter">
-            S
-          </div>
-          <span className="font-bold text-xl tracking-tight text-slate-900">
-            Splitr
-          </span>
+        <div className="flex items-center">
+          <img
+            src="/splitr-wordmark.png"
+            alt="Splitr"
+            className="h-8 w-auto"
+          />
         </div>
 
         <nav className="hidden md:flex items-center gap-8">
@@ -1185,11 +1194,8 @@ const BottomCTA = () => {
 const Footer = () => (
   <footer className="bg-slate-50 py-10 border-t border-slate-200">
     <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-6 rounded bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-white font-bold text-xs">
-          S
-        </div>
-        <span className="font-bold text-slate-900 text-sm">Splitr</span>
+      <div className="flex items-center">
+        <img src="/splitr-wordmark.png" alt="Splitr" className="h-6 w-auto" />
       </div>
 
       <div className="flex gap-6 text-sm text-slate-400 font-medium">
