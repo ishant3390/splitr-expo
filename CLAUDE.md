@@ -47,6 +47,7 @@ app/                    # Screens (Expo Router file-based)
   pending-expenses.tsx  # View/discard offline-queued expenses
   privacy-security.tsx  # Biometric lock toggle, security settings
   group-settings.tsx    # Group settings page (identity, members, preferences, danger zone — via gear icon)
+  device-contacts.tsx   # Device contacts matching screen (expo-contacts, batch match API, add/invite per row — native only)
   notification-settings.tsx # Push notification preferences
 components/
   ui/                   # Reusable UI components (Button, Card, Avatar, Input, etc.)
@@ -75,6 +76,7 @@ lib/
   payment-links.ts      # Payment deep link utilities (URL construction, validation, region mapping, provider info)
   haptics.ts            # Haptic feedback wrappers
   image-utils.ts        # Image upload utilities: validateImage, pickImage, compressImage (expo-image-manipulator), buildImageFormData, sanitizeImageUrl
+  device-contacts.ts    # Device contacts utilities: permission, reading, normalization, batch matching (native-only)
   mention-utils.ts      # @/# mention detection, filtering, insertion, wire format, recency merge
   mention-recency.ts    # AsyncStorage-backed recent mention tracking (cap 20)
 ```

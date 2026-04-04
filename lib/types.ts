@@ -34,6 +34,7 @@ export interface UserPreferences {
   notifications?: boolean;
   emailDigest?: string;
   defaultSplitType?: string;
+  nudgeGraceDays?: number;
 }
 
 export interface UpdateUserRequest {
@@ -398,6 +399,8 @@ export interface SettlementSuggestionDto {
   currency: string;
   /** Creditor's payment handles — only populated in settlement suggestions context */
   toUserPaymentHandles?: PaymentHandles;
+  /** ISO date of the oldest unsettled expense between the two users in this group */
+  oldestExpenseDate?: string;
 }
 
 export interface CreateSettlementRequest {

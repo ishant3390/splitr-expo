@@ -121,7 +121,8 @@ export default function HomeScreen() {
   const totalOwedCents = balanceData?.totalOwedCents ?? 0;
   const totalOwesCents = balanceData?.totalOwesCents ?? 0;
 
-  const topDebtor = useTopDebtor(balanceData);
+  const nudgeGraceDays = backendUser?.preferences?.nudgeGraceDays ?? 30;
+  const topDebtor = useTopDebtor(balanceData, nudgeGraceDays);
 
   const { data: groups = [], refetch: refetchGroups } = useGroups();
   const balanceMap = useMemo(() => {
@@ -377,7 +378,7 @@ export default function HomeScreen() {
           {totalOwedCents > 0 && topDebtor && nudgeStateLoaded && !nudgeDismissed && (
             nudgeRemindedAt ? (
               /* Soft "reminded" state — subtle card with option to remind again */
-              <Animated.View entering={FadeInDown.duration(300).springify()}>
+              <Animated.View entering={FadeInDown.duration(300).springify()} pointerEvents="box-none">
                 <Card className="p-3 border-border">
                   <View className="flex-row items-center gap-3">
                     <View className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 items-center justify-center">
@@ -394,6 +395,7 @@ export default function HomeScreen() {
                     <Pressable
                       onPress={handleNudge}
                       disabled={nudging}
+                      accessibilityRole="button"
                       className="px-3 py-1.5 rounded-lg bg-muted"
                     >
                       <Text className="text-xs font-sans-medium text-muted-foreground">
@@ -405,7 +407,7 @@ export default function HomeScreen() {
               </Animated.View>
             ) : (
               /* Full nudge card — first time seeing this debtor */
-              <Animated.View entering={FadeInDown.duration(300).springify()}>
+              <Animated.View entering={FadeInDown.duration(300).springify()} pointerEvents="box-none">
                 <Card className="p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
                   <View className="flex-row items-start gap-3">
                     <View className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center mt-0.5">
@@ -425,6 +427,7 @@ export default function HomeScreen() {
                         <Pressable
                           onPress={handleNudge}
                           disabled={nudging}
+                          accessibilityRole="button"
                           className={cn(
                             "flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-lg",
                             nudging ? "bg-amber-200 dark:bg-amber-800" : "bg-amber-400 dark:bg-amber-700"
@@ -437,6 +440,7 @@ export default function HomeScreen() {
                         </Pressable>
                         <Pressable
                           onPress={handleNudgeDismiss}
+                          accessibilityRole="button"
                           className="px-3.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900"
                         >
                           <Text className="text-xs font-sans-medium text-amber-700 dark:text-amber-300">

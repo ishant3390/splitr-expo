@@ -1488,6 +1488,136 @@ describe("hooks.ts", () => {
       });
     });
 
+    it("filters out debts younger than nudgeGraceDays", () => {
+      // Expense from 10 days ago — should be filtered out with default 30-day grace
+      const tenDaysAgo = new Date();
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+      const suggestions = [
+        {
+          fromUser: { email: "debtor@test.com", name: "Debtor" },
+          toUser: { email: "test@example.com", name: "Test User" },
+          amount: 500,
+          oldestExpenseDate: tenDaysAgo.toISOString().split("T")[0],
+        },
+      ];
+
+      mockUseQuery.mockImplementation((config: any) => {
+        if (config.queryKey[0] === "settlements") {
+          return { data: suggestions, isLoading: false, error: null, refetch: jest.fn() };
+        }
+        return { data: undefined, isLoading: false, error: null, refetch: jest.fn() };
+      });
+
+      const balanceData = {
+        totalOwedCents: 500,
+        totalOwesCents: 0,
+        netBalanceCents: 500,
+        groupBalances: [{ groupId: "g1", groupName: "Trip", balanceCents: 500 }],
+      };
+
+      const { result } = renderHook(() => useTopDebtor(balanceData));
+      expect(result.current).toBeNull();
+    });
+
+    it("shows debts older than nudgeGraceDays", () => {
+      // Expense from 45 days ago — should pass 30-day grace
+      const fortyFiveDaysAgo = new Date();
+      fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 45);
+
+      const suggestions = [
+        {
+          fromUser: { email: "debtor@test.com", name: "Debtor" },
+          toUser: { email: "test@example.com", name: "Test User" },
+          amount: 500,
+          oldestExpenseDate: fortyFiveDaysAgo.toISOString().split("T")[0],
+        },
+      ];
+
+      mockUseQuery.mockImplementation((config: any) => {
+        if (config.queryKey[0] === "settlements") {
+          return { data: suggestions, isLoading: false, error: null, refetch: jest.fn() };
+        }
+        return { data: undefined, isLoading: false, error: null, refetch: jest.fn() };
+      });
+
+      const balanceData = {
+        totalOwedCents: 500,
+        totalOwesCents: 0,
+        netBalanceCents: 500,
+        groupBalances: [{ groupId: "g1", groupName: "Trip", balanceCents: 500 }],
+      };
+
+      const { result } = renderHook(() => useTopDebtor(balanceData));
+      expect(result.current).not.toBeNull();
+      expect(result.current!.suggestion.amount).toBe(500);
+    });
+
+    it("respects custom nudgeGraceDays parameter", () => {
+      // Expense from 5 days ago — should show with 3-day grace, hide with 7-day grace
+      const fiveDaysAgo = new Date();
+      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+
+      const suggestions = [
+        {
+          fromUser: { email: "debtor@test.com", name: "Debtor" },
+          toUser: { email: "test@example.com", name: "Test User" },
+          amount: 500,
+          oldestExpenseDate: fiveDaysAgo.toISOString().split("T")[0],
+        },
+      ];
+
+      mockUseQuery.mockImplementation((config: any) => {
+        if (config.queryKey[0] === "settlements") {
+          return { data: suggestions, isLoading: false, error: null, refetch: jest.fn() };
+        }
+        return { data: undefined, isLoading: false, error: null, refetch: jest.fn() };
+      });
+
+      const balanceData = {
+        totalOwedCents: 500,
+        totalOwesCents: 0,
+        netBalanceCents: 500,
+        groupBalances: [{ groupId: "g1", groupName: "Trip", balanceCents: 500 }],
+      };
+
+      // 3-day grace — 5-day-old debt should show
+      const { result: result3 } = renderHook(() => useTopDebtor(balanceData, 3));
+      expect(result3.current).not.toBeNull();
+
+      // 7-day grace — 5-day-old debt should be filtered
+      const { result: result7 } = renderHook(() => useTopDebtor(balanceData, 7));
+      expect(result7.current).toBeNull();
+    });
+
+    it("shows debt when oldestExpenseDate is not provided (backward compat)", () => {
+      const suggestions = [
+        {
+          fromUser: { email: "debtor@test.com", name: "Debtor" },
+          toUser: { email: "test@example.com", name: "Test User" },
+          amount: 500,
+          // no oldestExpenseDate
+        },
+      ];
+
+      mockUseQuery.mockImplementation((config: any) => {
+        if (config.queryKey[0] === "settlements") {
+          return { data: suggestions, isLoading: false, error: null, refetch: jest.fn() };
+        }
+        return { data: undefined, isLoading: false, error: null, refetch: jest.fn() };
+      });
+
+      const balanceData = {
+        totalOwedCents: 500,
+        totalOwesCents: 0,
+        netBalanceCents: 500,
+        groupBalances: [{ groupId: "g1", groupName: "Trip", balanceCents: 500 }],
+      };
+
+      const { result } = renderHook(() => useTopDebtor(balanceData));
+      expect(result.current).not.toBeNull();
+    });
+
     it("returns null when no suggestions match current user as payee", () => {
       const suggestions = [
         {

@@ -659,7 +659,7 @@ export function useJoinGroup() {
  * Picks the group with the highest positive balance, fetches settlement
  * suggestions, and returns the suggestion where toUser matches current user.
  */
-export function useTopDebtor(balanceData?: UserBalanceDto) {
+export function useTopDebtor(balanceData?: UserBalanceDto, nudgeGraceDays = 30) {
   const { user } = useUser();
   const currentEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() ?? "";
 
@@ -677,9 +677,18 @@ export function useTopDebtor(balanceData?: UserBalanceDto) {
   const topDebtor = useMemo(() => {
     if (!suggestions || !Array.isArray(suggestions) || !currentEmail) return null;
     // Find suggestions where the current user is the payee (toUser)
-    const owedToMe = suggestions.filter(
-      (s) => s.toUser?.email?.toLowerCase() === currentEmail
-    );
+    // and the debt is older than the grace period
+    const graceCutoff = new Date();
+    graceCutoff.setDate(graceCutoff.getDate() - nudgeGraceDays);
+    const cutoffDateStr = graceCutoff.toISOString().split("T")[0];
+
+    const owedToMe = suggestions.filter((s) => {
+      if (s.toUser?.email?.toLowerCase() !== currentEmail) return false;
+      // If backend doesn't provide the date, skip grace period check
+      if (!s.oldestExpenseDate) return true;
+      // Compare date strings to avoid timezone ambiguity
+      return s.oldestExpenseDate <= cutoffDateStr;
+    });
     if (owedToMe.length === 0) return null;
     // Sort by amount descending and pick top
     const sorted = [...owedToMe].sort((a, b) => b.amount - a.amount);
@@ -689,7 +698,7 @@ export function useTopDebtor(balanceData?: UserBalanceDto) {
       groupId: topGroup!.groupId,
       groupName: topGroup!.groupName,
     };
-  }, [suggestions, currentEmail, topGroup]);
+  }, [suggestions, currentEmail, topGroup, nudgeGraceDays]);
 
   return topDebtor;
 }
