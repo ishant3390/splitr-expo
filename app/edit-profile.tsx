@@ -29,7 +29,7 @@ import { useUploadProfileImage, useDeleteProfileImage } from "@/lib/hooks";
 import { invalidateAfterProfileUpdate } from "@/lib/query";
 import type { UserDto, UpdateUserRequest } from "@/lib/types";
 
-const CURRENCIES = ["USD", "EUR", "GBP", "INR", "CAD", "AUD", "JPY"];
+import { CURRENCY_CODES as CURRENCIES } from "@/lib/currencies";
 
 export default function EditProfileScreen() {
   const router = useRouter();

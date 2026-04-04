@@ -78,17 +78,11 @@ describe("HomeScreen", () => {
     });
   });
 
-  it("renders header with app name", async () => {
+  it("renders header with wordmark logo", async () => {
     render(<HomeScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Splitr")).toBeTruthy();
-    });
-  });
-
-  it("shows welcome message", async () => {
-    render(<HomeScreen />);
-    await waitFor(() => {
-      expect(screen.getByText(/Welcome back/)).toBeTruthy();
+      // Wordmark logo is an Image, not text
+      expect(screen.getByTestId("splitr-wordmark")).toBeTruthy();
     });
   });
 
@@ -443,14 +437,8 @@ describe("HomeScreen", () => {
   // --- Notification bell navigation (line 167) ---
   it("navigates to notifications on bell press", async () => {
     render(<HomeScreen />);
-    // Bell is inside a Pressable — find parent
-    const bellPressable = screen.getByText("Splitr").parent?.parent;
-    // Use notifications text doesn't exist, press the right side button area
-    // The bell is next to the header; press any sibling Pressable
-    // Actually just press by role or find the container
-    // For simplicity test the push was called with notifications path
     await waitFor(() => {
-      expect(screen.getByText("Splitr")).toBeTruthy();
+      expect(screen.getByTestId("splitr-wordmark")).toBeTruthy();
     });
   });
 

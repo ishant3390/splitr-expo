@@ -249,8 +249,8 @@ export default function GroupsScreen() {
           </View>
         )}
 
-        {/* Balance summary (active filter only) */}
-        {filter === "active" && balanceData && balanceData.netBalanceCents !== 0 && (
+        {/* Balance summary */}
+        {balanceData && balanceData.netBalanceCents !== 0 && (
           <View className="px-5 pb-3">
             <View
               style={{

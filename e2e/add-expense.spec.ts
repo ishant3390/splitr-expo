@@ -21,7 +21,7 @@ test.describe("Add Expense Flow", () => {
     // Alternative: use the "Add" quick action on home screen
     // Go back to home first
     await page.getByRole("button", { name: "Home" }).click();
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 5000 });
 
     // Look for "Add" quick action button on home
     const addButton = page.getByText("Add", { exact: true });

@@ -11,6 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { restoreTheme } from "@/lib/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { usersApi } from "@/lib/api";
+import { detectDefaultCurrency } from "@/lib/currencies";
 import { queryClient } from "@/lib/query";
 import { ToastProvider } from "@/components/ui/toast";
 import { NetworkProvider } from "@/components/NetworkProvider";
@@ -101,7 +102,13 @@ function AuthGate() {
       try {
         const token = await getToken();
         if (token) {
-          await usersApi.me(token);
+          const user = await usersApi.me(token);
+          // Auto-detect currency for existing users who don't have one set.
+          // New users going through onboarding get currency set there instead.
+          if (!user.defaultCurrency && !needsOnboarding) {
+            const detected = detectDefaultCurrency();
+            await usersApi.updateMe({ defaultCurrency: detected }, token);
+          }
         }
       } catch {
         // user creation/fetch is non-fatal on startup

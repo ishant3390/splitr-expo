@@ -154,7 +154,7 @@ test.describe("Navigation with Data", () => {
   test("Home View All → navigates to Groups or Activity", async ({
     page,
   }) => {
-    await expect(page.getByText("Splitr").first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("img", { name: "Splitr" }).first()).toBeVisible({ timeout: 15000 });
 
     const viewAll = page.getByText("View All").first();
     const hasViewAll = await viewAll

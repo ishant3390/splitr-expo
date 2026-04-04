@@ -3,7 +3,7 @@ import { test, expect } from "./auth.setup";
 test.describe("Cross-Screen Navigation", () => {
   test("tab bar navigates to all main tabs", async ({ page }) => {
     // Start on Home
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 10000 });
 
     // Navigate to Groups
     await page.getByRole("button", { name: "Groups" }).click();
@@ -23,11 +23,11 @@ test.describe("Cross-Screen Navigation", () => {
 
     // Navigate back to Home
     await page.getByRole("button", { name: "Home" }).click();
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 5000 });
   });
 
   test("Home tab to Group detail and back", async ({ page }) => {
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 10000 });
 
     // Go to Groups tab
     await page.getByRole("button", { name: "Groups" }).click();
@@ -52,7 +52,7 @@ test.describe("Cross-Screen Navigation", () => {
   });
 
   test("FAB / Add tab navigates to Add Expense", async ({ page }) => {
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 10000 });
 
     // Click the center Add tab (3rd child in tablist)
     await page.getByRole("button", { name: "Add Expense" }).click();
@@ -62,7 +62,7 @@ test.describe("Cross-Screen Navigation", () => {
   });
 
   test("Profile to Edit Profile and back", async ({ page }) => {
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 10000 });
 
     // Navigate to Profile
     await page.getByRole("button", { name: "Profile" }).click();
@@ -87,7 +87,7 @@ test.describe("Cross-Screen Navigation", () => {
   });
 
   test("Groups to Create Group and back", async ({ page }) => {
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 10000 });
 
     // Navigate to Groups
     await page.getByRole("button", { name: "Groups" }).click();
@@ -104,7 +104,7 @@ test.describe("Cross-Screen Navigation", () => {
   });
 
   test("Group detail to Settle Up and back", async ({ page }) => {
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 10000 });
 
     await page.getByRole("button", { name: "Groups" }).click();
     await page.waitForTimeout(2000);
@@ -150,7 +150,7 @@ test.describe("Cross-Screen Navigation", () => {
       .isVisible()
       .catch(() => false);
     const hasHome = await page
-      .getByText("Splitr")
+      .getByRole("img", { name: "Splitr" })
       .isVisible()
       .catch(() => false);
 
@@ -159,7 +159,7 @@ test.describe("Cross-Screen Navigation", () => {
   });
 
   test("Home screen shows key sections", async ({ page }) => {
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 10000 });
 
     // Balance card
     await expect(page.getByText("Net Balance")).toBeVisible();
@@ -169,7 +169,7 @@ test.describe("Cross-Screen Navigation", () => {
   });
 
   test("tab bar maintains state across tab switches", async ({ page }) => {
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 10000 });
 
     // Go to Groups and verify content
     await page.getByRole("button", { name: "Groups" }).click();

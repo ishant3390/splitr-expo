@@ -90,7 +90,8 @@
         {
           "contactsPermission": "Allow Splitr to access your contacts to find friends and send invites."
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

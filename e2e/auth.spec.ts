@@ -12,14 +12,14 @@ base.describe("Auth Screen (unauthenticated)", () => {
   base("shows login page with branding", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Split expenses effortlessly")).toBeVisible();
   });
 
   base("auth screen shows social login buttons", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Sign up with Google")).toBeVisible();
     await expect(page.getByText("Sign up with Apple")).toBeVisible();
     await expect(page.getByText("Sign up with Facebook")).toBeVisible();
@@ -29,7 +29,7 @@ base.describe("Auth Screen (unauthenticated)", () => {
   base("shows Sign Up and Sign In tabs", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Sign Up", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Sign In", { exact: true }).first()).toBeVisible();
   });
@@ -37,7 +37,7 @@ base.describe("Auth Screen (unauthenticated)", () => {
   base("shows email/phone signup button on Sign Up tab", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 15000 });
     await expect(
       page.getByText("Sign up with email or phone")
     ).toBeVisible();
@@ -46,7 +46,7 @@ base.describe("Auth Screen (unauthenticated)", () => {
   base("can switch to Sign In tab", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 15000 });
 
     // Click Sign In tab (exact match to avoid matching "Sign in with Google" etc.)
     await page.getByText("Sign In", { exact: true }).first().click();
@@ -63,7 +63,7 @@ base.describe("Auth Screen (unauthenticated)", () => {
   base("social buttons change text on Sign In tab", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 15000 });
 
     // Switch to Sign In
     await page.getByText("Sign In", { exact: true }).first().click();

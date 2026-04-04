@@ -68,15 +68,7 @@ const GROUP_EMOJIS = [
   "\uD83C\uDF82", "\uD83C\uDF2E", "\uD83C\uDF63", "\uD83C\uDFAF", "\uD83C\uDFC4", "\u26FA", "\uD83C\uDFAC", "\uD83E\uDDD1\u200D\uD83C\uDF73", "\uD83C\uDFB8", "\uD83C\uDFE1",
 ];
 
-const CURRENCIES = [
-  { code: "USD", symbol: "$", flag: "\uD83C\uDDFA\uD83C\uDDF8" },
-  { code: "EUR", symbol: "\u20AC", flag: "\uD83C\uDDEA\uD83C\uDDFA" },
-  { code: "GBP", symbol: "\u00A3", flag: "\uD83C\uDDEC\uD83C\uDDE7" },
-  { code: "INR", symbol: "\u20B9", flag: "\uD83C\uDDEE\uD83C\uDDF3" },
-  { code: "CAD", symbol: "C$", flag: "\uD83C\uDDE8\uD83C\uDDE6" },
-  { code: "AUD", symbol: "A$", flag: "\uD83C\uDDE6\uD83C\uDDFA" },
-  { code: "JPY", symbol: "\u00A5", flag: "\uD83C\uDDEF\uD83C\uDDF5" },
-];
+import { CURRENCIES } from "@/lib/currencies";
 
 export default function CreateGroupScreen() {
   const router = useRouter();

@@ -1,14 +1,18 @@
 import React, { useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Users, Receipt, HandCoins, Sparkles } from "lucide-react-native";
-import { hapticLight, hapticSuccess } from "@/lib/haptics";
+import { useAuth } from "@clerk/clerk-expo";
+import { Users, Receipt, HandCoins, Sparkles, Coins } from "lucide-react-native";
+import { hapticLight, hapticSuccess, hapticSelection } from "@/lib/haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { SHADOWS } from "@/lib/shadows";
-import { radius, palette } from "@/lib/tokens";
+import { colors, radius, palette } from "@/lib/tokens";
+import { useColorScheme } from "nativewind";
+import { CURRENCIES, detectDefaultCurrency } from "@/lib/currencies";
+import { usersApi } from "@/lib/api";
 
 export const ONBOARDING_KEY = "@splitr/onboarding_complete";
 
@@ -20,6 +24,9 @@ interface OnboardingStep {
   subtitle: string;
 }
 
+/** Index of the currency selection step. */
+const CURRENCY_STEP_INDEX = 1;
+
 const STEPS: OnboardingStep[] = [
   {
     icon: Sparkles,
@@ -28,6 +35,14 @@ const STEPS: OnboardingStep[] = [
     title: "Welcome to Splitr",
     subtitle:
       "The easiest way to split expenses with friends, roommates, and travel buddies. No more awkward money conversations.",
+  },
+  {
+    icon: Coins,
+    iconColor: palette.teal600,
+    iconBg: palette.teal100,
+    title: "Your Currency",
+    subtitle:
+      "We detected your default currency. You can change it anytime in your profile.",
   },
   {
     icon: Users,
@@ -57,11 +72,17 @@ const STEPS: OnboardingStep[] = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { getToken } = useAuth();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const c = colors(isDark);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedCurrency, setSelectedCurrency] = useState(() => detectDefaultCurrency());
 
   const step = STEPS[activeIndex];
   const Icon = step.icon;
   const isLast = activeIndex === STEPS.length - 1;
+  const isCurrencyStep = activeIndex === CURRENCY_STEP_INDEX;
 
   const handleNext = () => {
     hapticLight();
@@ -79,6 +100,15 @@ export default function OnboardingScreen() {
 
   const completeOnboarding = async () => {
     hapticSuccess();
+    // Save selected currency to backend
+    try {
+      const token = await getToken();
+      if (token) {
+        await usersApi.updateMe({ defaultCurrency: selectedCurrency }, token);
+      }
+    } catch {
+      // non-fatal — currency can be set later in profile
+    }
     await AsyncStorage.setItem(ONBOARDING_KEY, "true");
     router.replace("/(tabs)");
   };
@@ -132,6 +162,49 @@ export default function OnboardingScreen() {
               {step.subtitle}
             </Text>
           </Animated.View>
+
+          {/* Currency picker for the currency step */}
+          {isCurrencyStep && (
+            <Animated.View entering={FadeInUp.delay(350).duration(350).springify()} className="mt-8 w-full max-w-xs">
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 240 }}>
+                <View className="flex-row flex-wrap justify-center gap-2.5">
+                  {CURRENCIES.map((curr) => {
+                    const isSelected = curr.code === selectedCurrency;
+                    return (
+                      <Pressable
+                        key={curr.code}
+                        onPress={() => { hapticSelection(); setSelectedCurrency(curr.code); }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select ${curr.code}`}
+                        testID={`currency-${curr.code}`}
+                        className="rounded-xl px-4 py-3 items-center"
+                        style={{
+                          backgroundColor: isSelected ? palette.teal600 : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
+                          borderWidth: isSelected ? 0 : 1,
+                          borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+                          minWidth: 90,
+                        }}
+                      >
+                        <Text className="text-lg mb-0.5">{curr.flag}</Text>
+                        <Text
+                          className="text-sm font-sans-bold"
+                          style={{ color: isSelected ? palette.white : c.foreground }}
+                        >
+                          {curr.code}
+                        </Text>
+                        <Text
+                          className="text-xs font-sans"
+                          style={{ color: isSelected ? "rgba(255,255,255,0.7)" : c.mutedForeground }}
+                        >
+                          {curr.symbol}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </Animated.View>
+          )}
         </View>
 
         {/* Bottom controls */}

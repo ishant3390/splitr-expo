@@ -236,7 +236,7 @@ test.describe("AI Chat — Split Assistant", () => {
 
   test("Home button navigates back to home screen", async ({ page }) => {
     await page.getByRole("button", { name: "Go to home" }).click();
-    await expect(page.getByText("Splitr")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("img", { name: "Splitr" })).toBeVisible({ timeout: 10000 });
   });
 
   // Chat quick-action removed from Home (AI Chat deferred to post-MVP)

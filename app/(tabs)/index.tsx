@@ -21,6 +21,7 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { getActivityIcon } from "@/lib/category-icons";
 import { Card } from "@/components/ui/card";
 import { GroupAvatar } from "@/components/ui/group-avatar";
+import { SplitrWordmark } from "@/components/icons/splitr-wordmark";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useUserActivity, useUserBalance, useTopDebtor, useGroups, useUserProfile, useGroupCurrencyMap } from "@/lib/hooks";
 import { useNetwork } from "@/components/NetworkProvider";
@@ -130,9 +131,26 @@ export default function HomeScreen() {
     (balanceData?.groupBalances ?? []).forEach((gb) => map.set(gb.groupId, { balanceCents: gb.balanceCents, currency: gb.currency }));
     return map;
   }, [balanceData?.groupBalances]);
+  // Build a map of groupId → most recent activity timestamp
+  const lastActivityMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of activity) {
+      if (!a.groupId) continue;
+      const ts = new Date(a.createdAt).getTime();
+      const existing = map.get(a.groupId);
+      if (!existing || ts > existing) map.set(a.groupId, ts);
+    }
+    return map;
+  }, [activity]);
+
   const activeGroups = useMemo(() => {
-    return [...groups].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 2);
-  }, [groups]);
+    return [...groups].sort((a, b) => {
+      // Prefer last activity time, fall back to group updatedAt
+      const aTime = lastActivityMap.get(a.id) ?? new Date(a.updatedAt).getTime();
+      const bTime = lastActivityMap.get(b.id) ?? new Date(b.updatedAt).getTime();
+      return bTime - aTime;
+    }).slice(0, 2);
+  }, [groups, lastActivityMap]);
   const groupNameMap = useMemo(() => {
     const map = new Map<string, string>();
     groups.forEach((g) => map.set(g.id, g.name));
@@ -241,11 +259,8 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-3 pb-4">
-          <View>
-            <Text className="text-2xl font-sans-bold text-foreground">Splitr</Text>
-            <Text className="text-sm text-muted-foreground font-sans">
-              Welcome back, {user?.firstName || "there"}
-            </Text>
+          <View accessibilityLabel="Splitr" testID="splitr-wordmark">
+            <SplitrWordmark width={110} variant={isDark ? "light" : "dark"} />
           </View>
           <Pressable
             onPress={() => router.push("/notifications" as any)}
@@ -378,7 +393,7 @@ export default function HomeScreen() {
           {totalOwedCents > 0 && topDebtor && nudgeStateLoaded && !nudgeDismissed && (
             nudgeRemindedAt ? (
               /* Soft "reminded" state — subtle card with option to remind again */
-              <Animated.View entering={FadeInDown.duration(300).springify()} pointerEvents="box-none">
+              <Animated.View entering={FadeInDown.duration(300).springify()} style={{ pointerEvents: "box-none" }}>
                 <Card className="p-3 border-border">
                   <View className="flex-row items-center gap-3">
                     <View className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 items-center justify-center">
@@ -407,7 +422,7 @@ export default function HomeScreen() {
               </Animated.View>
             ) : (
               /* Full nudge card — first time seeing this debtor */
-              <Animated.View entering={FadeInDown.duration(300).springify()} pointerEvents="box-none">
+              <Animated.View entering={FadeInDown.duration(300).springify()} style={{ pointerEvents: "box-none" }}>
                 <Card className="p-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
                   <View className="flex-row items-start gap-3">
                     <View className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900 items-center justify-center mt-0.5">

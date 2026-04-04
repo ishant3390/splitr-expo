@@ -17,6 +17,12 @@ jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "Success", Error: "Error", Warning: "Warning" },
 }));
 
+// Mock expo-localization
+jest.mock("expo-localization", () => ({
+  getLocales: jest.fn(() => [{ regionCode: "US", languageTag: "en-US", languageCode: "en" }]),
+  getCalendars: jest.fn(() => []),
+}));
+
 // Mock expo-clipboard
 jest.mock("expo-clipboard", () => ({
   setStringAsync: jest.fn(),
