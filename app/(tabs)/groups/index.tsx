@@ -250,7 +250,7 @@ export default function GroupsScreen() {
         )}
 
         {/* Balance summary */}
-        {balanceData && balanceData.netBalanceCents !== 0 && (
+        {balanceData && (balanceData.netBalanceCents !== 0 || balanceData.netBalanceConverted) && (
           <View className="px-5 pb-3">
             <View
               style={{
@@ -264,25 +264,64 @@ export default function GroupsScreen() {
                 <Text className="text-xs font-sans" style={{ color: "rgba(255,255,255,0.6)" }}>
                   Overall balance
                 </Text>
-                <Text
-                  selectable
-                  className="text-3xl font-sans-bold mt-1"
-                  style={{
-                    color: palette.white,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {balanceData.netBalanceCents > 0 ? "+" : "-"}
-                  {formatCents(Math.abs(balanceData.netBalanceCents), balanceData.totalOwedByCurrency?.[0]?.currency ?? balanceData.totalOwingByCurrency?.[0]?.currency)}
-                </Text>
-                <Text
-                  className="text-xs font-sans mt-0.5"
-                  style={{
-                    color: balanceData.netBalanceCents > 0 ? "#86efac" : "#fca5a5",
-                  }}
-                >
-                  {balanceData.netBalanceCents > 0 ? "you are owed" : "you owe"}
-                </Text>
+                {balanceData.netBalanceConverted ? (
+                  /* BE-17: FX-converted net */
+                  <>
+                    <Text
+                      selectable
+                      className="text-3xl font-sans-bold mt-1"
+                      style={{ color: palette.white, fontVariant: ["tabular-nums"] }}
+                    >
+                      {balanceData.netBalanceConverted.amount > 0 ? "+" : balanceData.netBalanceConverted.amount < 0 ? "-" : ""}
+                      {formatCents(Math.abs(balanceData.netBalanceConverted.amount), balanceData.netBalanceConverted.currency)}
+                    </Text>
+                    {balanceData.netBalanceConverted.isEstimate && (
+                      <Text className="text-xs font-sans mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>
+                        Estimated in {balanceData.netBalanceConverted.currency}
+                      </Text>
+                    )}
+                  </>
+                ) : (balanceData.totalOwedByCurrency?.length ?? 0) + (balanceData.totalOwingByCurrency?.length ?? 0) > 1 &&
+                  new Set([...(balanceData.totalOwedByCurrency ?? []), ...(balanceData.totalOwingByCurrency ?? [])].map((a) => a.currency)).size > 1 ? (
+                  /* Multi-currency without FX — show per-currency net */
+                  <Text
+                    selectable
+                    className="text-2xl font-sans-bold mt-1"
+                    style={{ color: palette.white, fontVariant: ["tabular-nums"] }}
+                  >
+                    {(() => {
+                      const netMap = new Map<string, number>();
+                      for (const a of balanceData.totalOwedByCurrency ?? []) {
+                        netMap.set(a.currency, (netMap.get(a.currency) ?? 0) + a.amount);
+                      }
+                      for (const a of balanceData.totalOwingByCurrency ?? []) {
+                        netMap.set(a.currency, (netMap.get(a.currency) ?? 0) - a.amount);
+                      }
+                      return Array.from(netMap.entries())
+                        .filter(([, amt]) => amt !== 0)
+                        .map(([cur, amt]) => `${amt > 0 ? "+" : "-"}${formatCents(Math.abs(amt), cur)}`)
+                        .join("  ");
+                    })()}
+                  </Text>
+                ) : (
+                  /* Single currency — exact net */
+                  <>
+                    <Text
+                      selectable
+                      className="text-3xl font-sans-bold mt-1"
+                      style={{ color: palette.white, fontVariant: ["tabular-nums"] }}
+                    >
+                      {balanceData.netBalanceCents > 0 ? "+" : "-"}
+                      {formatCents(Math.abs(balanceData.netBalanceCents), balanceData.totalOwedByCurrency?.[0]?.currency ?? balanceData.totalOwingByCurrency?.[0]?.currency)}
+                    </Text>
+                    <Text
+                      className="text-xs font-sans mt-0.5"
+                      style={{ color: balanceData.netBalanceCents > 0 ? "#86efac" : "#fca5a5" }}
+                    >
+                      {balanceData.netBalanceCents > 0 ? "you are owed" : "you owe"}
+                    </Text>
+                  </>
+                )}
               </View>
 
               {/* Divider */}

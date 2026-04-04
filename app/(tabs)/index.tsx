@@ -285,14 +285,47 @@ export default function HomeScreen() {
                 <Text className="text-sm text-primary-foreground/70 font-sans-medium mb-1">
                   Net Balance
                 </Text>
-                {isMultiCurrency ? (
-                  <Text
-                    selectable
-                    className="font-sans-bold text-primary-foreground mb-4"
-                    style={{ fontVariant: ["tabular-nums"], fontSize: 42, lineHeight: 50 }}
-                  >
-                    {(totalOwedCents - totalOwesCents) > 0 ? "+" : (totalOwedCents - totalOwesCents) < 0 ? "-" : ""}{formatCents(Math.abs(totalOwedCents - totalOwesCents), primaryOwedCurrency)}
-                  </Text>
+                {balanceData?.netBalanceConverted ? (
+                  /* BE-17: FX-converted net balance in user's default currency */
+                  <View className="mb-4">
+                    <Text
+                      selectable
+                      className="font-sans-bold text-primary-foreground"
+                      style={{ fontVariant: ["tabular-nums"], fontSize: 42, lineHeight: 50 }}
+                    >
+                      {balanceData.netBalanceConverted.amount > 0 ? "+" : balanceData.netBalanceConverted.amount < 0 ? "-" : ""}
+                      {formatCents(Math.abs(balanceData.netBalanceConverted.amount), balanceData.netBalanceConverted.currency)}
+                    </Text>
+                    {balanceData.netBalanceConverted.isEstimate && (
+                      <Text className="text-xs text-primary-foreground/50 font-sans mt-0.5">
+                        Estimated in {balanceData.netBalanceConverted.currency}
+                      </Text>
+                    )}
+                  </View>
+                ) : isMultiCurrency ? (
+                  /* Multi-currency without FX conversion — show per-currency net instead of misleading sum */
+                  <View className="mb-4">
+                    <Text
+                      selectable
+                      className="font-sans-bold text-primary-foreground"
+                      style={{ fontVariant: ["tabular-nums"], fontSize: 32, lineHeight: 40 }}
+                    >
+                      {(() => {
+                        // Compute net per currency: owed - owing
+                        const netMap = new Map<string, number>();
+                        for (const a of balanceData?.totalOwedByCurrency ?? []) {
+                          netMap.set(a.currency, (netMap.get(a.currency) ?? 0) + a.amount);
+                        }
+                        for (const a of balanceData?.totalOwingByCurrency ?? []) {
+                          netMap.set(a.currency, (netMap.get(a.currency) ?? 0) - a.amount);
+                        }
+                        return Array.from(netMap.entries())
+                          .filter(([, amt]) => amt !== 0)
+                          .map(([cur, amt]) => `${amt > 0 ? "+" : "-"}${formatCents(Math.abs(amt), cur)}`)
+                          .join("  ");
+                      })()}
+                    </Text>
+                  </View>
                 ) : (
                   <AnimatedNumber
                     value={(totalOwedCents - totalOwesCents) / 100}

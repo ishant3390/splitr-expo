@@ -106,6 +106,7 @@ export function useUserBalance() {
           totalOwesCents,
           netBalanceCents,
           normalizedCurrency: raw.normalizedCurrency,
+          netBalanceConverted: raw.netBalanceConverted,
           totalOwedByCurrency: raw.totalOwed ?? [],
           totalOwingByCurrency: raw.totalOwing ?? [],
           groupBalances: raw.groupBalances,

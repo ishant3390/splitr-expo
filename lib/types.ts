@@ -81,11 +81,21 @@ export interface UserBalanceRawDto {
   totalOwesCents?: number;
   netBalanceCents?: number;
   normalizedCurrency?: string;
+  /** FX-converted net balance in user's default currency (BE-17) */
+  netBalanceConverted?: ConvertedBalance;
   groupBalances?: Array<{
     groupId: string;
     groupName: string;
     balanceCents: number;
   }>;
+}
+
+/** FX-converted net balance returned by backend (BE-17) */
+export interface ConvertedBalance {
+  amount: number;
+  currency: string;
+  isEstimate: boolean;
+  ratesAsOf?: string;
 }
 
 /** Normalized single-currency balance used by the UI */
@@ -94,6 +104,8 @@ export interface UserBalanceDto {
   totalOwesCents: number;
   netBalanceCents: number;
   normalizedCurrency?: string;
+  /** FX-converted net balance in user's default currency (BE-17) */
+  netBalanceConverted?: ConvertedBalance;
   totalOwedByCurrency?: CurrencyAmount[];
   totalOwingByCurrency?: CurrencyAmount[];
   groupBalances?: Array<{
