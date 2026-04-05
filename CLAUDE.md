@@ -56,7 +56,7 @@ components/
   TabBar.tsx            # Custom animated tab bar (Airbnb-style bounce, sliding indicator, FAB with long-press quick-add)
   NetworkProvider.tsx   # Network context, offline banner, auto-sync
   NotificationProvider.tsx # Push notification lifecycle (native-only, web passthrough)
-  icons/                # Custom SVG icons (social auth logos, tab bar icons, payment brand logos)
+  icons/                # Custom SVG icons (social auth logos, tab bar icons, payment brand logos, splitr-wordmark)
   ui/multi-currency-amount.tsx # Renders CurrencyAmount[] as "£25.00 + $100.00" with accessibility
   ui/payment-links-section.tsx # "Pay Directly" deep link pills for settle-up
   ui/upi-qr-modal.tsx   # UPI QR code modal for web platform
@@ -73,6 +73,7 @@ lib/
   offline.ts            # AsyncStorage-based offline expense queue
   biometrics.ts         # Biometric lock utilities (expo-local-authentication)
   notifications.ts      # Push notification utilities (foreground handler with per-category filtering, permissions, token, preferences, getNotificationCategory mapping)
+  currencies.ts         # Shared currency constants, region-to-currency map, detectDefaultCurrency()
   payment-links.ts      # Payment deep link utilities (URL construction, validation, region mapping, provider info)
   haptics.ts            # Haptic feedback wrappers
   image-utils.ts        # Image upload utilities: validateImage, pickImage, compressImage (expo-image-manipulator), buildImageFormData, sanitizeImageUrl
@@ -173,11 +174,13 @@ lib/
 - **Foreground filtering**: `configureForegroundHandler()` reads per-category prefs from AsyncStorage and suppresses display for disabled categories via `getNotificationCategory()` mapping
 
 ## Onboarding
-- **Screen**: `app/onboarding.tsx` — 4-step walkthrough (Welcome, Create Group, Add Expenses, Settle Up)
+- **Screen**: `app/onboarding.tsx` — 5-step walkthrough (Welcome, Your Currency, Create Group, Add Expenses, Settle Up)
+- **Currency step**: Pre-selects detected currency from device locale (`expo-localization`); user can change. Saves to backend on complete via `usersApi.updateMe()`
 - **Gate**: `AuthGate` in `_layout.tsx` checks `@splitr/onboarding_complete` AsyncStorage key
 - First-time signed-in users redirect to `/onboarding` instead of `/(tabs)`
 - Skip button on all steps except last; "Get Started" on final step
 - Key protected from cache clear in `privacy-security.tsx`
+- **Auto-detect fallback**: `_layout.tsx` auto-detects currency for existing users who have no `defaultCurrency` set (skips if `needsOnboarding` to avoid race condition with onboarding)
 
 ## 3D Touch Quick Actions
 - **Package**: `expo-quick-actions` — registered in `_layout.tsx` `RootLayout`
@@ -251,6 +254,28 @@ lib/
 - **Not needed**: `PATCH /v1/users/me`, `PATCH /v1/groups/{id}/members/{id}`
 - Edit expense passes `expense.version` in `edit-expense/[id].tsx`
 
+## Currency System
+- **Shared constants**: `lib/currencies.ts` — 7 supported currencies (USD, EUR, GBP, INR, CAD, AUD, JPY) with code, symbol, flag. `REGION_TO_CURRENCY` map for locale detection. `detectDefaultCurrency()` uses `expo-localization`
+- **Auto-detection**: Device locale → region code → currency. Fallback: USD
+- **User preference**: `defaultCurrency` on `UserDto`, set during onboarding or via profile edit
+- **Group currency**: Each group has `defaultCurrency`, inherited from user's preference on creation
+- **Multi-currency display**: Cross-group screens use `totalOwedByCurrency` / `totalOwingByCurrency` arrays. Single-group screens use `group.defaultCurrency`
+
+## Multi-Currency Net Balance (BE-17)
+- **Problem solved**: Naive cross-currency subtraction (£30 - $50 = -$48) produced meaningless numbers
+- **Backend**: `GET /v1/users/me/balance` returns `netBalanceConverted: { amount, currency, isEstimate, ratesAsOf }` — FX-converted net in user's `defaultCurrency`
+- **Frontend display priority**:
+  1. `netBalanceConverted` exists → show converted amount with "Estimated in {currency}" label
+  2. Multi-currency, no conversion → show per-currency net breakdown (e.g., `+£2.00  -$50.00`)
+  3. Single currency → show exact net with `AnimatedNumber`
+- **FX ownership**: Backend only (BE-10 contract). FE never calls FX providers
+- **`netBalanceCents`**: Legacy field, still sent by backend. Used for zero-checks and single-currency fallback. NOT used for multi-currency display
+
+## Wordmark Logo
+- **Component**: `components/icons/splitr-wordmark.tsx` — SVG component with `dark` and `light` variants
+- **Design**: Inter Extra Bold, teal dot on "i" and period after "r". Dark text for light mode, white text for dark mode
+- **Usage**: Home screen header (`app/(tabs)/index.tsx`)
+
 ## Known Gaps (Not Yet Implemented)
 - Activity `details.categoryName` — confirm backend populates this for category filtering
 - Deep link universal links — FE fully configured; BE must host `well-known/` files at `https://splitr.ai/.well-known/` (see `well-known/` directory in repo)
@@ -284,7 +309,7 @@ lib/
 - Every bug fix MUST include a regression test that would have caught the bug
 - Coverage regressions are treated as test failures — never merge code that lowers coverage
 - Use `npm run test:coverage` to verify before committing; flag any file below 95%
-- **Current baseline (2303 unit tests, 85 suites; 151 smoke; 96 integration; 49 dev-sanity)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
+- **Current baseline (2331 unit tests, 86 suites; 124 smoke; 96 integration; 57 dev-sanity)**: 95.39% statements, 82.76% branches, 96.72% lines. `lib/` at 99%, `components/ui/` at 99%, screens at 93%+
 
 ### Test Quality Standards
 - **Test behavior, not implementation** — assert what the user sees, not internal state

@@ -14,6 +14,10 @@ import { test, expect, checkBackendHealth } from "./helpers/sanity-auth";
 import { sanityFixtures } from "./helpers/sanity-fixtures";
 
 test.describe("Dev Sanity — Multi-Currency Balance", () => {
+  // This spec creates many groups/expenses per test — Clerk auth under serial
+  // execution can be slow. Triple the default timeout to avoid flaky auth failures.
+  test.slow();
+
   test.beforeEach(async ({}, testInfo) => {
     const healthy = await checkBackendHealth();
     if (!healthy) testInfo.skip();
@@ -611,5 +615,218 @@ test.describe("Dev Sanity — Multi-Currency Balance", () => {
     expect(eurSugg[0].amount).toBe(2500); // €25
     expect(eurSugg[0].fromUser?.id).toBe(userB.id);
     expect(eurSugg[0].toUser?.id).toBe(userA.id);
+  });
+
+  test("delete expense in one currency does not affect another", async ({
+    userAClient,
+    userBClient,
+  }) => {
+    const userA = await userAClient.getMe();
+    const userB = await userBClient.getMe();
+
+    // GBP group — A pays £40 split equally → B owes A £20
+    const gbpGroup = await userAClient.createGroup(
+      sanityFixtures.group({ name: "Delete X-Curr GBP", defaultCurrency: "GBP" })
+    );
+    await userBClient.joinGroupByInvite(gbpGroup.inviteCode!);
+    await userAClient.createExpense(
+      gbpGroup.id,
+      sanityFixtures.expense(userA.id, [userA.id, userB.id], {
+        totalAmount: 4000,
+        currency: "GBP",
+        description: "[SANITY] Delete xcurr GBP",
+      })
+    );
+
+    // USD group — A pays $80 split equally → B owes A $40
+    const usdGroup = await userAClient.createGroup(
+      sanityFixtures.group({ name: "Delete X-Curr USD", defaultCurrency: "USD" })
+    );
+    await userBClient.joinGroupByInvite(usdGroup.inviteCode!);
+    const usdExpense = await userAClient.createExpense(
+      usdGroup.id,
+      sanityFixtures.expense(userA.id, [userA.id, userB.id], {
+        totalAmount: 8000,
+        currency: "USD",
+        description: "[SANITY] Delete xcurr USD",
+      })
+    );
+
+    // Delete the USD expense
+    await userAClient.deleteExpense(usdExpense.id);
+
+    // USD group should have no suggestions
+    const usdSugg = await userAClient.getSettlementSuggestions(usdGroup.id);
+    expect(usdSugg.length).toBe(0);
+
+    // GBP group should be UNAFFECTED — B still owes A £20
+    const gbpSugg = await userAClient.getSettlementSuggestions(gbpGroup.id);
+    expect(gbpSugg.length).toBeGreaterThan(0);
+    expect(gbpSugg[0].currency).toBe("GBP");
+    expect(gbpSugg[0].amount).toBe(2000);
+  });
+
+  test("edit expense recalculates balance correctly", async ({
+    userAClient,
+    userBClient,
+  }) => {
+    const userA = await userAClient.getMe();
+    const userB = await userBClient.getMe();
+
+    const group = await userAClient.createGroup(
+      sanityFixtures.group({ name: "Edit Recalc" })
+    );
+    await userBClient.joinGroupByInvite(group.inviteCode!);
+
+    // A pays $100 split equally → B owes A $50
+    const expense = await userAClient.createExpense(
+      group.id,
+      sanityFixtures.expense(userA.id, [userA.id, userB.id], {
+        totalAmount: 10000,
+        currency: "USD",
+        description: "[SANITY] Edit recalc",
+      })
+    );
+
+    let sugg = await userAClient.getSettlementSuggestions(group.id);
+    expect(sugg[0].amount).toBe(5000); // $50
+
+    // Edit to $60
+    const fresh = await userAClient.getExpense(expense.id);
+    await userAClient.updateExpense(expense.id, {
+      description: "[SANITY] Edit recalc updated",
+      totalAmount: 6000,
+      currency: "USD",
+      expenseDate: new Date().toISOString().split("T")[0],
+      splitType: "EQUAL",
+      payers: [{ userId: userA.id, amountPaid: 6000 }],
+      splits: [
+        { userId: userA.id, splitAmount: 3000 },
+        { userId: userB.id, splitAmount: 3000 },
+      ],
+      version: fresh.version,
+    });
+
+    // B should now owe A $30 (half of $60)
+    sugg = await userAClient.getSettlementSuggestions(group.id);
+    expect(sugg[0].amount).toBe(3000);
+  });
+
+  test("full settlement zeroes multi-currency balance", async ({
+    userAClient,
+    userBClient,
+  }) => {
+    const userA = await userAClient.getMe();
+    const userB = await userBClient.getMe();
+
+    // Snapshot before
+    const before = await userAClient.getBalance();
+    const findAmount = (arr: any[], currency: string) =>
+      (arr ?? []).find((a: any) => a.currency === currency)?.amount ?? 0;
+
+    // GBP group — B owes A £25
+    const gbpGroup = await userAClient.createGroup(
+      sanityFixtures.group({ name: "Full Settle GBP", defaultCurrency: "GBP" })
+    );
+    await userBClient.joinGroupByInvite(gbpGroup.inviteCode!);
+    await userAClient.createExpense(
+      gbpGroup.id,
+      sanityFixtures.expense(userA.id, [userA.id, userB.id], {
+        totalAmount: 5000,
+        currency: "GBP",
+        description: "[SANITY] Full settle GBP",
+      })
+    );
+
+    // USD group — B owes A $30
+    const usdGroup = await userAClient.createGroup(
+      sanityFixtures.group({ name: "Full Settle USD", defaultCurrency: "USD" })
+    );
+    await userBClient.joinGroupByInvite(usdGroup.inviteCode!);
+    await userAClient.createExpense(
+      usdGroup.id,
+      sanityFixtures.expense(userA.id, [userA.id, userB.id], {
+        totalAmount: 6000,
+        currency: "USD",
+        description: "[SANITY] Full settle USD",
+      })
+    );
+
+    // Settle both fully
+    await userBClient.createSettlement(
+      gbpGroup.id,
+      sanityFixtures.settlement(userB.id, userA.id, { amount: 2500, currency: "GBP" })
+    );
+    await userBClient.createSettlement(
+      usdGroup.id,
+      sanityFixtures.settlement(userB.id, userA.id, { amount: 3000, currency: "USD" })
+    );
+
+    // Both groups should show zero suggestions
+    const gbpSugg = await userAClient.getSettlementSuggestions(gbpGroup.id);
+    const usdSugg = await userAClient.getSettlementSuggestions(usdGroup.id);
+    expect(gbpSugg.length).toBe(0);
+    expect(usdSugg.length).toBe(0);
+
+    // User balance: the delta from these groups should be zero
+    const after = await userAClient.getBalance();
+    const gbpDelta =
+      findAmount(after.totalOwed, "GBP") - findAmount(before.totalOwed, "GBP");
+    const usdDelta =
+      findAmount(after.totalOwed, "USD") - findAmount(before.totalOwed, "USD");
+    expect(gbpDelta).toBe(0);
+    expect(usdDelta).toBe(0);
+  });
+
+  test("guest member in multi-currency group has correct suggestions", async ({
+    userAClient,
+    userBClient,
+  }) => {
+    const userA = await userAClient.getMe();
+
+    // GBP group with a guest
+    const group = await userAClient.createGroup(
+      sanityFixtures.group({ name: "Guest Multi-Curr", defaultCurrency: "GBP" })
+    );
+    const guest = await userAClient.addGuestMember(group.id, {
+      name: "[SANITY] Guest Franco",
+    });
+    const guestId = guest.guestUser?.id ?? guest.id;
+
+    // A pays £90 split 3 ways (A + B via invite + guest)
+    await userBClient.joinGroupByInvite(group.inviteCode!);
+    const userB = await userBClient.getMe();
+
+    await userAClient.createExpense(group.id, {
+      description: "[SANITY] Guest multi-curr",
+      totalAmount: 9000,
+      currency: "GBP",
+      expenseDate: new Date().toISOString().split("T")[0],
+      splitType: "EQUAL",
+      payers: [{ userId: userA.id, amountPaid: 9000 }],
+      splits: [
+        { userId: userA.id, splitAmount: 3000 },
+        { userId: userB.id, splitAmount: 3000 },
+        { guestUserId: guestId, splitAmount: 3000 },
+      ],
+    });
+
+    const suggestions = await userAClient.getSettlementSuggestions(group.id);
+
+    // Should have 2 suggestions: B owes A £30, Guest owes A £30
+    expect(suggestions.length).toBe(2);
+
+    const bDebt = suggestions.find((s: any) => s.fromUser?.id === userB.id);
+    const guestDebt = suggestions.find(
+      (s: any) => s.fromGuest?.id === guestId || s.fromGuestUser?.id === guestId
+    );
+
+    expect(bDebt).toBeTruthy();
+    expect(bDebt!.amount).toBe(3000);
+    expect(bDebt!.currency).toBe("GBP");
+
+    expect(guestDebt).toBeTruthy();
+    expect(guestDebt!.amount).toBe(3000);
+    expect(guestDebt!.currency).toBe("GBP");
   });
 });
