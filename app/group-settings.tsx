@@ -413,6 +413,7 @@ export default function GroupSettingsScreen() {
       const token = await getToken();
       const updated = await inviteApi.regenerate(groupId, token!);
       setGroup(updated);
+      invalidateAfterGroupChange();
       hapticSuccess();
       toast.success("Invite link regenerated.");
     } catch {

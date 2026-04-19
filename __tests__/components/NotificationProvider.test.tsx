@@ -414,4 +414,108 @@ describe("NotificationProvider", () => {
 
     expect(mockRemoveListener).toHaveBeenCalled();
   });
+
+  it("does not crash when unmounted during pending token registration", async () => {
+    notifMocks.registerPushToken.mockImplementation(async (callback: Function) => {
+      await new Promise((r) => setTimeout(r, 100));
+      await callback("push-token-123", "ios", "device-id", "Test Device");
+    });
+
+    const { unmount } = render(
+      <NotificationProvider>
+        <Text>App</Text>
+      </NotificationProvider>
+    );
+
+    unmount();
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 150));
+    });
+    // If we reach here without throwing, test passes
+    expect(notifMocks.registerPushToken).toHaveBeenCalled();
+  });
+
+  it("handles API register callback errors gracefully without crashing", async () => {
+    // Mirror the real lib/notifications.ts behavior: callback rejections are caught inside registerPushToken
+    notifMocks.registerPushToken.mockImplementationOnce(async (callback: Function) => {
+      try {
+        await callback("push-token-123", "ios", "device-id", "Test Device");
+      } catch {
+        // Swallowed — matches real registerPushToken try/catch
+      }
+    });
+    mockRegisterPushToken.mockRejectedValueOnce(new Error("network down"));
+
+    render(
+      <NotificationProvider>
+        <Text>App</Text>
+      </NotificationProvider>
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    // Register was invoked; the rejection is swallowed inside lib/notifications.ts
+    expect(notifMocks.registerPushToken).toHaveBeenCalled();
+    expect(mockRegisterPushToken).toHaveBeenCalled();
+  });
+
+  it("does not double-navigate when both cold-start and runtime listener see the same notification", () => {
+    jest.useFakeTimers();
+
+    const sharedResponse = {
+      notification: {
+        request: { identifier: "shared-notif-id" },
+      },
+    };
+
+    mockUseLastNotificationResponse.mockReturnValue(sharedResponse);
+
+    render(
+      <NotificationProvider>
+        <Text>App</Text>
+      </NotificationProvider>
+    );
+
+    // Fire runtime listener with same identifier (should be dedup'd against cold-start)
+    if (notificationResponseCallback) {
+      notificationResponseCallback(sharedResponse);
+    }
+
+    // Advance timers to let cold-start setTimeout fire
+    jest.advanceTimersByTime(600);
+
+    // Exactly one push total — dedup works regardless of who fires first
+    expect(mockPush).toHaveBeenCalledTimes(1);
+
+    jest.useRealTimers();
+  });
+
+  it("unregisters token on sign-out even when unregister API call throws", async () => {
+    mockIsSignedIn = false;
+    // Mirror the real lib/notifications.ts behavior: callback rejections are caught inside unregisterPushToken
+    notifMocks.unregisterPushToken.mockImplementationOnce(async (callback: Function) => {
+      try {
+        await callback("push-token-123");
+      } catch {
+        // Swallowed — matches real unregisterPushToken try/catch
+      }
+    });
+    mockUnregisterPushTokenApi.mockRejectedValueOnce(new Error("network fail"));
+
+    render(
+      <NotificationProvider>
+        <Text>App</Text>
+      </NotificationProvider>
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    // unregisterPushToken is still invoked; lib/notifications catches the API error internally
+    expect(notifMocks.unregisterPushToken).toHaveBeenCalled();
+  });
 });

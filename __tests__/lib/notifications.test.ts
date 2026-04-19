@@ -174,6 +174,20 @@ describe("notifications.ts", () => {
       const result = await callHandler("settlement_nudge_debtor");
       expect(result.shouldShowBanner).toBe(false);
     });
+
+    it("falls back to defaults (shows notification) when AsyncStorage.getItem rejects", async () => {
+      (AsyncStorage.getItem as jest.Mock).mockRejectedValue(new Error("storage broken"));
+      const result = await callHandler("expense_created");
+      // Defaults have enabled=true and all categories on, so banner should show
+      expect(result.shouldShowBanner).toBe(true);
+      expect(result.shouldShowList).toBe(true);
+    });
+
+    it("falls back to defaults when stored prefs JSON is malformed", async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue("{not valid json");
+      const result = await callHandler("expense_created");
+      expect(result.shouldShowBanner).toBe(true);
+    });
   });
 
   describe("getNotificationPermissionStatus", () => {
@@ -275,6 +289,20 @@ describe("notifications.ts", () => {
       expect(token).toBeNull();
       expect(mockRegister).not.toHaveBeenCalled();
       (Device as any).isDevice = true;
+    });
+
+    it("re-registers with new token when stored token differs from current Expo token", async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue("ExponentPushToken[stale]");
+      const mockRegister = jest.fn(() => Promise.resolve());
+      const token = await registerPushToken(mockRegister);
+      expect(token).toBe("ExponentPushToken[abc123]");
+      expect(mockRegister).toHaveBeenCalledWith(
+        "ExponentPushToken[abc123]",
+        expect.any(String),
+        expect.any(String),
+        expect.any(String)
+      );
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith("@splitr/push_token", "ExponentPushToken[abc123]");
     });
 
     it("uses fallback deviceId when no projectId in config", async () => {
@@ -439,6 +467,18 @@ describe("notifications.ts", () => {
         NOTIFICATION_PREFS_KEY,
         JSON.stringify(prefs)
       );
+    });
+
+    it("returns defaults when stored prefs JSON is corrupted", async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue("{corrupt");
+      const prefs = await getNotificationPreferences();
+      expect(prefs).toEqual(DEFAULT_NOTIFICATION_PREFS);
+    });
+
+    it("returns defaults when AsyncStorage.getItem rejects", async () => {
+      (AsyncStorage.getItem as jest.Mock).mockRejectedValue(new Error("storage error"));
+      const prefs = await getNotificationPreferences();
+      expect(prefs).toEqual(DEFAULT_NOTIFICATION_PREFS);
     });
   });
 

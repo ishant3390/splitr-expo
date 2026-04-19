@@ -184,8 +184,9 @@ export async function registerPushToken(
   try {
     await apiRegister(token, Platform.OS, deviceId, deviceName);
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
-  } catch {
-    // Non-fatal — will retry on next launch
+  } catch (err) {
+    // Non-fatal — will retry on next launch. Surface so silent failures are visible in dev logs.
+    console.warn("[push] registerPushToken failed:", err);
   }
 
   return token;
@@ -202,8 +203,9 @@ export async function unregisterPushToken(
 
   try {
     await apiUnregister(token);
-  } catch {
-    // Best effort — token will become stale on backend eventually
+  } catch (err) {
+    // Best effort — token will become stale on backend eventually. Surface for dev visibility.
+    console.warn("[push] unregisterPushToken failed:", err);
   }
 
   await AsyncStorage.removeItem(PUSH_TOKEN_KEY);

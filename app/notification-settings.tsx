@@ -91,10 +91,10 @@ export default function NotificationSettingsScreen() {
     const granted = await requestNotificationPermission();
     setSystemPermission(granted);
     if (!granted) {
-      // Permission permanently denied — direct to system settings
+      // Permission permanently denied — direct to system settings (native only)
       if (Platform.OS === "ios") {
         Linking.openURL("app-settings:");
-      } else {
+      } else if (Platform.OS === "android") {
         Linking.openSettings();
       }
     }
