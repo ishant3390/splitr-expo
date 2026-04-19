@@ -235,36 +235,48 @@ export default function AuthScreen() {
           </View>
 
           {/* Primary OAuth buttons — Google & Apple */}
+          {/*
+            Background/styling is applied to a child View rather than directly to
+            Pressable's style function. Under Fabric (new arch), a Pressable whose
+            style function returns an object without a non-zero borderWidth can
+            fail to paint its backgroundColor. Wrapping content in a styled View
+            sidesteps that entirely.
+          */}
           <View style={{ gap: 12, marginBottom: 20 }}>
             {/* Google — use card bg with a stronger border so it lifts off the page background */}
             <Pressable
               onPress={() => handleOAuth("oauth_google")}
               accessibilityRole="button"
               accessibilityLabel={`${actionLabel} with Google`}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 12,
-                paddingVertical: 14,
-                borderRadius: radius.DEFAULT,
-                backgroundColor: c.card,
-                borderWidth: 1.5,
-                borderColor: isDark ? c.border : "#cbd5e1",
-                opacity: pressed ? 0.85 : 1,
-                ...(isDark ? {} : {
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.08,
-                  shadowRadius: 4,
-                  elevation: 2,
-                }),
-              })}
             >
-              <GoogleIcon size={20} />
-              <Text style={{ fontSize: 15, fontWeight: "600", color: c.foreground }}>
-                {actionLabel} with Google
-              </Text>
+              {({ pressed }) => (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 12,
+                    paddingVertical: 14,
+                    borderRadius: radius.DEFAULT,
+                    backgroundColor: c.card,
+                    borderWidth: 1.5,
+                    borderColor: isDark ? c.border : "#cbd5e1",
+                    opacity: pressed ? 0.85 : 1,
+                    ...(isDark ? {} : {
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.08,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    }),
+                  }}
+                >
+                  <GoogleIcon size={20} />
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: c.foreground }}>
+                    {actionLabel} with Google
+                  </Text>
+                </View>
+              )}
             </Pressable>
 
             {/* Apple — use colorScheme directly (same source NativeWind uses for className dark/light) */}
@@ -272,23 +284,28 @@ export default function AuthScreen() {
               onPress={() => handleOAuth("oauth_apple")}
               accessibilityRole="button"
               accessibilityLabel={`${actionLabel} with Apple`}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 12,
-                paddingVertical: 14,
-                borderRadius: radius.DEFAULT,
-                backgroundColor: isDark ? "#f5f5f5" : palette.black,
-                borderWidth: isDark ? 1 : 0,
-                borderColor: isDark ? c.border : "transparent",
-                opacity: pressed ? 0.85 : 1,
-              })}
             >
-              <AppleIcon size={20} color={isDark ? palette.black : palette.white} />
-              <Text style={{ fontSize: 15, fontWeight: "600", color: isDark ? palette.black : palette.white }}>
-                {actionLabel} with Apple
-              </Text>
+              {({ pressed }) => (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 12,
+                    paddingVertical: 14,
+                    borderRadius: radius.DEFAULT,
+                    backgroundColor: isDark ? "#f5f5f5" : palette.black,
+                    borderWidth: isDark ? 1 : 0,
+                    borderColor: isDark ? c.border : "transparent",
+                    opacity: pressed ? 0.85 : 1,
+                  }}
+                >
+                  <AppleIcon size={20} color={isDark ? palette.black : palette.white} />
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: isDark ? palette.black : palette.white }}>
+                    {actionLabel} with Apple
+                  </Text>
+                </View>
+              )}
             </Pressable>
           </View>
 
@@ -307,21 +324,27 @@ export default function AuthScreen() {
               <Pressable
                 onPress={() => router.push("/(auth)/signup-form")}
                 accessibilityRole="button"
-                style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  paddingVertical: 14,
-                  borderRadius: radius.DEFAULT,
-                  backgroundColor: c.primary,
-                  opacity: pressed ? 0.9 : 1,
-                })}
+                accessibilityLabel="Sign up with email or phone"
               >
-                <Mail size={18} color={palette.white} />
-                <Text style={{ fontSize: 15, fontWeight: "600", color: palette.white }}>
-                  Sign up with email or phone
-                </Text>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 10,
+                      paddingVertical: 14,
+                      borderRadius: radius.DEFAULT,
+                      backgroundColor: c.primary,
+                      opacity: pressed ? 0.9 : 1,
+                    }}
+                  >
+                    <Mail size={18} color={palette.white} />
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: palette.white }}>
+                      Sign up with email or phone
+                    </Text>
+                  </View>
+                )}
               </Pressable>
             </View>
           ) : showEmailSignIn ? (
@@ -346,23 +369,28 @@ export default function AuthScreen() {
             <Pressable
               onPress={() => setShowEmailSignIn(true)}
               accessibilityRole="button"
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                paddingVertical: 14,
-                marginTop: 8,
-                borderRadius: radius.DEFAULT,
-                borderWidth: 1.5,
-                borderColor: isDark ? c.border : "#cbd5e1",
-                opacity: pressed ? 0.85 : 1,
-              })}
+              accessibilityLabel="Sign in with email or phone"
             >
-              <Mail size={18} color={c.mutedForeground} />
-              <Text style={{ fontSize: 15, fontWeight: "500", color: c.foreground }}>
-                Sign in with email or phone
-              </Text>
+              {({ pressed }) => (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    paddingVertical: 14,
+                    marginTop: 8,
+                    borderRadius: radius.DEFAULT,
+                    backgroundColor: c.primary,
+                    opacity: pressed ? 0.9 : 1,
+                  }}
+                >
+                  <Mail size={18} color={palette.white} />
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: palette.white }}>
+                    Sign in with email or phone
+                  </Text>
+                </View>
+              )}
             </Pressable>
           )}
 
