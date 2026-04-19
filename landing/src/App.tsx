@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import { motion, AnimatePresence, useInView } from "motion/react";
 import {
   ArrowRight,
@@ -1199,10 +1201,10 @@ const Footer = () => (
       </div>
 
       <div className="flex gap-6 text-sm text-slate-400 font-medium">
-        <a href="#" className="hover:text-teal-600 transition-colors">
+        <a href="/privacy" className="hover:text-teal-600 transition-colors">
           Privacy
         </a>
-        <a href="#" className="hover:text-teal-600 transition-colors">
+        <a href="/terms" className="hover:text-teal-600 transition-colors">
           Terms
         </a>
         <a
@@ -1231,6 +1233,10 @@ const ComingSoonBanner = () => (
 );
 
 export default function App() {
+  const path = window.location.pathname;
+  if (path === "/terms") return <TermsPage />;
+  if (path === "/privacy") return <PrivacyPage />;
+
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-teal-200 selection:text-teal-900">
       <ComingSoonBanner />

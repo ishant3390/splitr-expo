@@ -18,6 +18,27 @@
     --color-border-subtle: #f1f5f9;
   }
 
+  /* System preference — drives CSS variable switching on web without JS,
+     and is the authoritative dark-mode trigger for NativeWind "media" mode. */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background: #000000;
+      --color-foreground: #f1f5f9;
+      --color-card: #0d0d0d;
+      --color-card-foreground: #f1f5f9;
+      --color-muted: #1a1a1a;
+      --color-muted-foreground: #a1a1aa;
+      --color-border: #262626;
+      --color-input: #262626;
+      --color-secondary: #0d0d0d;
+      --color-secondary-foreground: #e2e8f0;
+      --color-surface-tint: #042f2e;
+      --color-border-subtle: rgba(255,255,255,0.06);
+    }
+  }
+
+  /* Manual override — NativeWind adds/removes .dark on <html> when the user
+     explicitly sets a theme via setColorScheme("dark"/"light") in Profile. */
   .dark {
     --color-background: #000000;
     --color-foreground: #f1f5f9;

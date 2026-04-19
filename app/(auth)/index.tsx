@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, ScrollView, Pressable, Platform, useWindowDimensions } from "react-native";
+import { View, Text, ScrollView, Pressable, Platform, useWindowDimensions, StyleSheet } from "react-native";
 import { useColorScheme } from "nativewind";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -20,6 +20,17 @@ import { GRADIENTS } from "@/lib/gradients";
 import type { OAuthStrategy } from "@clerk/types";
 
 WebBrowser.maybeCompleteAuthSession();
+
+const TERMS_URL = "https://splitr.ai/terms";
+const PRIVACY_URL = "https://splitr.ai/privacy";
+
+async function openUrl(url: string) {
+  if (Platform.OS === "web") {
+    window.open(url, "_blank", "noopener,noreferrer");
+  } else {
+    await WebBrowser.openBrowserAsync(url);
+  }
+}
 
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState<"signup" | "signin">("signup");
@@ -225,7 +236,7 @@ export default function AuthScreen() {
 
           {/* Primary OAuth buttons — Google & Apple */}
           <View style={{ gap: 12, marginBottom: 20 }}>
-            {/* Google */}
+            {/* Google — use card bg with a stronger border so it lifts off the page background */}
             <Pressable
               onPress={() => handleOAuth("oauth_google")}
               accessibilityRole="button"
@@ -237,10 +248,17 @@ export default function AuthScreen() {
                 gap: 12,
                 paddingVertical: 14,
                 borderRadius: radius.DEFAULT,
-                backgroundColor: isDark ? "#1a1a1a" : palette.white,
-                borderWidth: 1,
-                borderColor: isDark ? c.border : "#e2e8f0",
+                backgroundColor: c.card,
+                borderWidth: 1.5,
+                borderColor: isDark ? c.border : "#cbd5e1",
                 opacity: pressed ? 0.85 : 1,
+                ...(isDark ? {} : {
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }),
               })}
             >
               <GoogleIcon size={20} />
@@ -249,7 +267,7 @@ export default function AuthScreen() {
               </Text>
             </Pressable>
 
-            {/* Apple */}
+            {/* Apple — use colorScheme directly (same source NativeWind uses for className dark/light) */}
             <Pressable
               onPress={() => handleOAuth("oauth_apple")}
               accessibilityRole="button"
@@ -261,7 +279,9 @@ export default function AuthScreen() {
                 gap: 12,
                 paddingVertical: 14,
                 borderRadius: radius.DEFAULT,
-                backgroundColor: isDark ? palette.white : palette.black,
+                backgroundColor: isDark ? "#f5f5f5" : palette.black,
+                borderWidth: isDark ? 1 : 0,
+                borderColor: isDark ? c.border : "transparent",
                 opacity: pressed ? 0.85 : 1,
               })}
             >
@@ -334,8 +354,8 @@ export default function AuthScreen() {
                 paddingVertical: 14,
                 marginTop: 8,
                 borderRadius: radius.DEFAULT,
-                borderWidth: 1,
-                borderColor: c.border,
+                borderWidth: 1.5,
+                borderColor: isDark ? c.border : "#cbd5e1",
                 opacity: pressed ? 0.85 : 1,
               })}
             >
@@ -347,20 +367,32 @@ export default function AuthScreen() {
           )}
 
           {/* Terms */}
-          <Text
-            style={{
-              fontSize: 12,
-              color: c.mutedForeground,
-              textAlign: "center",
-              lineHeight: 18,
-              marginTop: 24,
-            }}
-          >
-            By continuing, you agree to our{" "}
-            <Text style={{ color: c.primary, fontWeight: "500" }}>Terms of Service</Text>
-            {" "}and{" "}
-            <Text style={{ color: c.primary, fontWeight: "500" }}>Privacy Policy</Text>
-          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", marginTop: 24, gap: 0 }}>
+            <Text style={{ fontSize: 12, color: c.mutedForeground, lineHeight: 18 }}>
+              {"By continuing, you agree to our "}
+            </Text>
+            <Pressable
+              onPress={() => openUrl(TERMS_URL)}
+              accessibilityRole="link"
+              accessibilityLabel="Terms of Service"
+              hitSlop={6}
+            >
+              <Text style={{ fontSize: 12, color: c.primary, fontWeight: "600", lineHeight: 18 }}>
+                Terms of Service
+              </Text>
+            </Pressable>
+            <Text style={{ fontSize: 12, color: c.mutedForeground, lineHeight: 18 }}>{" and "}</Text>
+            <Pressable
+              onPress={() => openUrl(PRIVACY_URL)}
+              accessibilityRole="link"
+              accessibilityLabel="Privacy Policy"
+              hitSlop={6}
+            >
+              <Text style={{ fontSize: 12, color: c.primary, fontWeight: "600", lineHeight: 18 }}>
+                Privacy Policy
+              </Text>
+            </Pressable>
+          </View>
 
           {/* Footer toggle */}
           <Pressable

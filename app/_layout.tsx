@@ -197,8 +197,12 @@ function BiometricLockGate({ children }: { children: React.ReactNode }) {
       const previousState = appStateRef.current;
       appStateRef.current = nextState;
 
-      const wasBackgrounded =
-        previousState === "background" || previousState === "inactive";
+      // Only treat genuine background as "was backgrounded".
+      // iOS fires "inactive" during Face ID dialogs, incoming calls, and
+      // notification banners — including the Face ID prompt itself. Including
+      // "inactive" here causes an infinite loop: Face ID completion triggers
+      // inactive→active which re-invokes promptForUnlock which re-prompts.
+      const wasBackgrounded = previousState === "background";
       if (wasBackgrounded && nextState === "active") {
         promptForUnlock();
       }
@@ -241,7 +245,7 @@ function BiometricLockGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const { setColorScheme } = useColorScheme();
+  const { colorScheme, setColorScheme } = useColorScheme();
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -295,7 +299,7 @@ export default function RootLayout() {
               <ToastProvider>
                 <NetworkProvider>
                   <NotificationProvider>
-                    <StatusBar style={Appearance.getColorScheme() === "dark" ? "light" : "dark"} />
+                    <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
                     <BiometricLockGate>
                       <AuthGate />
                     </BiometricLockGate>

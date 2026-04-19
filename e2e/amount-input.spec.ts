@@ -42,4 +42,38 @@ test.describe("Amount Input (decimal inputMode)", () => {
     const symbolText = (await symbol.textContent())?.trim();
     expect(symbolText?.length).toBeGreaterThan(0);
   });
+
+  test("3rd decimal digit is rejected — input stays at 2 decimal places (flicker prevention)", async ({ page }) => {
+    const amountInput = page.getByTestId("amount-input");
+    await expect(amountInput).toBeVisible({ timeout: 5000 });
+
+    // Type exactly 2 decimal digits
+    await amountInput.fill("42.50");
+    await expect(amountInput).toHaveValue("42.50");
+
+    // Attempt to type a 3rd decimal digit — maxLength should block it
+    await amountInput.press("3");
+    const valueAfter = await amountInput.inputValue();
+    expect(valueAfter).toBe("42.50");
+    expect(valueAfter).not.toContain("42.503");
+  });
+
+  test("font size shrinks as the number gets longer", async ({ page }) => {
+    const amountInput = page.getByTestId("amount-input");
+    await expect(amountInput).toBeVisible({ timeout: 5000 });
+
+    // Short number → large font
+    await amountInput.fill("42");
+    const shortFontSize = await amountInput.evaluate(
+      (el) => parseFloat(getComputedStyle(el).fontSize)
+    );
+    expect(shortFontSize).toBe(48);
+
+    // Long number → smaller font
+    await amountInput.fill("123456789");
+    const longFontSize = await amountInput.evaluate(
+      (el) => parseFloat(getComputedStyle(el).fontSize)
+    );
+    expect(longFontSize).toBeLessThan(48);
+  });
 });

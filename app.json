@@ -19,6 +19,7 @@
         "applinks:splitr.ai"
       ],
       "infoPlist": {
+        "NSFaceIDUsageDescription": "Splitr uses Face ID to securely unlock the app.",
         "NSCameraUsageDescription": "Splitr needs camera access to scan receipts.",
         "NSPhotoLibraryUsageDescription": "Splitr needs photo library access to select receipt images.",
         "NSContactsUsageDescription": "Splitr uses your contacts to find friends already on the app and send invites."

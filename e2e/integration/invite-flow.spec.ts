@@ -167,4 +167,54 @@ test.describe("Invite Flow", () => {
       expect(newGroup.inviteCode).not.toBe(originalCode);
     }
   });
+
+  test("inviteByEmail creates a guest member carrying the provided name in listMembers", async ({
+    apiClient,
+  }) => {
+    const group = await apiClient.createGroup(
+      fixtures.group({ name: "Invite Email Name" })
+    );
+    const guestName = `[E2E] Email Invite ${Date.now().toString(36)}`;
+    const guestEmail = `e2e-invite-${Date.now()}@test.splitr.ai`;
+
+    const invited = await apiClient.inviteByEmail(group.id, guestEmail, guestName);
+
+    // Returned member should be a guest (no real user linked yet) with the correct name
+    const returnedName =
+      (invited as any).displayName ||
+      (invited as any).guestUser?.name ||
+      (invited as any).user?.name ||
+      "";
+    expect(returnedName).toContain("[E2E] Email Invite");
+    expect((invited as any).user).toBeFalsy();
+    expect((invited as any).guestUser).toBeTruthy();
+
+    // Member must appear in listMembers with same name
+    const members = await apiClient.listMembers(group.id);
+    const found = members.find(
+      (m: any) =>
+        m.displayName?.includes("[E2E] Email Invite") ||
+        m.guestUser?.name?.includes("[E2E] Email Invite")
+    );
+    expect(found).toBeTruthy();
+    // Confirm the member is still a guest — not yet a real user
+    expect((found as any).user).toBeFalsy();
+    expect((found as any).guestUser).toBeTruthy();
+  });
+
+  test("joining with a fabricated invite code returns an error (ERR-300 or ERR-401)", async ({
+    apiClient,
+  }) => {
+    const fakeCode = `INVALID${Date.now().toString(36).toUpperCase()}`;
+
+    const result = await apiClient.requestSafe("/v1/groups/join", {
+      method: "POST",
+      body: JSON.stringify({ inviteCode: fakeCode }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect([400, 404, 422]).toContain(result.status);
+    const errorBody = result.error ? JSON.parse(result.error) : {};
+    expect(["ERR-300", "ERR-401"]).toContain(errorBody.code);
+  });
 });

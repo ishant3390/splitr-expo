@@ -449,6 +449,41 @@ export default function AddExpenseScreen() {
       return;
     }
 
+    // Pre-submit: validate that the payer still resolves to a known member with a backend identity.
+    // selectedPayerMemberId can go stale (e.g. member reload failed or IDs changed after guest promotion).
+    const payerMemberCheck = members.find((m) => m.id === selectedPayerMemberId);
+    if (!payerMemberCheck) {
+      hapticError();
+      toast.error("Payer not found. Please re-select who paid.");
+      return;
+    }
+    if (!payerMemberCheck.user?.id && !payerMemberCheck.guestUser?.id) {
+      hapticError();
+      toast.error("Payer account isn't linked yet. Please re-select who paid.");
+      return;
+    }
+
+    // Pre-submit: flag any split participant that has no backend identity (neither userId nor guestUserId).
+    // This catches guests who were promoted to real users but whose IDs haven't refreshed yet.
+    const identitylessSplitMembers = splitWith
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is GroupMemberDto => !!m && !m.user?.id && !m.guestUser?.id);
+    if (identitylessSplitMembers.length > 0) {
+      hapticError();
+      toast.error("Some participants need a refresh. Updating member list…");
+      const refreshToken = await getToken();
+      const refreshed = await groupsApi.listMembers(selectedGroup!.id, refreshToken!).catch(() => null);
+      if (refreshed) {
+        const list = dedupeMembers(Array.isArray(refreshed) ? refreshed : []);
+        setMembers(list);
+        setSplitWith(list.map((m) => m.id));
+        const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+        const current = list.find((m) => m.user?.email === currentEmail);
+        setSelectedPayerMemberId(current?.id ?? list[0]?.id ?? null);
+      }
+      return;
+    }
+
     setSubmitting(true);
     try {
       const token = await getToken();
@@ -604,7 +639,25 @@ export default function AddExpenseScreen() {
     } catch (err: unknown) {
       hapticError();
       const apiErr = parseApiError(err);
-      toast.error(apiErr ? getUserMessage(apiErr) : "Something went wrong. Try again later.");
+      if (apiErr?.code === "ERR-420" && selectedGroup) {
+        // Participant IDs went stale (e.g. guest-to-user promotion). Refresh the member list
+        // so the user can immediately retry with up-to-date data.
+        toast.error("Participant details changed. Member list refreshed — please try again.");
+        try {
+          const refreshToken = await getToken();
+          const refreshed = await groupsApi.listMembers(selectedGroup.id, refreshToken!);
+          const list = dedupeMembers(Array.isArray(refreshed) ? refreshed : []);
+          setMembers(list);
+          setSplitWith(list.map((m) => m.id));
+          const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+          const current = list.find((m) => m.user?.email === currentEmail);
+          setSelectedPayerMemberId(current?.id ?? list[0]?.id ?? null);
+        } catch {
+          // silently ignore refresh failure — user can manually retry
+        }
+      } else {
+        toast.error(apiErr ? getUserMessage(apiErr) : "Something went wrong. Try again later.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -707,11 +760,23 @@ export default function AddExpenseScreen() {
                 onPress={() => amountInputRef.current?.focus()}
                 style={{ width: "100%", alignItems: "center" }}
               >
+                {(() => {
+                  // Lock at dotIdx+3 once 2 decimals are typed — prevents 3rd-decimal flicker
+                  const amountMaxLength = amount.includes(".")
+                    ? amount.indexOf(".") + 3
+                    : 15;
+                  // Shrink font as the number grows so it never runs off-screen
+                  const amountFontSize =
+                    amount.length <= 7 ? 48
+                    : amount.length <= 9 ? 40
+                    : amount.length <= 11 ? 32
+                    : 26;
+                  return (
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", maxWidth: "100%" }}>
                   <Text
                     testID="amount-currency-symbol"
                     style={{
-                      fontSize: 48,
+                      fontSize: amountFontSize,
                       fontWeight: "700",
                       fontVariant: ["tabular-nums"],
                       color: c.foreground,
@@ -722,17 +787,20 @@ export default function AddExpenseScreen() {
                   <TextInput
                     ref={amountInputRef}
                     value={amount}
-                    onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
+                    onChangeText={(val) => {
+                      const sanitized = sanitizeAmountInput(val);
+                      if (sanitized !== amount) setAmount(sanitized);
+                    }}
                     keyboardType="decimal-pad"
                     inputMode="decimal"
                     placeholder="0"
                     testID="amount-input"
-                    maxLength={12}
+                    maxLength={amountMaxLength}
                     placeholderTextColor={c.placeholder}
                     className="text-foreground"
                     inputAccessoryViewID="amount-done"
                     style={{
-                      fontSize: 48,
+                      fontSize: amountFontSize,
                       fontWeight: "700",
                       padding: 0,
                       fontVariant: ["tabular-nums"],
@@ -747,6 +815,8 @@ export default function AddExpenseScreen() {
                     }}
                   />
                 </View>
+                  );
+                })()}
               </Pressable>
             </View>
           </Animated.View>

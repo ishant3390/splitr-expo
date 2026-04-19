@@ -562,10 +562,20 @@ export default function EditExpenseScreen() {
               onPress={() => amountInputRef.current?.focus()}
               style={{ width: "100%", alignItems: "center" }}
             >
+              {(() => {
+                const amountMaxLength = amount.includes(".")
+                  ? amount.indexOf(".") + 3
+                  : 15;
+                const amountFontSize =
+                  amount.length <= 7 ? 48
+                  : amount.length <= 9 ? 40
+                  : amount.length <= 11 ? 32
+                  : 26;
+                return (
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Text
                   style={{
-                    fontSize: 48,
+                    fontSize: amountFontSize,
                     fontWeight: "700",
                     fontVariant: ["tabular-nums"],
                     color: amount ? c.foreground : c.placeholder,
@@ -576,15 +586,19 @@ export default function EditExpenseScreen() {
                 <TextInput
                   ref={amountInputRef}
                   value={amount}
-                  onChangeText={(val) => setAmount(sanitizeAmountInput(val))}
+                  onChangeText={(val) => {
+                    const sanitized = sanitizeAmountInput(val);
+                    if (sanitized !== amount) setAmount(sanitized);
+                  }}
                   keyboardType="decimal-pad"
                   inputMode="decimal"
                   placeholder="0"
                   testID="amount-input"
+                  maxLength={amountMaxLength}
                   placeholderTextColor={c.placeholder}
                   className="text-foreground"
                   style={{
-                    fontSize: 48,
+                    fontSize: amountFontSize,
                     fontWeight: "700",
                     padding: 0,
                     fontVariant: ["tabular-nums"],
@@ -592,6 +606,8 @@ export default function EditExpenseScreen() {
                   }}
                 />
               </View>
+                );
+              })()}
             </Pressable>
           </View>
 
