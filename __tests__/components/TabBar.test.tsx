@@ -21,12 +21,15 @@ jest.mock("lucide-react-native", () => ({
   Plus: "Plus",
 }));
 
-import { TabBar } from "@/components/TabBar";
+import { TabBar, getGroupIdFromPath } from "@/components/TabBar";
 import { hapticSelection, hapticMedium } from "@/lib/haptics";
 
 const mockNavigate = jest.fn();
 const mockEmit = jest.fn(() => ({ defaultPrevented: false }));
 const mockPush = jest.fn();
+
+const pathnameRef: { current: string } = { current: "/(tabs)" };
+const setMockPathname = (path: string) => { pathnameRef.current = path; };
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({
@@ -37,6 +40,7 @@ jest.mock("expo-router", () => ({
   }),
   useLocalSearchParams: () => ({}),
   useSegments: () => [],
+  usePathname: () => pathnameRef.current,
   Link: "Link",
 }));
 
@@ -116,19 +120,41 @@ describe("TabBar", () => {
   });
 
   it("navigates to add screen on FAB press", () => {
+    setMockPathname("/(tabs)");
     render(<TabBar {...createMockProps()} />);
     fireEvent.press(screen.getByLabelText("Add Expense"));
     expect(hapticMedium).toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith("/(tabs)/add");
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/(tabs)/add", params: {} });
   });
 
   it("navigates to quick add on FAB long press", () => {
+    setMockPathname("/(tabs)");
     render(<TabBar {...createMockProps()} />);
     fireEvent(screen.getByLabelText("Add Expense"), "longPress");
     expect(hapticMedium).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/(tabs)/add",
       params: { quick: "true" },
+    });
+  });
+
+  it("forwards returnGroupId when FAB pressed from a group screen", () => {
+    setMockPathname("/group/abc-123");
+    render(<TabBar {...createMockProps()} />);
+    fireEvent.press(screen.getByLabelText("Add Expense"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/(tabs)/add",
+      params: { returnGroupId: "abc-123" },
+    });
+  });
+
+  it("forwards returnGroupId via long press from a group screen", () => {
+    setMockPathname("/(tabs)/groups/g-42");
+    render(<TabBar {...createMockProps()} />);
+    fireEvent(screen.getByLabelText("Add Expense"), "longPress");
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/(tabs)/add",
+      params: { quick: "true", returnGroupId: "g-42" },
     });
   });
 
@@ -148,5 +174,39 @@ describe("TabBar", () => {
     render(<TabBar {...createMockProps(3)} />);
     const activityTab = screen.getByLabelText("Activity");
     expect(activityTab.props.accessibilityState).toEqual({ selected: true });
+  });
+});
+
+describe("getGroupIdFromPath", () => {
+  it("extracts id from /group/{id}", () => {
+    expect(getGroupIdFromPath("/group/abc123")).toBe("abc123");
+  });
+
+  it("extracts id from /(tabs)/groups/{id}", () => {
+    expect(getGroupIdFromPath("/(tabs)/groups/g-99")).toBe("g-99");
+  });
+
+  it("extracts id from /groups/{id}", () => {
+    expect(getGroupIdFromPath("/groups/foo")).toBe("foo");
+  });
+
+  it("strips query string", () => {
+    expect(getGroupIdFromPath("/group/abc?from=tab")).toBe("abc");
+  });
+
+  it("returns null for non-group paths", () => {
+    expect(getGroupIdFromPath("/(tabs)")).toBeNull();
+    expect(getGroupIdFromPath("/(tabs)/groups")).toBeNull();
+    expect(getGroupIdFromPath("/(tabs)/activity")).toBeNull();
+    expect(getGroupIdFromPath("/profile")).toBeNull();
+  });
+
+  it("returns null for null/empty paths", () => {
+    expect(getGroupIdFromPath(null)).toBeNull();
+    expect(getGroupIdFromPath("")).toBeNull();
+  });
+
+  it("decodes URI components in the id", () => {
+    expect(getGroupIdFromPath("/group/abc%20def")).toBe("abc def");
   });
 });

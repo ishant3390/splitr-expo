@@ -2,6 +2,7 @@ import {
   initSplitValues,
   calculateEqualSplit,
   validatePercentageSplit,
+  redistributePercentages,
   validateFixedSplit,
   dedupeMembers,
   aggregateByPerson,
@@ -158,6 +159,70 @@ describe("validatePercentageSplit", () => {
     const result = validatePercentageSplit({ a: "abc", b: "50" });
     expect(result.total).toBe(50);
     expect(result.valid).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// redistributePercentages
+// ---------------------------------------------------------------------------
+describe("redistributePercentages", () => {
+  it("redistributes evenly across the other 3 when one of 4 is changed to 10", () => {
+    const current = { a: "25.00", b: "25.00", c: "25.00", d: "25.00" };
+    const result = redistributePercentages(current, "a", "10", ["a", "b", "c", "d"], []);
+    expect(result.a).toBe("10");
+    expect(parseFloat(result.b) + parseFloat(result.c) + parseFloat(result.d)).toBeCloseTo(90, 2);
+    // Each unlocked = 30
+    expect(result.b).toBe("30.00");
+    expect(result.c).toBe("30.00");
+    expect(result.d).toBe("30.00");
+  });
+
+  it("preserves previously locked members and only redistributes among remaining", () => {
+    const current = { a: "10", b: "30.00", c: "30.00", d: "30.00" };
+    const result = redistributePercentages(current, "b", "20", ["a", "b", "c", "d"], ["a"]);
+    expect(result.a).toBe("10");
+    expect(result.b).toBe("20");
+    // Remaining = 100 - 10 - 20 = 70 split across c,d → 35 each
+    expect(result.c).toBe("35.00");
+    expect(result.d).toBe("35.00");
+  });
+
+  it("handles rounding remainder (1/3 split) so total reaches exactly 100", () => {
+    const current = { a: "33.33", b: "33.33", c: "33.34" };
+    const result = redistributePercentages(current, "a", "10", ["a", "b", "c"], []);
+    const total = parseFloat(result.a) + parseFloat(result.b) + parseFloat(result.c);
+    expect(total).toBeCloseTo(100, 2);
+  });
+
+  it("returns 0 for unlocked members when locked sum exceeds 100", () => {
+    const current = { a: "60", b: "20.00", c: "20.00" };
+    const result = redistributePercentages(current, "a", "120", ["a", "b", "c"], []);
+    // changedMember kept as user typed, but unlocked redistributed against negative remaining → 0
+    expect(parseFloat(result.b)).toBe(0);
+    expect(parseFloat(result.c)).toBe(0);
+  });
+
+  it("returns the new value as-is when no other selected members exist", () => {
+    const current = { a: "100" };
+    const result = redistributePercentages(current, "a", "50", ["a"], []);
+    expect(result.a).toBe("50");
+  });
+
+  it("treats empty string input as 0 for the changed member", () => {
+    const current = { a: "25.00", b: "25.00", c: "25.00", d: "25.00" };
+    const result = redistributePercentages(current, "a", "", ["a", "b", "c", "d"], []);
+    expect(result.a).toBe("");
+    // Unlocked b,c,d split (100 - 0) = 100 → 33.33 each (with rounding remainder on first)
+    const total = parseFloat(result.b) + parseFloat(result.c) + parseFloat(result.d);
+    expect(total).toBeCloseTo(100, 2);
+  });
+
+  it("ignores locked members that are no longer selected", () => {
+    const current = { a: "50", b: "25", c: "25" };
+    // 'a' was locked previously but is no longer in selectedMemberIds
+    const result = redistributePercentages(current, "b", "20", ["b", "c"], ["a"]);
+    expect(result.b).toBe("20");
+    expect(result.c).toBe("80.00");
   });
 });
 

@@ -89,6 +89,17 @@ describe("applyTheme", () => {
     (Platform as any).OS = originalOS;
   });
 
+  // Regression: NativeWind v4 in darkMode:"media" mode throws if setColorScheme
+  // is invoked. On web we must skip that hook call and persist only.
+  it("does NOT call setColorScheme on web (avoids NativeWind media-mode throw)", async () => {
+    const originalOS = Platform.OS;
+    (Platform as any).OS = "web";
+    await applyTheme("dark", setter);
+    expect(setter).not.toHaveBeenCalled();
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(THEME_STORAGE_KEY, "dark");
+    (Platform as any).OS = originalOS;
+  });
+
   it("does not throw when AsyncStorage.setItem fails", async () => {
     (AsyncStorage.setItem as jest.Mock).mockRejectedValue(new Error("quota"));
     await expect(applyTheme("dark", setter)).resolves.toBeUndefined();
@@ -137,6 +148,18 @@ describe("restoreTheme", () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue("dark");
     await restoreTheme(setter);
     expect(mockSetColorScheme).not.toHaveBeenCalled();
+    (Platform as any).OS = originalOS;
+  });
+
+  // Regression: NativeWind v4 in darkMode:"media" mode throws if setColorScheme
+  // is invoked on startup. restoreTheme must skip the call on web.
+  it("does NOT call setColorScheme on web during restore", async () => {
+    const originalOS = Platform.OS;
+    (Platform as any).OS = "web";
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue("dark");
+    const result = await restoreTheme(setter);
+    expect(setter).not.toHaveBeenCalled();
+    expect(result).toBe("dark");
     (Platform as any).OS = originalOS;
   });
 });

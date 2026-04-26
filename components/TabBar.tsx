@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "nativewind";
 import { Plus } from "lucide-react-native";
 import { hapticSelection, hapticMedium } from "@/lib/haptics";
-import { useRouter } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import {
   HomeIcon,
   GroupsIcon,
@@ -138,13 +138,32 @@ function TabLabel({ name, isFocused }: { name: string; isFocused: boolean }) {
   );
 }
 
+// Matches /group/{id} or /(tabs)/groups/{id} (with optional trailing query/segments).
+// Returns the group id if the user is currently viewing a group screen, else null.
+export function getGroupIdFromPath(path: string | null): string | null {
+  if (!path) return null;
+  const match =
+    path.match(/^\/group\/([^/?#]+)/) ??
+    path.match(/^\/\(tabs\)\/groups\/([^/?#]+)/) ??
+    path.match(/^\/groups\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function FABButton() {
   const router = useRouter();
+  const pathname = usePathname();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
+
+  const buildAddRoute = (extraParams: Record<string, string> = {}) => {
+    const contextGroupId = getGroupIdFromPath(pathname);
+    const params: Record<string, string> = { ...extraParams };
+    if (contextGroupId) params.returnGroupId = contextGroupId;
+    return { pathname: "/(tabs)/add" as const, params };
+  };
 
   const handlePress = () => {
     hapticMedium();
@@ -152,7 +171,7 @@ function FABButton() {
       withSpring(0.95, { damping: 8, stiffness: 200 }),
       withSpring(1, { damping: 10, stiffness: 150 })
     );
-    router.push("/(tabs)/add");
+    router.push(buildAddRoute());
   };
 
   const handleLongPress = () => {
@@ -161,7 +180,7 @@ function FABButton() {
       withSpring(0.95, { damping: 8, stiffness: 200 }),
       withSpring(1, { damping: 10, stiffness: 150 })
     );
-    router.push({ pathname: "/(tabs)/add", params: { quick: "true" } });
+    router.push(buildAddRoute({ quick: "true" }));
   };
 
   return (

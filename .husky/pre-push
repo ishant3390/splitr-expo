@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+# Pre-push gate: stop bad code from leaving the laptop.
+# Skip with `git push --no-verify` only when you know what you're doing.
+#
+# TODO: re-add `npm run audit:tokens` and `npm run lint` to this hook once
+# the existing failures on main are cleaned up — see follow-up cleanup PR.
+
+echo "▸ Running unit tests..."
+npm test --silent || {
+  echo "✗ Unit tests failed — push aborted."
+  exit 1
+}
+
+echo "✓ Pre-push checks passed."

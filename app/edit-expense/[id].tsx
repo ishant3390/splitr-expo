@@ -36,6 +36,7 @@ import { expensesApi, groupsApi, categoriesApi, isVersionConflict } from "@/lib/
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import { pickImage, validateImage, buildImageFormDataAsync } from "@/lib/image-utils";
 import { invalidateAfterExpenseChange } from "@/lib/query";
+import { useLockedPercentages } from "@/lib/use-percentage-split";
 import {
   allocatePercentageSplitCents,
   normalizeFixedSplitCents,
@@ -128,9 +129,15 @@ export default function EditExpenseScreen() {
     }
   };
 
+  const { handlePercentageChange, resetLocked: resetLockedPct } = useLockedPercentages(
+    splitWith,
+    setSplitPercentages
+  );
+
   const handleSplitTypeChange = (type: SplitType) => {
     hapticSelection();
     setSplitType(type);
+    resetLockedPct();
     initSplitValues(splitWith, type, amount);
   };
 
@@ -260,6 +267,7 @@ export default function EditExpenseScreen() {
 
   const handleToggleMember = (memberId: string) => {
     hapticLight();
+    resetLockedPct();
     setSplitWith((prev) => {
       const next = prev.includes(memberId) ? prev.filter((x) => x !== memberId) : [...prev, memberId];
       initSplitValues(next, splitType, amount);
@@ -850,9 +858,7 @@ export default function EditExpenseScreen() {
                           <View className="flex-row items-center border border-border rounded-lg bg-muted overflow-hidden">
                             <TextInput
                               value={splitPercentages[member.id] ?? ""}
-                              onChangeText={(val) =>
-                                setSplitPercentages((prev) => ({ ...prev, [member.id]: sanitizePercentInput(val) }))
-                              }
+                              onChangeText={(val) => handlePercentageChange(member.id, val)}
                               keyboardType="decimal-pad"
                               inputMode="decimal"
                               placeholder="0"

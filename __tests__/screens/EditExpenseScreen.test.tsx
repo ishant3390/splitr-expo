@@ -116,9 +116,13 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
-jest.mock("@/lib/screen-helpers", () => ({
-  inferCategoryFromDescription: jest.fn(() => null),
-}));
+jest.mock("@/lib/screen-helpers", () => {
+  const actual = jest.requireActual("@/lib/screen-helpers");
+  return {
+    ...actual,
+    inferCategoryFromDescription: jest.fn(() => null),
+  };
+});
 
 import EditExpenseScreen from "@/app/edit-expense/[id]";
 
@@ -609,13 +613,12 @@ describe("EditExpenseScreen", () => {
     });
   });
 
-  it("validates percentage split totals not summing to 100%", async () => {
+  it("auto-redistributes percentages when one is changed and saves at 100%", async () => {
     mockExpensesGet.mockResolvedValue(mockPercentageExpense);
     render(<EditExpenseScreen />);
     await waitFor(() => {
       expect(screen.getByText(/\/ 100%/)).toBeTruthy();
     });
-    // Find percentage inputs (exclude the amount input which also has placeholder "0")
     const allZeroInputs = screen.getAllByPlaceholderText("0");
     const percentInputs = allZeroInputs.filter(
       (el) => el.props.testID !== "amount-input"
@@ -623,9 +626,36 @@ describe("EditExpenseScreen", () => {
     if (percentInputs.length > 0) {
       fireEvent.changeText(percentInputs[0], "10");
     }
+    // Sum should still equal 100 after redistribution → save succeeds, no validation error
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith(expect.stringContaining("Percentages must add up to 100%"));
+      expect(mockExpensesUpdate).toHaveBeenCalled();
+    });
+    expect(mockToast.error).not.toHaveBeenCalledWith(
+      expect.stringContaining("Percentages must add up to 100%")
+    );
+  });
+
+  it("errors when every percentage participant is locked at an invalid sum", async () => {
+    mockExpensesGet.mockResolvedValue(mockPercentageExpense);
+    render(<EditExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByText(/\/ 100%/)).toBeTruthy();
+    });
+    const allZeroInputs = screen.getAllByPlaceholderText("0");
+    const percentInputs = allZeroInputs.filter(
+      (el) => el.props.testID !== "amount-input"
+    );
+    // Lock both inputs to values that don't sum to 100 (no unlocked member left to balance)
+    if (percentInputs.length >= 2) {
+      fireEvent.changeText(percentInputs[0], "20");
+      fireEvent.changeText(percentInputs[1], "30");
+    }
+    fireEvent.press(screen.getByText("Save"));
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith(
+        expect.stringContaining("Percentages must add up to 100%")
+      );
     });
   });
 

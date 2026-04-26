@@ -6,6 +6,14 @@ const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
 
+// Controlled per-test via setSearchParams() below. Default mirrors the
+// "FAB pressed from group screen" entry path (returnGroupId provided), since
+// FAB on a non-group screen no longer pre-selects a group by design.
+const searchParamsRef: { current: Record<string, string> } = { current: { returnGroupId: "g1" } };
+const setSearchParams = (params: Record<string, string>) => {
+  searchParamsRef.current = params;
+};
+
 jest.mock("expo-router", () => {
   const React = require("react");
   return {
@@ -15,10 +23,12 @@ jest.mock("expo-router", () => {
       back: mockBack,
       canGoBack: jest.fn(() => true),
     }),
-    useLocalSearchParams: () => ({}),
+    useLocalSearchParams: () => searchParamsRef.current,
     useSegments: () => [],
     Link: "Link",
-    useFocusEffect: (cb: () => void) => React.useEffect(cb, []),
+    // Mirror real useFocusEffect: re-runs when the callback identity changes
+    // (which is how useCallback deps propagate in production).
+    useFocusEffect: (cb: () => void) => React.useEffect(cb, [cb]),
   };
 });
 
@@ -76,6 +86,7 @@ jest.mock("@/lib/api", () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  setSearchParams({ returnGroupId: "g1" });
   mockListGroups.mockResolvedValue([
     { id: "g1", name: "Trip", emoji: "plane", memberCount: 2, defaultCurrency: "USD" },
   ]);
@@ -178,12 +189,77 @@ describe("AddExpenseScreen", () => {
 
   // --- Cancel / goBack (lines 57-65) ---
   it("navigates to home on Cancel press when no returnGroupId", async () => {
+    setSearchParams({});
     render(<AddExpenseScreen />);
     await waitFor(() => {
       expect(screen.getByText("Cancel")).toBeTruthy();
     });
     fireEvent.press(screen.getByText("Cancel"));
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)");
+  });
+
+  // --- No auto-select on FAB entry from non-group screen with multiple groups ---
+  it("does not pre-select any group when entered without returnGroupId and multiple groups exist", async () => {
+    setSearchParams({});
+    mockListGroups.mockResolvedValue([
+      { id: "g1", name: "Trip", emoji: "plane", memberCount: 2, defaultCurrency: "USD" },
+      { id: "g2", name: "Roommates", emoji: "home", memberCount: 3, defaultCurrency: "USD" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("group-summary-name").props.children).toBe("Select");
+    });
+    // Members API should not be called since no group is selected
+    expect(mockListMembers).not.toHaveBeenCalled();
+  });
+
+  // --- Auto-select when there's only one group (no ambiguity to resolve) ---
+  it("auto-selects the single group when no returnGroupId is provided", async () => {
+    setSearchParams({});
+    mockListGroups.mockResolvedValue([
+      { id: "g1", name: "Trip", emoji: "plane", memberCount: 2, defaultCurrency: "USD" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("group-summary-name").props.children).toBe("Trip");
+    });
+    await waitFor(() => {
+      expect(mockListMembers).toHaveBeenCalledWith("g1", "mock-token");
+    });
+  });
+
+  // Regression: the screen stays mounted in the tab navigator, so re-entering
+  // the FAB from Home after first using it from a group screen should clear
+  // the prior group — not show the previously-selected one.
+  it("clears the previously-selected group on re-entry without returnGroupId", async () => {
+    mockListGroups.mockResolvedValue([
+      { id: "g1", name: "Trip", emoji: "plane", memberCount: 2, defaultCurrency: "USD" },
+      { id: "g2", name: "Roommates", emoji: "home", memberCount: 3, defaultCurrency: "USD" },
+    ]);
+    // First entry: from group "g1" — group is preselected
+    setSearchParams({ returnGroupId: "g1" });
+    const { rerender } = render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("group-summary-name").props.children).toBe("Trip");
+    });
+    // User cancels, navigates home, taps FAB again with no returnGroupId
+    setSearchParams({});
+    rerender(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("group-summary-name").props.children).toBe("Select");
+    });
+  });
+
+  it("pre-selects the group passed via returnGroupId", async () => {
+    setSearchParams({ returnGroupId: "g2" });
+    mockListGroups.mockResolvedValue([
+      { id: "g1", name: "Trip", emoji: "plane", memberCount: 2, defaultCurrency: "USD" },
+      { id: "g2", name: "Roommates", emoji: "home", memberCount: 3, defaultCurrency: "USD" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getByTestId("group-summary-name").props.children).toBe("Roommates");
+    });
   });
 
   // --- Form validation (lines 234-274) ---
@@ -362,20 +438,20 @@ describe("AddExpenseScreen", () => {
   });
 
   // --- Date section ---
-  it("renders date section", async () => {
+  it("renders date icon with Today chip and no separate label", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Date")).toBeTruthy();
-      expect(screen.getByText("Today")).toBeTruthy();
+      expect(screen.getByTestId("date-icon-button")).toBeTruthy();
+      expect(screen.getByTestId("date-icon-label").props.children).toBe("Today");
     });
   });
 
-  it("opens date picker on date press", async () => {
+  it("opens date picker on date icon press", async () => {
     render(<AddExpenseScreen />);
     await waitFor(() => {
-      expect(screen.getByText("Today")).toBeTruthy();
+      expect(screen.getByTestId("date-icon-button")).toBeTruthy();
     });
-    fireEvent.press(screen.getByText("Today"));
+    fireEvent.press(screen.getByTestId("date-icon-button"));
     // DateTimePicker should render (mocked as View)
   });
 
@@ -750,7 +826,7 @@ describe("AddExpenseScreen", () => {
 
   // --- Quick mode (via params) ---
   it("renders Quick Add in quick mode", async () => {
-    const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ quick: "true" });
+    const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ quick: "true", returnGroupId: "g1" });
     render(<AddExpenseScreen />);
     await waitFor(() => {
       expect(screen.getByText("Quick Add")).toBeTruthy();
@@ -761,7 +837,7 @@ describe("AddExpenseScreen", () => {
   });
 
   it("hides payer summary and add participant action in quick mode", async () => {
-    const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ quick: "true" });
+    const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ quick: "true", returnGroupId: "g1" });
     render(<AddExpenseScreen />);
     await waitFor(() => {
       expect(screen.getByText("Quick Add")).toBeTruthy();
@@ -773,7 +849,7 @@ describe("AddExpenseScreen", () => {
 
   // --- Quick mode hides certain sections ---
   it("hides category, date, paid by, and split sections in quick mode", async () => {
-    const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ quick: "true" });
+    const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ quick: "true", returnGroupId: "g1" });
     render(<AddExpenseScreen />);
     await waitFor(() => {
       expect(screen.getByText("Quick Add")).toBeTruthy();
@@ -1082,7 +1158,7 @@ describe("AddExpenseScreen", () => {
 
   // --- Quick mode submit (lines 622-637) ---
   it("submits expense in quick mode", async () => {
-    const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ quick: "true" });
+    const spy = jest.spyOn(require("expo-router"), "useLocalSearchParams").mockReturnValue({ quick: "true", returnGroupId: "g1" });
     jest.spyOn(require("@/components/NetworkProvider"), "useNetwork").mockReturnValue({
       isOnline: true,
       pendingCount: 0,
@@ -1248,6 +1324,110 @@ describe("AddExpenseScreen", () => {
     // Percentage inputs should appear for each member — verify members still visible
     await waitFor(() => {
       expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
+    });
+  });
+
+  // --- Percentage auto-redistribution + locked-id retention (C1 regression) ---
+  it("redistributes percentages across other participants when one is changed", async () => {
+    // Use 4 members so the redistribution math is observable
+    mockListMembers.mockResolvedValue([
+      { id: "m1", user: { id: "u1", name: "Alice", email: "test@example.com" }, displayName: "Alice" },
+      { id: "m2", user: { id: "u2", name: "Bob" }, displayName: "Bob" },
+      { id: "m3", user: { id: "u3", name: "Carol" }, displayName: "Carol" },
+      { id: "m4", user: { id: "u4", name: "Dave" }, displayName: "Dave" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
+    });
+    fireEvent.changeText(screen.getByPlaceholderText("0"), "100");
+    fireEvent.press(screen.getByText("Percentage"));
+
+    // Find the percentage inputs (placeholder "0", excluding amount)
+    await waitFor(() => {
+      const pctInputs = screen.getAllByPlaceholderText("0").filter(
+        (el) => el.props.testID !== "amount-input"
+      );
+      expect(pctInputs.length).toBe(4);
+    });
+    let pctInputs = screen.getAllByPlaceholderText("0").filter(
+      (el) => el.props.testID !== "amount-input"
+    );
+    // Edit first member to 10 — others should redistribute to 30 each
+    fireEvent.changeText(pctInputs[0], "10");
+    await waitFor(() => {
+      pctInputs = screen.getAllByPlaceholderText("0").filter(
+        (el) => el.props.testID !== "amount-input"
+      );
+      expect(pctInputs[1].props.value).toBe("30.00");
+      expect(pctInputs[2].props.value).toBe("30.00");
+      expect(pctInputs[3].props.value).toBe("30.00");
+    });
+  });
+
+  it("retains earlier locks when a second participant's percentage is edited (regression: stale-closure fix)", async () => {
+    mockListMembers.mockResolvedValue([
+      { id: "m1", user: { id: "u1", name: "Alice", email: "test@example.com" }, displayName: "Alice" },
+      { id: "m2", user: { id: "u2", name: "Bob" }, displayName: "Bob" },
+      { id: "m3", user: { id: "u3", name: "Carol" }, displayName: "Carol" },
+      { id: "m4", user: { id: "u4", name: "Dave" }, displayName: "Dave" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
+    });
+    fireEvent.changeText(screen.getByPlaceholderText("0"), "100");
+    fireEvent.press(screen.getByText("Percentage"));
+
+    let pctInputs = screen.getAllByPlaceholderText("0").filter(
+      (el) => el.props.testID !== "amount-input"
+    );
+    // Lock first to 10
+    fireEvent.changeText(pctInputs[0], "10");
+    // Lock second to 20 — first must stay at 10 (not get reshuffled)
+    pctInputs = screen.getAllByPlaceholderText("0").filter(
+      (el) => el.props.testID !== "amount-input"
+    );
+    fireEvent.changeText(pctInputs[1], "20");
+    await waitFor(() => {
+      pctInputs = screen.getAllByPlaceholderText("0").filter(
+        (el) => el.props.testID !== "amount-input"
+      );
+      // First stays locked at 10; remaining 70 splits across positions 2 and 3 → 35 each
+      expect(pctInputs[0].props.value).toBe("10");
+      expect(pctInputs[1].props.value).toBe("20");
+      expect(pctInputs[2].props.value).toBe("35.00");
+      expect(pctInputs[3].props.value).toBe("35.00");
+    });
+  });
+
+  it("clears percentage locks when toggling a participant", async () => {
+    mockListMembers.mockResolvedValue([
+      { id: "m1", user: { id: "u1", name: "Alice", email: "test@example.com" }, displayName: "Alice" },
+      { id: "m2", user: { id: "u2", name: "Bob" }, displayName: "Bob" },
+      { id: "m3", user: { id: "u3", name: "Carol" }, displayName: "Carol" },
+    ]);
+    render(<AddExpenseScreen />);
+    await waitFor(() => {
+      expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
+    });
+    fireEvent.changeText(screen.getByPlaceholderText("0"), "100");
+    fireEvent.press(screen.getByText("Percentage"));
+
+    let pctInputs = screen.getAllByPlaceholderText("0").filter(
+      (el) => el.props.testID !== "amount-input"
+    );
+    fireEvent.changeText(pctInputs[0], "10");
+    // Toggle off Bob (split-section row, last "Bob" element) → locks reset, percentages re-init evenly
+    const bobs = screen.getAllByText("Bob");
+    fireEvent.press(bobs[bobs.length - 1]);
+    await waitFor(() => {
+      pctInputs = screen.getAllByPlaceholderText("0").filter(
+        (el) => el.props.testID !== "amount-input"
+      );
+      // After toggle, two members remain — both reset to 50 (prior 10% lock cleared)
+      expect(pctInputs[0].props.value).toBe("50.00");
+      expect(pctInputs[1].props.value).toBe("50.00");
     });
   });
 

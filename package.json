@@ -25,6 +25,7 @@
     "test:regression:modal": "npm run test:regression:modal:unit && npm run test:regression:modal:e2e",
     "test:regression:modal:all": "npm run test:regression:modal && npm run test:regression:modal:integration",
     "audit:tokens": "npx tsx scripts/audit-tokens.ts",
+    "prepare": "husky",
     "build:web": "expo export -p web && bash scripts/post-export.sh",
     "build:web:dev": "EXPO_PUBLIC_API_URL=https://api-dev.splitr.ai/api expo export -p web && bash scripts/post-export.sh",
     "serve:web": "npx serve dist -s"
@@ -88,6 +89,9 @@
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.10",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~55.0.0",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-expo": "~55.0.9",
     "react-test-renderer": "^19.2.0",

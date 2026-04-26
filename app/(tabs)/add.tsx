@@ -35,6 +35,8 @@ import { Button } from "@/components/ui/button";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { Avatar } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
+import { BottomSheetModal } from "@/components/ui/bottom-sheet-modal";
+import { Search } from "lucide-react-native";
 import { groupsApi, categoriesApi, expensesApi } from "@/lib/api";
 import { parseApiError, getUserMessage } from "@/lib/errors";
 import {
@@ -61,6 +63,7 @@ import {
 } from "@/lib/finance-invariants";
 import { colors, fontSize as fs, fontFamily as ff, palette } from "@/lib/tokens";
 import { initSplitValues as computeSplitValues, dedupeMembers, inferCategoryFromDescription } from "@/lib/screen-helpers";
+import { useLockedPercentages } from "@/lib/use-percentage-split";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { pickImage, validateImage, buildImageFormDataAsync, compressImage } from "@/lib/image-utils";
 import { useNetwork } from "@/components/NetworkProvider";
@@ -107,6 +110,11 @@ export default function AddExpenseScreen() {
   const [splitFixedAmounts, setSplitFixedAmounts] = useState<Record<string, string>>({});
   const [showGroupPicker, setShowGroupPicker] = useState(false);
   const [showPayerPicker, setShowPayerPicker] = useState(false);
+  const [groupSearchQuery, setGroupSearchQuery] = useState("");
+  const { handlePercentageChange, resetLocked: resetLockedPct } = useLockedPercentages(
+    splitWith,
+    setSplitPercentages
+  );
   const [showAddParticipant, setShowAddParticipant] = useState(false);
   const [addParticipantName, setAddParticipantName] = useState("");
   const [addParticipantEmail, setAddParticipantEmail] = useState("");
@@ -166,13 +174,15 @@ export default function AddExpenseScreen() {
           }
         } catch {}
 
+        // Auto-pick only when unambiguous (explicit returnGroupId or a single
+        // group). With multiple groups and no context, force the user to pick.
         if (list.length > 0) {
-          const preferred = returnGroupId
-            ? list.find((g) => g.id === returnGroupId)
-            : savedGroupId
-            ? list.find((g) => g.id === savedGroupId)
-            : null;
-          setSelectedGroup(preferred ?? list[0]);
+          if (returnGroupId) {
+            const preferred = list.find((g) => g.id === returnGroupId);
+            if (preferred) setSelectedGroup(preferred);
+          } else if (list.length === 1) {
+            setSelectedGroup(list[0]);
+          }
         }
         const cats = Array.isArray(categoriesData) ? categoriesData : [];
         setCategories(cats);
@@ -201,6 +211,7 @@ export default function AddExpenseScreen() {
     setShowAddParticipant(false);
     setAddParticipantName("");
     setAddParticipantEmail("");
+    resetLockedPct();
     const load = async () => {
       try {
         const token = await getToken();
@@ -231,6 +242,23 @@ export default function AddExpenseScreen() {
     };
   }, [selectedGroup?.id]);
 
+  // Re-evaluate the group preselection on every focus. The screen stays mounted
+  // in the tab navigator, so a stale selectedGroup from an earlier visit (e.g.,
+  // entered with returnGroupId, then re-entered from Home) would otherwise leak.
+  useFocusEffect(
+    useCallback(() => {
+      if (groups.length === 0) return;
+      if (returnGroupId) {
+        const preferred = groups.find((g) => g.id === returnGroupId);
+        setSelectedGroup(preferred ?? null);
+      } else if (groups.length === 1) {
+        setSelectedGroup(groups[0]);
+      } else {
+        setSelectedGroup(null);
+      }
+    }, [returnGroupId, groups])
+  );
+
   // Reset user-entered fields every time the screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -241,8 +269,10 @@ export default function AddExpenseScreen() {
       setSplitType("equal");
       setSplitPercentages({});
       setSplitFixedAmounts({});
+      resetLockedPct();
       setShowGroupPicker(false);
       setShowPayerPicker(false);
+      setGroupSearchQuery("");
       setShowAddParticipant(false);
       setShowAllCategories(false);
       setAddParticipantName("");
@@ -301,11 +331,13 @@ export default function AddExpenseScreen() {
   const handleSplitTypeChange = (type: SplitType) => {
     hapticSelection();
     setSplitType(type);
+    resetLockedPct();
     initSplitValues(splitWith, type, amount);
   };
 
   const handleToggleMember = (memberId: string) => {
     hapticLight();
+    resetLockedPct();
     setSplitWith((prev) => {
       const next = prev.includes(memberId)
         ? prev.filter((id) => id !== memberId)
@@ -821,6 +853,144 @@ export default function AddExpenseScreen() {
             </View>
           </Animated.View>
 
+          {/* Group + Paid By + Date — primary context row */}
+          <Animated.View entering={FadeInDown.delay(80).duration(300)}>
+            <View className="flex-row gap-2.5 items-end">
+              {/* Group */}
+              <View className="flex-1">
+                <Text className="text-xs font-sans-medium text-muted-foreground mb-1.5">
+                  Group
+                </Text>
+                <Pressable
+                  testID="group-summary-card"
+                  onPress={() => {
+                    hapticSelection();
+                    setGroupSearchQuery("");
+                    setShowGroupPicker(true);
+                  }}
+                >
+                  <Card className="px-3 flex-row items-center justify-between" style={{ minHeight: 52 }}>
+                    <Text
+                      testID="group-summary-name"
+                      className={cn(
+                        "font-sans-medium flex-1",
+                        selectedGroup ? "text-card-foreground" : "text-muted-foreground"
+                      )}
+                      numberOfLines={1}
+                    >
+                      {selectedGroup?.name ?? "Select"}
+                    </Text>
+                    <ChevronDown size={16} color={c.mutedForeground} />
+                  </Card>
+                </Pressable>
+              </View>
+
+              {/* Paid by — only after group + members loaded */}
+              {!isQuickMode && selectedGroup && !membersLoading && members.length > 0 && (
+                <View className="flex-1">
+                  <Text className="text-xs font-sans-medium text-muted-foreground mb-1.5">
+                    Paid by
+                  </Text>
+                  <Pressable
+                    testID="payer-summary-card"
+                    onPress={() => {
+                      hapticSelection();
+                      setShowPayerPicker(true);
+                    }}
+                  >
+                    <Card className="px-3 flex-row items-center gap-2" style={{ minHeight: 52 }}>
+                      {(() => {
+                        const payer = members.find((m) => m.id === selectedPayerMemberId);
+                        const payerName =
+                          payer?.user?.name || payer?.guestUser?.name || payer?.displayName || "Select";
+                        return (
+                          <>
+                            <Avatar
+                              src={getMemberAvatarUrl(payer?.user)}
+                              fallback={getInitials(payerName)}
+                              size="sm"
+                            />
+                            <Text
+                              testID="payer-summary-name"
+                              className="font-sans-medium text-card-foreground flex-1"
+                              numberOfLines={1}
+                            >
+                              {payerName}
+                            </Text>
+                            <ChevronDown size={16} color={c.mutedForeground} />
+                          </>
+                        );
+                      })()}
+                    </Card>
+                  </Pressable>
+                </View>
+              )}
+
+              {/* Date — compact icon button (label removed; chip shows current date) */}
+              {!isQuickMode && (() => {
+                const isToday = expenseDate.toDateString() === new Date().toDateString();
+                const dateLabel = isToday
+                  ? "Today"
+                  : expenseDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                return (
+                  <View style={{ width: 56 }}>
+                    <Pressable
+                      testID="date-icon-button"
+                      accessibilityRole="button"
+                      accessibilityLabel={`Expense date: ${dateLabel}. Tap to change.`}
+                      onPress={() => {
+                        hapticSelection();
+                        if (Platform.OS === 'web') {
+                          dateInputRef.current?.showPicker();
+                        } else {
+                          setShowDatePicker(true);
+                        }
+                      }}
+                      className="items-center justify-center bg-muted rounded-xl"
+                      style={{ minHeight: 52, paddingHorizontal: 4, paddingVertical: 6 }}
+                    >
+                      <Calendar size={18} color={c.primary} />
+                      <Text
+                        testID="date-icon-label"
+                        className="text-[10px] font-sans-medium text-muted-foreground mt-0.5"
+                        numberOfLines={1}
+                      >
+                        {dateLabel}
+                      </Text>
+                    </Pressable>
+                    {Platform.OS === 'web' && (
+                      <input
+                        ref={dateInputRef}
+                        type="date"
+                        value={expenseDate.toISOString().split('T')[0]}
+                        max={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setExpenseDate(new Date(e.target.value + 'T00:00:00'));
+                          }
+                        }}
+                        style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+                      />
+                    )}
+                  </View>
+                );
+              })()}
+            </View>
+            {/* Android: default DateTimePicker is already a system dialog */}
+            {!isQuickMode && Platform.OS === 'android' && showDatePicker && (
+              <DateTimePicker
+                value={expenseDate}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (date && event.type !== "dismissed") setExpenseDate(date);
+                }}
+              />
+            )}
+          </Animated.View>
+
           {/* Description */}
           <Animated.View entering={FadeInDown.delay(100).duration(300)}>
           <Input
@@ -863,68 +1033,6 @@ export default function AddExpenseScreen() {
             </View>
           ) : null}
           </Animated.View>
-
-          {/* Date */}
-          {!isQuickMode && <Animated.View entering={FadeInDown.delay(150).duration(300)}>
-            <Text className="text-sm font-sans-medium text-foreground mb-2">Date</Text>
-            <Pressable
-              onPress={() => {
-                if (Platform.OS === 'web') {
-                  dateInputRef.current?.showPicker();
-                } else {
-                  setShowDatePicker(true);
-                }
-              }}
-              className="flex-row items-center gap-3 bg-muted rounded-xl px-4 py-3.5"
-            >
-              <Calendar size={18} color={c.mutedForeground} />
-              <Text className="text-base font-sans text-foreground flex-1">
-                {expenseDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-              </Text>
-              {expenseDate.toDateString() === new Date().toDateString() && (
-                <Text className="text-xs font-sans-medium text-primary">Today</Text>
-              )}
-            </Pressable>
-            {Platform.OS === 'web' && (
-              <input
-                ref={dateInputRef}
-                type="date"
-                value={expenseDate.toISOString().split('T')[0]}
-                max={new Date().toISOString().split('T')[0]}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setExpenseDate(new Date(e.target.value + 'T00:00:00'));
-                  }
-                }}
-                style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
-              />
-            )}
-            {Platform.OS !== 'web' && showDatePicker && (
-              <DateTimePicker
-                value={expenseDate}
-                mode="date"
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                maximumDate={new Date()}
-                onChange={(event, date) => {
-                  // Android always dismisses on set/dismiss; iOS spinner stays open until dismissed
-                  if (Platform.OS === "android") {
-                    setShowDatePicker(false);
-                  }
-                  if (date && event.type !== "dismissed") setExpenseDate(date);
-                }}
-              />
-            )}
-            {Platform.OS === "ios" && showDatePicker && (
-              <View className="flex-row justify-end mt-2">
-                <Pressable
-                  onPress={() => setShowDatePicker(false)}
-                  className="px-4 py-2"
-                >
-                  <Text className="text-sm font-sans-semibold text-primary">Done</Text>
-                </Pressable>
-              </View>
-            )}
-          </Animated.View>}
 
           {/* Category */}
           {!isQuickMode && <Animated.View entering={FadeInDown.delay(200).duration(300)}>
@@ -1005,149 +1113,6 @@ export default function AddExpenseScreen() {
               </>
             )}
           </Animated.View>}
-
-          {/* Group + Paid by summary for quicker scan */}
-          <Animated.View entering={FadeInDown.delay(300).duration(300)}>
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Text className="text-sm font-sans-medium text-foreground mb-2">Group</Text>
-                <Pressable
-                  testID="group-summary-card"
-                  onPress={() => {
-                    setShowPayerPicker(false);
-                    setShowGroupPicker((prev) => !prev);
-                  }}
-                >
-                  <Card className="p-3.5 flex-row items-center justify-between" style={{ minHeight: 62 }}>
-                    <Text
-                      testID="group-summary-name"
-                      className="font-sans-medium text-card-foreground flex-1"
-                      numberOfLines={1}
-                    >
-                      {selectedGroup?.name ?? "Select a group"}
-                    </Text>
-                    <ChevronDown size={20} color={c.mutedForeground} />
-                  </Card>
-                </Pressable>
-                {showGroupPicker && (
-                  <Card className="mt-2 p-2 gap-1">
-                    {groups.map((group) => (
-                      <Pressable
-                        key={group.id}
-                        onPress={() => {
-                          setSelectedGroup(group);
-                          setShowGroupPicker(false);
-                        }}
-                        className={cn(
-                          "px-3 py-2.5 rounded-lg",
-                          group.id === selectedGroup?.id ? "bg-primary" : "bg-transparent"
-                        )}
-                      >
-                        <Text
-                          className={cn(
-                            "font-sans-medium",
-                            group.id === selectedGroup?.id
-                              ? "text-primary-foreground"
-                              : "text-card-foreground"
-                          )}
-                        >
-                          {group.name}
-                        </Text>
-                      </Pressable>
-                    ))}
-                    <Pressable
-                      onPress={() => {
-                        setShowGroupPicker(false);
-                        router.push("/create-group");
-                      }}
-                      className="flex-row items-center gap-2 px-3 py-2.5 rounded-lg"
-                    >
-                      <Plus size={16} color={c.accent} />
-                      <Text className="font-sans-medium text-accent">Create New Group</Text>
-                    </Pressable>
-                  </Card>
-                )}
-              </View>
-
-              {!isQuickMode && selectedGroup && !membersLoading && members.length > 0 && (
-                <View className="flex-1">
-                  <Text className="text-sm font-sans-medium text-foreground mb-2">Paid by</Text>
-                  <Pressable
-                    testID="payer-summary-card"
-                    onPress={() => {
-                      setShowGroupPicker(false);
-                      setShowPayerPicker((prev) => !prev);
-                    }}
-                  >
-                    <Card className="p-3.5 flex-row items-center justify-between gap-2" style={{ minHeight: 62 }}>
-                      {(() => {
-                        const payer = members.find((m) => m.id === selectedPayerMemberId);
-                        const payerName =
-                          payer?.user?.name || payer?.guestUser?.name || payer?.displayName || "Select payer";
-                        return (
-                          <>
-                            <View className="flex-row items-center gap-2 flex-1">
-                              <Avatar
-                                src={getMemberAvatarUrl(payer?.user)}
-                                fallback={getInitials(payerName)}
-                                size="sm"
-                              />
-                              <Text
-                                testID="payer-summary-name"
-                                className="font-sans-medium text-card-foreground flex-1"
-                                numberOfLines={1}
-                              >
-                                {payerName}
-                              </Text>
-                            </View>
-                            <ChevronDown size={20} color={c.mutedForeground} />
-                          </>
-                        );
-                      })()}
-                    </Card>
-                  </Pressable>
-                  {showPayerPicker && (
-                    <Card className="mt-2 p-2 gap-1">
-                      {members.map((member) => {
-                        const isSelected = selectedPayerMemberId === member.id;
-                        const memberName =
-                          member.user?.name || member.guestUser?.name || member.displayName || "Member";
-                        return (
-                          <Pressable
-                            key={member.id}
-                            testID={`payer-option-${member.id}`}
-                            onPress={() => {
-                              setSelectedPayerMemberId(member.id);
-                              setShowPayerPicker(false);
-                            }}
-                            className={cn(
-                              "px-3 py-2.5 rounded-lg flex-row items-center gap-2",
-                              isSelected ? "bg-primary" : "bg-transparent"
-                            )}
-                          >
-                            <Avatar
-                              src={getMemberAvatarUrl(member.user)}
-                              fallback={getInitials(memberName)}
-                              size="sm"
-                            />
-                            <Text
-                              className={cn(
-                                "font-sans-medium flex-1",
-                                isSelected ? "text-primary-foreground" : "text-card-foreground"
-                              )}
-                            >
-                              {memberName}
-                            </Text>
-                            {isSelected && <Check size={16} color={palette.white} />}
-                          </Pressable>
-                        );
-                      })}
-                    </Card>
-                  )}
-                </View>
-              )}
-            </View>
-          </Animated.View>
 
           {/* Quick mode submit button */}
           {isQuickMode && (
@@ -1319,9 +1284,7 @@ export default function AddExpenseScreen() {
                               <View className="flex-row items-center border border-border rounded-lg bg-muted overflow-hidden">
                                 <TextInput
                                   value={splitPercentages[member.id] ?? ""}
-                                  onChangeText={(val) =>
-                                    setSplitPercentages((prev) => ({ ...prev, [member.id]: sanitizePercentInput(val) }))
-                                  }
+                                  onChangeText={(val) => handlePercentageChange(member.id, val)}
                                   keyboardType="decimal-pad"
                                   inputMode="decimal"
                                   inputAccessoryViewID="amount-done"
@@ -1385,6 +1348,174 @@ export default function AddExpenseScreen() {
           </View>
         </InputAccessoryView>
       )}
+
+      {/* Group picker — bottom sheet with search */}
+      <BottomSheetModal
+        visible={showGroupPicker}
+        onClose={() => setShowGroupPicker(false)}
+        keyboardAvoiding
+        modalTestID="group-picker-sheet"
+      >
+        <View>
+          <Text className="text-base font-sans-semibold text-foreground mb-3">Select group</Text>
+          {groups.length > 5 && (
+            <View className="flex-row items-center bg-muted rounded-lg px-3 mb-3" style={{ height: 40 }}>
+              <Search size={16} color={c.mutedForeground} />
+              <TextInput
+                value={groupSearchQuery}
+                onChangeText={setGroupSearchQuery}
+                placeholder="Search groups"
+                placeholderTextColor={c.placeholder}
+                autoCorrect={false}
+                autoCapitalize="none"
+                testID="group-picker-search"
+                style={{
+                  flex: 1,
+                  marginLeft: 8,
+                  fontSize: fs.base,
+                  fontFamily: ff.regular,
+                  color: c.foreground,
+                  borderWidth: 0,
+                }}
+              />
+            </View>
+          )}
+          <View className="gap-1">
+            {(() => {
+              const q = groupSearchQuery.trim().toLowerCase();
+              const filtered = q ? groups.filter((g) => g.name.toLowerCase().includes(q)) : groups;
+              if (filtered.length === 0) {
+                return (
+                  <Text className="text-sm font-sans text-muted-foreground py-3 text-center">
+                    No groups match &quot;{groupSearchQuery}&quot;
+                  </Text>
+                );
+              }
+              return filtered.map((group) => (
+                <Pressable
+                  key={group.id}
+                  testID={`group-option-${group.id}`}
+                  onPress={() => {
+                    hapticSelection();
+                    setSelectedGroup(group);
+                    setShowGroupPicker(false);
+                    setGroupSearchQuery("");
+                  }}
+                  className={cn(
+                    "px-3 py-3 rounded-lg flex-row items-center justify-between",
+                    group.id === selectedGroup?.id ? "bg-primary" : "bg-transparent"
+                  )}
+                >
+                  <Text
+                    className={cn(
+                      "font-sans-medium flex-1",
+                      group.id === selectedGroup?.id
+                        ? "text-primary-foreground"
+                        : "text-card-foreground"
+                    )}
+                    numberOfLines={1}
+                  >
+                    {group.name}
+                  </Text>
+                  {group.id === selectedGroup?.id && <Check size={18} color={palette.white} />}
+                </Pressable>
+              ));
+            })()}
+            <Pressable
+              onPress={() => {
+                setShowGroupPicker(false);
+                setGroupSearchQuery("");
+                router.push("/create-group");
+              }}
+              className="flex-row items-center gap-2 px-3 py-3 rounded-lg mt-1 border border-dashed border-border"
+            >
+              <Plus size={16} color={c.accent} />
+              <Text className="font-sans-medium text-accent">Create New Group</Text>
+            </Pressable>
+          </View>
+        </View>
+      </BottomSheetModal>
+
+      {/* Date picker — bottom sheet on iOS (Android uses native dialog inline above) */}
+      {Platform.OS === 'ios' && (
+        <BottomSheetModal
+          visible={showDatePicker}
+          onClose={() => setShowDatePicker(false)}
+          modalTestID="date-picker-sheet"
+        >
+          <View>
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-base font-sans-semibold text-foreground">Date</Text>
+              <Pressable
+                onPress={() => setShowDatePicker(false)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Close date picker"
+              >
+                <Text className="text-sm font-sans-semibold text-primary">Done</Text>
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={expenseDate}
+              mode="date"
+              display="spinner"
+              maximumDate={new Date()}
+              onChange={(event, date) => {
+                if (date && event.type !== "dismissed") setExpenseDate(date);
+              }}
+            />
+          </View>
+        </BottomSheetModal>
+      )}
+
+      {/* Paid by picker — bottom sheet */}
+      <BottomSheetModal
+        visible={showPayerPicker}
+        onClose={() => setShowPayerPicker(false)}
+        modalTestID="payer-picker-sheet"
+      >
+        <View>
+          <Text className="text-base font-sans-semibold text-foreground mb-3">Who paid?</Text>
+          <View className="gap-1">
+            {members.map((member) => {
+              const isSelected = selectedPayerMemberId === member.id;
+              const memberName =
+                member.user?.name || member.guestUser?.name || member.displayName || "Member";
+              return (
+                <Pressable
+                  key={member.id}
+                  testID={`payer-option-${member.id}`}
+                  onPress={() => {
+                    hapticSelection();
+                    setSelectedPayerMemberId(member.id);
+                    setShowPayerPicker(false);
+                  }}
+                  className={cn(
+                    "px-3 py-3 rounded-lg flex-row items-center gap-3",
+                    isSelected ? "bg-primary" : "bg-transparent"
+                  )}
+                >
+                  <Avatar
+                    src={getMemberAvatarUrl(member.user)}
+                    fallback={getInitials(memberName)}
+                    size="sm"
+                  />
+                  <Text
+                    className={cn(
+                      "font-sans-medium flex-1",
+                      isSelected ? "text-primary-foreground" : "text-card-foreground"
+                    )}
+                    numberOfLines={1}
+                  >
+                    {memberName}
+                  </Text>
+                  {isSelected && <Check size={18} color={palette.white} />}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </BottomSheetModal>
 
       {/* Success overlay */}
       {showSuccess && (

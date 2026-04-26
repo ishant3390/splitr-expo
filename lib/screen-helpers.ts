@@ -45,6 +45,45 @@ export function validatePercentageSplit(percentages: Record<string, string>): { 
   return { valid: Math.abs(total - 100) <= 0.5, total };
 }
 
+/**
+ * When a user manually changes one participant's percentage, redistribute the
+ * remaining (100 - sum of locked) evenly across the unlocked selected participants.
+ * The just-edited participant is treated as locked. Rounding remainder goes to the
+ * first unlocked participant so the row totals back to 100.
+ */
+export function redistributePercentages(
+  current: Record<string, string>,
+  changedMemberId: string,
+  newValue: string,
+  selectedMemberIds: string[],
+  lockedMemberIds: string[]
+): Record<string, string> {
+  const next: Record<string, string> = { ...current, [changedMemberId]: newValue };
+  if (selectedMemberIds.length === 0) return next;
+
+  const lockedSet = new Set([...lockedMemberIds, changedMemberId]);
+  const lockedSelected = selectedMemberIds.filter((id) => lockedSet.has(id));
+  const unlocked = selectedMemberIds.filter((id) => !lockedSet.has(id));
+
+  if (unlocked.length === 0) return next;
+
+  const lockedSum = lockedSelected.reduce(
+    (sum, id) => sum + (parseFloat(next[id] ?? "0") || 0),
+    0
+  );
+  const remaining = Math.max(0, 100 - lockedSum);
+  const per = Math.floor((remaining / unlocked.length) * 100) / 100;
+  const used = per * unlocked.length;
+  const leftover = Math.round((remaining - used) * 100) / 100;
+
+  unlocked.forEach((id, idx) => {
+    const value = idx === 0 ? Math.round((per + leftover) * 100) / 100 : per;
+    next[id] = value.toFixed(2);
+  });
+
+  return next;
+}
+
 export function validateFixedSplit(fixedAmounts: Record<string, string>, totalCents: number): { valid: boolean; totalFixed: number } {
   const totalFixed = Object.values(fixedAmounts).reduce((s, v) => s + Math.round((parseFloat(v) || 0) * 100), 0);
   return { valid: Math.abs(totalFixed - totalCents) <= 1, totalFixed };

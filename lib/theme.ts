@@ -20,15 +20,18 @@ export async function getStoredTheme(): Promise<ThemePreference> {
 }
 
 /**
- * Apply a theme preference: updates NativeWind color scheme and
- * native Appearance (on non-web platforms), then persists to storage.
+ * Apply a theme preference: updates NativeWind color scheme and native
+ * Appearance on native platforms, then persists to storage. On web, only
+ * persists — NativeWind is configured with darkMode:"media" (required for
+ * native dark mode to work), and calling setColorScheme in "media" mode
+ * throws. The OS prefers-color-scheme drives the web scheme.
  */
 export async function applyTheme(
   next: ThemePreference,
   setColorScheme: (scheme: "system" | "light" | "dark") => void,
 ): Promise<void> {
-  setColorScheme(next);
   if (Platform.OS !== "web") {
+    setColorScheme(next);
     Appearance.setColorScheme(next === "system" ? null : next);
   }
   try {
@@ -46,8 +49,8 @@ export async function restoreTheme(
   setColorScheme: (scheme: "system" | "light" | "dark") => void,
 ): Promise<ThemePreference> {
   const stored = await getStoredTheme();
-  setColorScheme(stored);
   if (Platform.OS !== "web") {
+    setColorScheme(stored);
     Appearance.setColorScheme(stored === "system" ? null : stored);
   }
   return stored;
